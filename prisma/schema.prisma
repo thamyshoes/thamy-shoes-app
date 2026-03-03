@@ -1,0 +1,259 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Perfil {
+  ADMIN
+  PCP
+  PRODUCAO
+}
+
+enum Setor {
+  CABEDAL
+  PALMILHA
+  SOLA
+}
+
+enum StatusPedido {
+  IMPORTADO
+  PENDENTE_AJUSTE
+  FICHAS_GERADAS
+}
+
+enum StatusItem {
+  PENDENTE
+  RESOLVIDO
+}
+
+enum StatusConexao {
+  DESCONECTADO
+  CONECTADO
+  EXPIRADO
+}
+
+enum EscopoEquivalencia {
+  REFERENCIA
+  GLOBAL
+}
+
+enum TipoCampo {
+  TEXTO
+  NUMERO
+  SELECAO
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  nome         String
+  perfil       Perfil
+  setor        Setor?
+  ativo        Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  pedidos PedidoCompra[]
+
+  @@index([perfil])
+  @@map("users")
+}
+
+model BlingConnection {
+  id           String        @id @default(uuid())
+  accessToken  String        @map("access_token")
+  refreshToken String        @map("refresh_token")
+  expiresAt    DateTime      @map("expires_at")
+  connectedAt  DateTime      @map("connected_at")
+  status       StatusConexao
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  @@map("bling_connections")
+}
+
+model PedidoCompra {
+  id             String       @id @default(uuid())
+  idBling        BigInt       @unique @map("id_bling")
+  numero         String
+  dataEmissao    DateTime     @map("data_emissao") @db.Date
+  dataPrevista   DateTime?    @map("data_prevista") @db.Date
+  fornecedorNome String       @map("fornecedor_nome")
+  fornecedorId   BigInt?      @map("fornecedor_id")
+  observacoes    String?
+  status         StatusPedido @default(IMPORTADO)
+  importadoPor   String?      @map("importado_por")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  importador         User?               @relation(fields: [importadoPor], references: [id])
+  itens              ItemPedido[]
+  fichas             FichaProducao[]
+  consolidadoPedidos ConsolidadoPedido[]
+
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("pedidos_compra")
+}
+
+model ItemPedido {
+  id            String     @id @default(uuid())
+  pedidoId      String     @map("pedido_id")
+  descricaoBruta String    @map("descricao_bruta")
+  skuBruto      String?    @map("sku_bruto")
+  quantidade    Int
+  unidade       String     @default("UN")
+  modelo        String?
+  cor           String?
+  corDescricao  String?    @map("cor_descricao")
+  tamanho       Int?
+  variacoes     Json?      @db.JsonB
+  status        StatusItem @default(PENDENTE)
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  pedido PedidoCompra @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  @@index([pedidoId])
+  @@index([status])
+  @@index([modelo, cor])
+  @@map("itens_pedido")
+}
+
+model RegraSkU {
+  id        String   @id @default(uuid())
+  nome      String
+  separador String
+  ordem     Json
+  segmentos Json
+  ativa     Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("regras_sku")
+}
+
+model MapeamentoCor {
+  id        String   @id @default(uuid())
+  codigo    String   @unique
+  descricao String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mapeamentos_cor")
+}
+
+model GradeNumeracao {
+  id         String        @id @default(uuid())
+  nome       String
+  tamanhoMin Int           @map("tamanho_min")
+  tamanhoMax Int           @map("tamanho_max")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  modelos GradeModelo[]
+
+  @@map("grades_numeracao")
+}
+
+model GradeModelo {
+  id        String         @id @default(uuid())
+  gradeId   String         @map("grade_id")
+  modelo    String
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  grade GradeNumeracao @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+
+  @@unique([gradeId, modelo])
+  @@index([modelo])
+  @@map("grades_modelo")
+}
+
+model RegraEquivalencia {
+  id        String             @id @default(uuid())
+  escopo    EscopoEquivalencia
+  valor     String?
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+
+  @@map("regras_equivalencia")
+}
+
+model Consolidado {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pedidos ConsolidadoPedido[]
+  fichas  FichaProducao[]
+
+  @@map("consolidados")
+}
+
+model ConsolidadoPedido {
+  consolidadoId String @map("consolidado_id")
+  pedidoId      String @map("pedido_id")
+
+  consolidado Consolidado  @relation(fields: [consolidadoId], references: [id], onDelete: Cascade)
+  pedido      PedidoCompra @relation(fields: [pedidoId], references: [id])
+
+  @@id([consolidadoId, pedidoId])
+  @@map("consolidados_pedidos")
+}
+
+model FichaProducao {
+  id            String    @id @default(uuid())
+  pedidoId      String?   @map("pedido_id")
+  consolidadoId String?   @map("consolidado_id")
+  setor         Setor
+  pdfUrl        String    @map("pdf_url")
+  totalPares    Int       @map("total_pares")
+  dadosJson     Json?     @map("dados_json") @db.JsonB
+  extraFields   Json?     @map("extra_fields") @db.JsonB
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  pedido      PedidoCompra? @relation(fields: [pedidoId], references: [id])
+  consolidado Consolidado?  @relation(fields: [consolidadoId], references: [id])
+
+  @@index([pedidoId])
+  @@index([consolidadoId])
+  @@index([setor, createdAt(sort: Desc)])
+  @@map("fichas_producao")
+}
+
+model CampoExtra {
+  id          String    @id @default(uuid())
+  setor       Setor
+  nome        String
+  tipo        TipoCampo
+  obrigatorio Boolean   @default(false)
+  ativo       Boolean   @default(true)
+  ordem       Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([setor, nome])
+  @@map("campos_extras")
+}
+
+model NotificacaoLog {
+  id           String   @id @default(cuid())
+  tipo         String
+  destinatario String
+  conteudo     String?
+  enviadoEm   DateTime @default(now()) @map("enviado_em")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([tipo, enviadoEm])
+  @@map("notificacao_log")
+}

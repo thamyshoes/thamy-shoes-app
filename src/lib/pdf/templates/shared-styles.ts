@@ -1,0 +1,175 @@
+import { StyleSheet } from '@react-pdf/renderer'
+
+export const pdfStyles = StyleSheet.create({
+  page: {
+    fontFamily: 'Helvetica',
+    fontSize: 10,
+    padding: 30,
+    backgroundColor: '#ffffff',
+  },
+  header: {
+    marginBottom: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: '#1f2937',
+    paddingBottom: 8,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontFamily: 'Helvetica-Bold',
+    color: '#1f2937',
+  },
+  headerSetor: {
+    fontSize: 11,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
+    fontSize: 9,
+  },
+  metaLabel: {
+    width: 90,
+    color: '#6b7280',
+  },
+  metaValue: {
+    flex: 1,
+    color: '#111827',
+  },
+  metaSection: {
+    marginBottom: 12,
+  },
+  tableContainer: {
+    marginTop: 8,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#1f2937',
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+  },
+  tableHeaderCell: {
+    color: '#ffffff',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 8,
+    textAlign: 'center',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#e5e7eb',
+  },
+  tableRowAlt: {
+    flexDirection: 'row',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#f9fafb',
+  },
+  cellModelo: {
+    width: 120,
+    fontSize: 8,
+    color: '#111827',
+  },
+  cellCor: {
+    width: 80,
+    fontSize: 8,
+    color: '#374151',
+  },
+  cellTamanho: {
+    flex: 1,
+    fontSize: 8,
+    textAlign: 'center',
+    color: '#374151',
+  },
+  cellTotal: {
+    width: 50,
+    fontSize: 8,
+    textAlign: 'right',
+    fontFamily: 'Helvetica-Bold',
+    color: '#111827',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    backgroundColor: '#1f2937',
+    marginTop: 2,
+  },
+  totalLabel: {
+    flex: 1,
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
+    color: '#ffffff',
+  },
+  totalValue: {
+    width: 50,
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
+    textAlign: 'right',
+    color: '#ffffff',
+  },
+  camposExtrasSection: {
+    marginTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    paddingTop: 10,
+  },
+  camposExtrasTitle: {
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  campoRow: {
+    flexDirection: 'row',
+    marginBottom: 3,
+  },
+  campoLabel: {
+    width: 120,
+    fontSize: 8,
+    color: '#6b7280',
+  },
+  campoValue: {
+    flex: 1,
+    fontSize: 8,
+    color: '#111827',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#d1d5db',
+    paddingBottom: 2,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 30,
+    right: 30,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 0.5,
+    borderTopColor: '#d1d5db',
+    paddingTop: 4,
+  },
+  footerText: {
+    fontSize: 7,
+    color: '#9ca3af',
+  },
+  signatureSection: {
+    marginTop: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  signatureBox: {
+    width: '45%',
+    borderTopWidth: 0.5,
+    borderTopColor: '#374151',
+    paddingTop: 4,
+  },
+  signatureLabel: {
+    fontSize: 8,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+})

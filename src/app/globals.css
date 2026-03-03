@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design Tokens (DESIGN.md § 14.1) ──────────────────────────────────── */
+:root {
+  /* Cores principais */
+  --color-primary: #475569;
+  --color-primary-hover: #334155;
+  --color-on-primary: #ffffff;
+  --color-secondary: #64748b;
+  --color-on-secondary: #ffffff;
+  --color-accent: #d4a574;
+  --color-on-accent: #1c1917;
+
+  /* Superfícies */
+  --color-background: #ffffff;
+  --color-surface: #f8fafc;
+  --color-muted: #f1f5f9;
+  --color-border: #e2e8f0;
+
+  /* Texto */
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+
+  /* Semânticas */
+  --color-success: #059669;
+  --color-on-success: #ffffff;
+  --color-warning: #d97706;
+  --color-on-warning: #ffffff;
+  --color-danger: #dc2626;
+  --color-on-danger: #ffffff;
+  --color-info: #0284c7;
+  --color-on-info: #ffffff;
+
+  /* Tipografia */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), 'Courier New', monospace;
+
+  /* Espaçamento */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+
+  /* Bordas */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+
+  /* Sombras */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* ── Base Styles ────────────────────────────────────────────────────────── */
+@layer base {
+  body {
+    @apply bg-background text-text-primary font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    @apply border-border;
+  }
+}
+
+/* ── Utilities ──────────────────────────────────────────────────────────── */
+@layer utilities {
+  /* Zebra rows para tabelas */
+  .zebra-row:nth-child(even) {
+    background-color: var(--color-muted);
+  }
+}
