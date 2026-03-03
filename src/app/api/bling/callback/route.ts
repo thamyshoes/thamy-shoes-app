@@ -5,6 +5,11 @@ import { env } from '@/lib/env'
 import { StatusConexao } from '@/types'
 
 export async function GET(request: NextRequest) {
+  if (!env.BLING_CLIENT_ID || !env.BLING_CLIENT_SECRET || !env.BLING_REDIRECT_URI) {
+    const appUrl = env.NEXT_PUBLIC_APP_URL
+    return NextResponse.redirect(`${appUrl}/configuracoes/bling?error=missing_env`)
+  }
+
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const state = searchParams.get('state')

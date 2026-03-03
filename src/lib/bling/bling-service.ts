@@ -92,6 +92,10 @@ class BlingIntegrationService {
 
     // Token expirado ou prestes a expirar: refresh
     try {
+      if (!env.BLING_CLIENT_ID || !env.BLING_CLIENT_SECRET) {
+        throw new Error('Bling não configurado')
+      }
+
       const refreshToken = decrypt(connection.refreshToken)
       const credentials = Buffer.from(
         `${env.BLING_CLIENT_ID}:${env.BLING_CLIENT_SECRET}`,

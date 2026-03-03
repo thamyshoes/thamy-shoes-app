@@ -9,10 +9,10 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET deve ter no mínimo 32 caracteres'),
   JWT_EXPIRES_IN: z.string().default('8h'),
 
-  // Bling OAuth
-  BLING_CLIENT_ID: z.string().min(1),
-  BLING_CLIENT_SECRET: z.string().min(1),
-  BLING_REDIRECT_URI: z.string().url(),
+  // Bling OAuth (optional — allow build without integration)
+  BLING_CLIENT_ID: z.string().min(1).optional(),
+  BLING_CLIENT_SECRET: z.string().min(1).optional(),
+  BLING_REDIRECT_URI: z.string().url().optional(),
   ENCRYPTION_KEY: z
     .string()
     .length(64, 'ENCRYPTION_KEY deve ter 64 chars hex (32 bytes)'),
