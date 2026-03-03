@@ -67,6 +67,8 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   pedidos PedidoCompra[]
+  passwordResetTokens PasswordResetToken[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([perfil])
   @@map("users")
