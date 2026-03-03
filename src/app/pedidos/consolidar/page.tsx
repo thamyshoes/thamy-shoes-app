@@ -15,7 +15,7 @@ import { ErrorState } from '@/components/ui/error-state'
 import { useAuth } from '@/hooks/use-auth'
 import { usePedidos } from '@/hooks/use-pedidos'
 import { apiClient } from '@/lib/api-client'
-import { formatDate } from '@/lib/format'
+import { formatDate, isValidDateInput, normalizeDateInput } from '@/lib/format'
 import { API_ROUTES, ROUTES } from '@/lib/constants'
 import { StatusPedido } from '@/types'
 import type { PedidoCompra, GradeRow } from '@/types'
@@ -85,11 +85,14 @@ export default function ConsolidarPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [gerando, setGerando] = useState(false)
 
+  const dataInicioFilter = isValidDateInput(dataInicio) ? dataInicio : undefined
+  const dataFimFilter = isValidDateInput(dataFim) ? dataFim : undefined
+
   const { pedidos, loading, error, refetch } = usePedidos({
     status,
     fornecedor: fornecedor || undefined,
-    dataInicio: dataInicio || undefined,
-    dataFim: dataFim || undefined,
+    dataInicio: dataInicioFilter,
+    dataFim: dataFimFilter,
   })
 
   // ── Preview de grades quando 2+ pedidos selecionados ───────────────────────
@@ -169,7 +172,10 @@ export default function ConsolidarPage() {
     )
   }
 
-  const pedidoRows = (pedidos as PedidoRow[]).map((p) => ({ ...p, selecionado: selectedIds.has(p.id) }))
+  const pedidoRows = (pedidos ?? []).map((p) => ({
+    ...(p as PedidoRow),
+    selecionado: selectedIds.has(p.id),
+  }))
   const selectedCount = selectedIds.size
 
   return (
@@ -231,18 +237,24 @@ export default function ConsolidarPage() {
 
           <label className="text-sm text-secondary">De:</label>
           <input
-            type="date"
+            type="text"
             className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="dd/mm/aaaa"
+            inputMode="numeric"
+            pattern="\\d{2}/\\d{2}/\\d{4}"
             value={dataInicio}
-            onChange={(e) => setDataInicio(e.target.value)}
+            onChange={(e) => setDataInicio(normalizeDateInput(e.target.value))}
           />
 
           <label className="text-sm text-secondary">Até:</label>
           <input
-            type="date"
+            type="text"
             className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="dd/mm/aaaa"
+            inputMode="numeric"
+            pattern="\\d{2}/\\d{2}/\\d{4}"
             value={dataFim}
-            onChange={(e) => setDataFim(e.target.value)}
+            onChange={(e) => setDataFim(normalizeDateInput(e.target.value))}
           />
         </FilterBar>
 

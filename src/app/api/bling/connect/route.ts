@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { env } from '@/lib/env'
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+  if (!env.BLING_CLIENT_ID || !env.BLING_CLIENT_SECRET || !env.BLING_REDIRECT_URI) {
+    const fallback = `${req.nextUrl.origin}/configuracoes/bling?error=missing_env`
+    return NextResponse.redirect(fallback)
+  }
+
   const state = randomBytes(16).toString('hex')
 
   const params = new URLSearchParams({

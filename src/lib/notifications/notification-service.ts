@@ -7,6 +7,7 @@ import {
   type EmailTemplate,
   getTokenExpiringTemplate,
   getTokenExpiredTemplate,
+  getPasswordResetTemplate,
 } from './email-templates'
 
 export class NotificationService {
@@ -77,5 +78,11 @@ export class NotificationService {
     }
 
     return { alertaEnviado: false, diasRestantes }
+  }
+
+  async sendPasswordReset(email: string, token: string): Promise<void> {
+    const baseUrl = env.NEXT_PUBLIC_APP_URL
+    const template = getPasswordResetTemplate(baseUrl, token)
+    await this.sendEmail(email, template)
   }
 }

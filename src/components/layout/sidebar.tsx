@@ -74,6 +74,7 @@ export function Sidebar({ perfil, onNavigate }: SidebarProps) {
             height={32}
             className="h-7 w-auto"
             priority
+            unoptimized
           />
           <span className="text-sm font-bold text-primary">Thamy Shoes</span>
         </Link>

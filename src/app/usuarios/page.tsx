@@ -214,8 +214,8 @@ export default function UsuariosPage() {
       const data = await apiClient.get<PaginatedResponse<UserPublic>>(
         `${API_ROUTES.USUARIOS}?${params}`,
       )
-      setUsers(data.data)
-      setTotal(data.total)
+      setUsers(data.data ?? [])
+      setTotal(data.total ?? 0)
     } catch {
       setError(true)
     } finally {
@@ -232,7 +232,7 @@ export default function UsuariosPage() {
     setPage(1)
   }, [debouncedSearch])
 
-  const confirmTarget = users.find((u) => u.id === confirmId)
+  const confirmTarget = (users ?? []).find((u) => u.id === confirmId)
 
   async function handleToggleActive() {
     if (!confirmId) return

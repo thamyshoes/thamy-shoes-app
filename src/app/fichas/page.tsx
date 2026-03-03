@@ -10,7 +10,7 @@ import { ErrorState } from '@/components/ui/error-state'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { useAuth } from '@/hooks/use-auth'
 import { useFichas, type FichaRow } from '@/hooks/use-fichas'
-import { formatDate } from '@/lib/format'
+import { formatDate, formatDateInput, isValidDateInput, normalizeDateInput } from '@/lib/format'
 import { API_ROUTES, ROUTES } from '@/lib/constants'
 import { Setor } from '@/types'
 
@@ -116,18 +116,25 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
   const [setor, setSetor] = useState<Setor | undefined>(
     (searchParams.get('setor') as Setor) || undefined,
   )
-  const [dataInicio, setDataInicio] = useState(searchParams.get('dataInicio') ?? '')
-  const [dataFim, setDataFim] = useState(searchParams.get('dataFim') ?? '')
+  const [dataInicio, setDataInicio] = useState(
+    formatDateInput(searchParams.get('dataInicio') ?? ''),
+  )
+  const [dataFim, setDataFim] = useState(
+    formatDateInput(searchParams.get('dataFim') ?? ''),
+  )
   const [search, setSearch] = useState(searchParams.get('search') ?? '')
   const [page, setPage] = useState(1)
 
   // PRODUCAO: usa o setor do usuário
   const setorEfetivo = isProducao && user.setor ? (user.setor as Setor) : setor
 
+  const dataInicioFilter = isValidDateInput(dataInicio) ? dataInicio : undefined
+  const dataFimFilter = isValidDateInput(dataFim) ? dataFim : undefined
+
   const { fichas, total, totalPages, loading, error, refetch } = useFichas({
     setor: setorEfetivo,
-    dataInicio: dataInicio || undefined,
-    dataFim: dataFim || undefined,
+    dataInicio: dataInicioFilter,
+    dataFim: dataFimFilter,
     search: search || undefined,
     page,
   })
@@ -149,8 +156,8 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
 
     const params = new URLSearchParams()
     if (s) params.set('setor', s)
-    if (di) params.set('dataInicio', di)
-    if (df) params.set('dataFim', df)
+    if (di && isValidDateInput(di)) params.set('dataInicio', di)
+    if (df && isValidDateInput(df)) params.set('dataFim', df)
     if (q) params.set('search', q)
 
     const qs = params.toString()
@@ -215,12 +222,16 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
         <label className="text-sm text-secondary" htmlFor="filtro-data-inicio">De:</label>
         <input
           id="filtro-data-inicio"
-          type="date"
+          type="text"
           className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          placeholder="dd/mm/aaaa"
+          inputMode="numeric"
+          pattern="\\d{2}/\\d{2}/\\d{4}"
           value={dataInicio}
           onChange={(e) => {
-            setDataInicio(e.target.value)
-            pushUrl({ dataInicio: e.target.value })
+            const next = normalizeDateInput(e.target.value)
+            setDataInicio(next)
+            pushUrl({ dataInicio: next })
           }}
         />
 
@@ -228,12 +239,16 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
         <label className="text-sm text-secondary" htmlFor="filtro-data-fim">Até:</label>
         <input
           id="filtro-data-fim"
-          type="date"
+          type="text"
           className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          placeholder="dd/mm/aaaa"
+          inputMode="numeric"
+          pattern="\\d{2}/\\d{2}/\\d{4}"
           value={dataFim}
           onChange={(e) => {
-            setDataFim(e.target.value)
-            pushUrl({ dataFim: e.target.value })
+            const next = normalizeDateInput(e.target.value)
+            setDataFim(next)
+            pushUrl({ dataFim: next })
           }}
         />
 

@@ -5,6 +5,26 @@ export const loginSchema = z.object({
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
 })
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Email inválido'),
+})
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Token inválido'),
+  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+})
+
+export const resetPasswordFormSchema = z
+  .object({
+    token: z.string().min(1, 'Token inválido'),
+    password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+    confirmPassword: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'As senhas não coincidem',
+    path: ['confirmPassword'],
+  })
+
 export const createUserSchema = z.object({
   email: z.string().email('Email inválido'),
   nome: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
@@ -49,6 +69,9 @@ export const consolidarSchema = z.object({
 })
 
 export type LoginInput = z.infer<typeof loginSchema>
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>
+export type ResetPasswordFormInput = z.infer<typeof resetPasswordFormSchema>
 export type CreateUserInput = z.infer<typeof createUserSchema>
 export type UpdateUserInput = z.infer<typeof updateUserSchema>
 export type EditUserInput = z.infer<typeof editUserSchema>

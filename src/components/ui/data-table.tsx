@@ -59,6 +59,7 @@ export function DataTable<T extends { id?: string }>({
   className,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<SortState | null>(null)
+  const safeData = data ?? []
 
   function handleSort(key: string) {
     setSort((prev) => {
@@ -69,8 +70,8 @@ export function DataTable<T extends { id?: string }>({
   }
 
   const sortedData = useMemo(() => {
-    if (!sort) return data
-    return [...data].sort((a, b) => {
+    if (!sort) return safeData
+    return [...safeData].sort((a, b) => {
       const aVal = (a as Record<string, unknown>)[sort.key]
       const bVal = (b as Record<string, unknown>)[sort.key]
       if (aVal == null && bVal == null) return 0
@@ -79,13 +80,13 @@ export function DataTable<T extends { id?: string }>({
       const cmp = String(aVal).localeCompare(String(bVal), 'pt-BR', { numeric: true })
       return sort.direction === 'asc' ? cmp : -cmp
     })
-  }, [data, sort])
+  }, [safeData, sort])
 
   if (loading) {
     return <TableSkeleton rows={5} cols={columns.length} />
   }
 
-  if (data.length === 0) {
+  if (safeData.length === 0) {
     return <EmptyState title={emptyMessage} action={emptyAction} />
   }
 

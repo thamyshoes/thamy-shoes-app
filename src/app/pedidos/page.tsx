@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/error-state'
 import { useAuth } from '@/hooks/use-auth'
 import { usePedidos } from '@/hooks/use-pedidos'
-import { formatDate } from '@/lib/format'
+import { formatDate, isValidDateInput, normalizeDateInput } from '@/lib/format'
 import { ROUTES } from '@/lib/constants'
 import { StatusPedido, Perfil } from '@/types'
 import type { PedidoCompra } from '@/types'
@@ -63,11 +63,14 @@ export default function PedidosPage() {
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
 
+  const dataInicioFilter = isValidDateInput(dataInicio) ? dataInicio : undefined
+  const dataFimFilter = isValidDateInput(dataFim) ? dataFim : undefined
+
   const { pedidos, total, loading, error, refetch } = usePedidos({
     status,
     fornecedor: fornecedor || undefined,
-    dataInicio: dataInicio || undefined,
-    dataFim: dataFim || undefined,
+    dataInicio: dataInicioFilter,
+    dataFim: dataFimFilter,
     page,
   })
 
@@ -149,22 +152,28 @@ export default function PedidosPage() {
 
           <label className="text-sm text-secondary">De:</label>
           <input
-            type="date"
+            type="text"
             className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="dd/mm/aaaa"
+            inputMode="numeric"
+            pattern="\\d{2}/\\d{2}/\\d{4}"
             value={dataInicio}
             onChange={(e) => {
-              setDataInicio(e.target.value)
+              setDataInicio(normalizeDateInput(e.target.value))
               setPage(1)
             }}
           />
 
           <label className="text-sm text-secondary">Até:</label>
           <input
-            type="date"
+            type="text"
             className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="dd/mm/aaaa"
+            inputMode="numeric"
+            pattern="\\d{2}/\\d{2}/\\d{4}"
             value={dataFim}
             onChange={(e) => {
-              setDataFim(e.target.value)
+              setDataFim(normalizeDateInput(e.target.value))
               setPage(1)
             }}
           />

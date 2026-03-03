@@ -1,7 +1,5 @@
 'use client'
 
-import Image from 'next/image'
-import Link from 'next/link'
 import { LogOut, Menu } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/cn'
@@ -45,20 +43,6 @@ export function Header({ user, onMenuClick, className }: HeaderProps) {
         >
           <Menu className="h-5 w-5" />
         </button>
-
-        <Link href={ROUTES.PEDIDOS} className="flex items-center gap-2">
-          <Image
-            src="/logo.png"
-            alt="Thamy Shoes"
-            width={120}
-            height={32}
-            className="h-7 w-auto"
-            priority
-          />
-          <span className="hidden text-sm font-semibold text-foreground sm:block">
-            Thamy Shoes
-          </span>
-        </Link>
       </div>
 
       <div className="flex items-center gap-4">

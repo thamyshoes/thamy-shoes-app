@@ -65,6 +65,9 @@ export const RATE_LIMIT_CONFIGS = {
   /** Login: 5 req / 15min por IP */
   login: { interval: 15 * 60 * 1000, maxRequests: 5 },
 
+  /** Reset de senha: 5 req / 15min por IP */
+  passwordReset: { interval: 15 * 60 * 1000, maxRequests: 5 },
+
   /** Importação de pedidos: 60 req / min por usuário */
   import: { interval: 60 * 1000, maxRequests: 60 },
 

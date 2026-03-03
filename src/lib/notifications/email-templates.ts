@@ -94,3 +94,47 @@ export function getTokenExpiredTemplate(baseUrl: string): EmailTemplate {
 </html>`,
   }
 }
+
+export function getPasswordResetTemplate(baseUrl: string, token: string): EmailTemplate {
+  const url = `${baseUrl}${ROUTES.RESET_SENHA}?token=${token}`
+  return {
+    subject: 'Redefinição de senha — Thamy Shoes',
+    html: `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Redefinição de Senha</title></head>
+<body style="margin:0;padding:0;background:#F8FAFC;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8FAFC;padding:32px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:8px;border:1px solid #E2E8F0;overflow:hidden;">
+        <tr>
+          <td style="background:#0F172A;padding:20px 32px;">
+            <span style="color:#FFFFFF;font-size:18px;font-weight:bold;">Thamy Shoes</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;">
+            <h1 style="margin:0 0 16px;font-size:20px;color:#0F172A;">
+              Redefinição de senha
+            </h1>
+            <p style="margin:0 0 16px;color:#475569;line-height:1.6;">
+              Recebemos uma solicitação para redefinir sua senha. Clique no botão abaixo para criar uma nova senha.
+            </p>
+            <a href="${url}" style="display:inline-block;background:#0F172A;color:#FFFFFF;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;">
+              Redefinir Senha
+            </a>
+            <p style="margin:24px 0 0;color:#475569;line-height:1.6;">
+              Se você não solicitou essa redefinição, ignore este email.
+            </p>
+            <hr style="margin:32px 0;border:none;border-top:1px solid #E2E8F0;">
+            <p style="margin:0;font-size:12px;color:#94A3B8;">
+              Link direto: <a href="${url}" style="color:#0F172A;">${url}</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+  }
+}

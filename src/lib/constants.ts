@@ -1,5 +1,6 @@
 export const ROUTES = {
   LOGIN: '/login',
+  RESET_SENHA: '/reset-senha',
   PEDIDOS: '/pedidos',
   PEDIDOS_IMPORTAR: '/pedidos/importar',
   PEDIDO_DETALHE: (id: string) => `/pedidos/${id}`,
@@ -19,6 +20,8 @@ export const API_ROUTES = {
   AUTH_LOGIN: '/api/auth/login',
   AUTH_ME: '/api/auth/me',
   AUTH_LOGOUT: '/api/auth/logout',
+  AUTH_FORGOT: '/api/auth/forgot',
+  AUTH_RESET: '/api/auth/reset',
   USUARIOS: '/api/usuarios',
   USUARIO_DETALHE: (id: string) => `/api/usuarios/${id}`,
   BLING_STATUS: '/api/bling/status',

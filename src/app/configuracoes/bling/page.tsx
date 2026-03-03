@@ -25,12 +25,7 @@ function ConnectedCard({
   connectedAt: Date | null
   onDisconnect: () => void
 }) {
-  const expiry = expiresAt
-    ? new Date(expiresAt).toLocaleString('pt-BR', {
-        dateStyle: 'short',
-        timeStyle: 'short',
-      })
-    : '—'
+  const expiry = expiresAt ? formatDateTime(expiresAt) : '—'
 
   return (
     <div className="rounded-lg border border-success/30 bg-success/10 p-6 space-y-4">
@@ -91,6 +86,30 @@ function DisconnectedCard() {
   )
 }
 
+// ── Cartão: Configuração Incompleta ───────────────────────────────────────────
+
+function MissingConfigCard() {
+  return (
+    <div className="rounded-lg border border-warning/30 bg-warning/10 p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <AlertTriangle className="h-5 w-5 text-warning" />
+        <span className="font-semibold text-foreground">Configuração Incompleta</span>
+      </div>
+      <p className="text-sm text-secondary">
+        Para conectar com o Bling, configure as variáveis no arquivo <code className="font-mono">.env</code>:
+      </p>
+      <ul className="text-sm text-secondary list-disc pl-5">
+        <li><code className="font-mono">BLING_CLIENT_ID</code></li>
+        <li><code className="font-mono">BLING_CLIENT_SECRET</code></li>
+        <li><code className="font-mono">BLING_REDIRECT_URI</code></li>
+      </ul>
+      <p className="text-sm text-secondary">
+        Depois de salvar, reinicie o servidor para aplicar.
+      </p>
+    </div>
+  )
+}
+
 // ── Mensagens de erro OAuth ──────────────────────────────────────────────────
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
@@ -98,6 +117,8 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   no_code: 'Falha na autenticação: código não recebido. Tente novamente.',
   token_exchange_failed: 'Falha ao trocar token com o Bling. Tente novamente.',
   server_error: 'Erro interno ao conectar com o Bling. Tente novamente.',
+  missing_env:
+    'Configuração do Bling incompleta. Defina BLING_CLIENT_ID, BLING_CLIENT_SECRET e BLING_REDIRECT_URI no .env e reinicie o servidor.',
 }
 
 // ── Handler de callback OAuth (isolado para Suspense boundary) ─────────────────
@@ -127,7 +148,7 @@ function BlingCallbackHandler() {
 
 export default function BlingConfigPage() {
   const { user, loading: authLoading } = useAuth()
-  const { status, expiresAt, connectedAt, loading, refetch } = useBlingStatus()
+  const { status, expiresAt, connectedAt, configOk, loading, refetch } = useBlingStatus()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmLoading, setConfirmLoading] = useState(false)
 
@@ -159,6 +180,8 @@ export default function BlingConfigPage() {
 
         {loading ? (
           <div className="h-40 animate-pulse rounded-lg bg-muted" />
+        ) : !configOk ? (
+          <MissingConfigCard />
         ) : status === StatusConexao.CONECTADO ? (
           <ConnectedCard
             expiresAt={expiresAt}

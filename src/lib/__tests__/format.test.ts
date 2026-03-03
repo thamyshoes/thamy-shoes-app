@@ -5,6 +5,10 @@ import {
   formatRelativeDate,
   formatCurrency,
   formatPares,
+  normalizeDateInput,
+  formatDateInput,
+  parseDateBr,
+  isValidDateInput,
 } from '../format'
 
 describe('format', () => {
@@ -88,6 +92,53 @@ describe('format', () => {
       expect(formatPares(0)).toBe('0 pares')
       expect(formatPares(2)).toBe('2 pares')
       expect(formatPares(100)).toBe('100 pares')
+    })
+  })
+
+  describe('normalizeDateInput', () => {
+    it('formats digits into dd/mm/aaaa', () => {
+      expect(normalizeDateInput('1')).toBe('1')
+      expect(normalizeDateInput('1501')).toBe('15/01')
+      expect(normalizeDateInput('15012024')).toBe('15/01/2024')
+    })
+  })
+
+  describe('formatDateInput', () => {
+    it('converts ISO date to dd/mm/aaaa', () => {
+      expect(formatDateInput('2024-01-15')).toBe('15/01/2024')
+    })
+
+    it('keeps Brazilian format as-is', () => {
+      expect(formatDateInput('15/01/2024')).toBe('15/01/2024')
+    })
+  })
+
+  describe('parseDateBr', () => {
+    it('parses dd/mm/aaaa', () => {
+      const date = parseDateBr('15/01/2024')
+      expect(date).toBeInstanceOf(Date)
+      expect(date?.getFullYear()).toBe(2024)
+      expect(date?.getMonth()).toBe(0)
+      expect(date?.getDate()).toBe(15)
+    })
+
+    it('parses yyyy-mm-dd for backward compatibility', () => {
+      const date = parseDateBr('2024-01-15')
+      expect(date).toBeInstanceOf(Date)
+      expect(date?.getFullYear()).toBe(2024)
+    })
+
+    it('rejects invalid dates', () => {
+      expect(parseDateBr('31/02/2024')).toBeNull()
+      expect(parseDateBr('abc')).toBeNull()
+    })
+  })
+
+  describe('isValidDateInput', () => {
+    it('validates Brazilian format', () => {
+      expect(isValidDateInput('15/01/2024')).toBe(true)
+      expect(isValidDateInput('2024-01-15')).toBe(true)
+      expect(isValidDateInput('15/13/2024')).toBe(false)
     })
   })
 })

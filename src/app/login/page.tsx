@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import logo from '../../../public/logo.png'
 import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -8,8 +9,14 @@ import { AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Modal } from '@/components/ui/modal'
 import { apiClient, ApiError } from '@/lib/api-client'
-import { loginSchema, type LoginInput } from '@/lib/validators'
+import {
+  loginSchema,
+  forgotPasswordSchema,
+  type LoginInput,
+  type ForgotPasswordInput,
+} from '@/lib/validators'
 import { ROUTES, API_ROUTES } from '@/lib/constants'
 import type { UserSession } from '@/types'
 import { Perfil } from '@/types'
@@ -24,6 +31,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [lockoutSeconds, setLockoutSeconds] = useState(0)
   const [showPassword, setShowPassword] = useState(false)
+  const [forgotOpen, setForgotOpen] = useState(false)
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const {
@@ -33,6 +43,15 @@ export default function LoginPage() {
     setFocus,
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
+  })
+
+  const {
+    register: registerForgot,
+    handleSubmit: handleForgotSubmit,
+    reset: resetForgot,
+    formState: { errors: forgotErrors },
+  } = useForm<ForgotPasswordInput>({
+    resolver: zodResolver(forgotPasswordSchema),
   })
 
   useEffect(() => {
@@ -84,25 +103,40 @@ export default function LoginPage() {
 
   const isLocked = lockoutSeconds > 0
 
+  async function onForgotPassword(data: ForgotPasswordInput) {
+    setForgotLoading(true)
+    try {
+      await apiClient.post(API_ROUTES.AUTH_FORGOT, data)
+      setForgotSent(true)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao enviar email'
+      toast.error(message)
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
+  function closeForgot() {
+    setForgotOpen(false)
+    setForgotSent(false)
+    resetForgot()
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-[420px] space-y-6 rounded-xl bg-card p-8 shadow-md">
+    <div className="flex min-h-screen items-center justify-center bg-white p-4">
+      <div className="w-full max-w-[420px] rounded-xl bg-card p-8 shadow-md">
         {/* Logo / título */}
         <div className="text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+          <div className="mx-auto mb-0 flex h-40 w-auto items-center justify-center rounded-full bg-white">
             <Image
-              src="/logo.png"
+              src={logo}
               alt="Thamy Shoes"
-              width={80}
-              height={80}
-              className="h-8 w-auto"
+              width={336}
+              height={336}
+              className="h-[134px] w-auto"
               priority
             />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Thamy Shoes</h1>
-          <p className="mt-1 text-sm text-secondary">
-            Faça login para continuar
-          </p>
         </div>
 
         {/* Lockout banner */}
@@ -122,8 +156,8 @@ export default function LoginPage() {
         )}
 
         {/* Formulário */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-          <div className="space-y-1">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+          <div>
             <label htmlFor="email" className="text-sm font-medium text-foreground">
               Email
             </label>
@@ -142,7 +176,7 @@ export default function LoginPage() {
             )}
           </div>
 
-          <div className="space-y-1">
+          <div>
             <label
               htmlFor="password"
               className="text-sm font-medium text-foreground"
@@ -179,6 +213,15 @@ export default function LoginPage() {
                 {errors.password.message}
               </p>
             )}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="text-xs text-secondary hover:text-foreground"
+                onClick={() => setForgotOpen(true)}
+              >
+                Esqueci minha senha
+              </button>
+            </div>
           </div>
 
           <Button
@@ -190,6 +233,43 @@ export default function LoginPage() {
           </Button>
         </form>
       </div>
+
+      <Modal open={forgotOpen} onClose={closeForgot} title="Redefinir senha" size="sm">
+        {forgotSent ? (
+          <div className="space-y-3 text-sm text-secondary">
+            <p>
+              Se o email estiver cadastrado, você receberá um link para redefinir a senha.
+            </p>
+            <Button variant="primary" onClick={closeForgot}>
+              Entendi
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleForgotSubmit(onForgotPassword)} className="space-y-3">
+            <div className="space-y-1">
+              <label htmlFor="forgot-email" className="text-sm font-medium text-foreground">
+                Email
+              </label>
+              <Input
+                id="forgot-email"
+                type="email"
+                placeholder="seu@email.com"
+                aria-invalid={!!forgotErrors.email}
+                aria-describedby={forgotErrors.email ? 'forgot-email-error' : undefined}
+                {...registerForgot('email')}
+              />
+              {forgotErrors.email && (
+                <p id="forgot-email-error" className="text-xs text-destructive">
+                  {forgotErrors.email.message}
+                </p>
+              )}
+            </div>
+            <Button type="submit" className="w-full" loading={forgotLoading}>
+              Enviar link
+            </Button>
+          </form>
+        )}
+      </Modal>
     </div>
   )
 }

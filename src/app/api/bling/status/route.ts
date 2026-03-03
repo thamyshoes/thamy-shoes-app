@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { env } from '@/lib/env'
 import { StatusConexao } from '@/types'
 
 export async function GET(_req: NextRequest) {
+  const configOk = Boolean(
+    env.BLING_CLIENT_ID && env.BLING_CLIENT_SECRET && env.BLING_REDIRECT_URI,
+  )
+
   const connection = await prisma.blingConnection.findFirst()
 
   if (!connection) {
@@ -10,6 +15,7 @@ export async function GET(_req: NextRequest) {
       status: StatusConexao.DESCONECTADO,
       expiresAt: null,
       connectedAt: null,
+      configOk,
     })
   }
 
@@ -26,6 +32,7 @@ export async function GET(_req: NextRequest) {
       status: StatusConexao.EXPIRADO,
       expiresAt: connection.expiresAt,
       connectedAt: connection.connectedAt,
+      configOk,
     })
   }
 
@@ -33,5 +40,6 @@ export async function GET(_req: NextRequest) {
     status: connection.status,
     expiresAt: connection.expiresAt,
     connectedAt: connection.connectedAt,
+    configOk,
   })
 }

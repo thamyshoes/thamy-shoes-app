@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { parseDateBrEnd, parseDateBrStart } from '@/lib/format'
 import { Setor } from '@prisma/client'
 
 const querySchema = z.object({
@@ -30,6 +31,16 @@ export async function GET(request: NextRequest) {
 
   const { page, pageSize, setor, dataInicio, dataFim, pedidoId, search } = parsed.data
 
+  const dataInicioParsed = dataInicio ? parseDateBrStart(dataInicio) : null
+  const dataFimParsed = dataFim ? parseDateBrEnd(dataFim) : null
+
+  if (dataInicio && !dataInicioParsed) {
+    return NextResponse.json({ error: 'Data início inválida. Use dd/mm/aaaa.' }, { status: 422 })
+  }
+  if (dataFim && !dataFimParsed) {
+    return NextResponse.json({ error: 'Data fim inválida. Use dd/mm/aaaa.' }, { status: 422 })
+  }
+
   // PRODUCAO: forçar filtro pelo setor do usuário
   const setorFilter: Setor | undefined =
     perfil === 'PRODUCAO' && userSetor
@@ -46,10 +57,10 @@ export async function GET(request: NextRequest) {
     where.pedidoId = pedidoId
   }
 
-  if (dataInicio || dataFim) {
+  if (dataInicioParsed || dataFimParsed) {
     where.createdAt = {
-      ...(dataInicio ? { gte: new Date(dataInicio) } : {}),
-      ...(dataFim ? { lte: new Date(`${dataFim}T23:59:59.999Z`) } : {}),
+      ...(dataInicioParsed ? { gte: dataInicioParsed } : {}),
+      ...(dataFimParsed ? { lte: dataFimParsed } : {}),
     }
   }
 

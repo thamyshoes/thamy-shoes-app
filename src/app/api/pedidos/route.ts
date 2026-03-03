@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { paginationSchema } from '@/lib/validators'
+import { parseDateBrEnd, parseDateBrStart } from '@/lib/format'
 import { StatusPedido, StatusItem } from '@/types'
 
 const listQuerySchema = paginationSchema.extend({
@@ -23,6 +24,16 @@ export async function GET(req: NextRequest) {
 
   const { page, pageSize, status, fornecedor, dataInicio, dataFim, search } = parsed.data
 
+  const dataInicioParsed = dataInicio ? parseDateBrStart(dataInicio) : null
+  const dataFimParsed = dataFim ? parseDateBrEnd(dataFim) : null
+
+  if (dataInicio && !dataInicioParsed) {
+    return NextResponse.json({ error: 'Data início inválida. Use dd/mm/aaaa.' }, { status: 422 })
+  }
+  if (dataFim && !dataFimParsed) {
+    return NextResponse.json({ error: 'Data fim inválida. Use dd/mm/aaaa.' }, { status: 422 })
+  }
+
   const where = {
     ...(status && { status }),
     ...(fornecedor && {
@@ -32,8 +43,8 @@ export async function GET(req: NextRequest) {
     ...((dataInicio ?? dataFim)
       ? {
           dataEmissao: {
-            ...(dataInicio && { gte: new Date(dataInicio) }),
-            ...(dataFim && { lte: new Date(dataFim) }),
+            ...(dataInicioParsed && { gte: dataInicioParsed }),
+            ...(dataFimParsed && { lte: dataFimParsed }),
           },
         }
       : {}),
