@@ -68,7 +68,6 @@ model User {
 
   pedidos PedidoCompra[]
   passwordResetTokens PasswordResetToken[]
-  passwordResetTokens PasswordResetToken[]
 
   @@index([perfil])
   @@map("users")
