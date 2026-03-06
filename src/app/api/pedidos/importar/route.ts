@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   const pedido = await prisma.pedidoCompra.create({
     data: {
       idBling: BigInt(idBling),
-      numero: pedidoBling.numero,
+      numero: String(pedidoBling.numero),
       dataEmissao: new Date(pedidoBling.dataCompra ?? pedidoBling.data ?? new Date()),
       dataPrevista: pedidoBling.dataPrevista && pedidoBling.dataPrevista !== '0000-00-00'
         ? new Date(pedidoBling.dataPrevista)
