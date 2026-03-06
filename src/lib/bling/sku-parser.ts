@@ -40,7 +40,7 @@ async function getRegraAtiva(): Promise<CachedRegra | null> {
   const modo = typeof regra.modo === 'string' ? regra.modo : 'SEPARADOR'
   const ordem = Array.isArray(regra.ordem) ? (regra.ordem as string[]) : []
   const digitosSufixo = Array.isArray(regra.digitosSufixo)
-    ? (regra.digitosSufixo as DigitosSegmento[])
+    ? (regra.digitosSufixo as unknown as DigitosSegmento[])
     : null
 
   cachedRegra = { modo, separador: regra.separador, ordem, digitosSufixo }
