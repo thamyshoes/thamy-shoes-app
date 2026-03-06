@@ -24,6 +24,11 @@ export async function GET(req: NextRequest) {
   try {
     const { data: pedidosBling, hasMore } = await blingService.listPedidosCompra(dias, pagina)
 
+    // Log temporário para depuração dos campos da API Bling
+    if (pedidosBling[0]) {
+      console.log('[Bling pedido[0] raw]', JSON.stringify(pedidosBling[0], null, 2))
+    }
+
     // Buscar IDs que já foram importados
     const idsBling = pedidosBling.map((p) => BigInt(p.id))
     const importados = await prisma.pedidoCompra.findMany({
