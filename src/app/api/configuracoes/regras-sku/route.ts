@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
 
@@ -47,6 +48,14 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const regra = await prisma.regraSkU.create({ data: parsed.data })
+  const { digitosSufixo, ...rest } = parsed.data
+  const regra = await prisma.regraSkU.create({
+    data: {
+      ...rest,
+      digitosSufixo: digitosSufixo === null || digitosSufixo === undefined
+        ? Prisma.JsonNull
+        : digitosSufixo,
+    },
+  })
   return NextResponse.json(regra, { status: 201 })
 }

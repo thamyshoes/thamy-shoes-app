@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
 
@@ -41,9 +42,15 @@ export async function PATCH(
   }
 
   try {
+    const { digitosSufixo, ...rest } = parsed.data
     const regra = await prisma.regraSkU.update({
       where: { id },
-      data: parsed.data,
+      data: {
+        ...rest,
+        ...(digitosSufixo !== undefined
+          ? { digitosSufixo: digitosSufixo === null ? Prisma.JsonNull : digitosSufixo }
+          : {}),
+      },
     })
     return NextResponse.json(regra)
   } catch {
