@@ -29,6 +29,8 @@ export interface BlingPedido {
   dataPrevista?: string
   fornecedor?: { id: number; nome: string }
   observacoes?: string
+  observacoesInternas?: string
+  situacao?: { id: number; valor: string }
   itens: BlingItemPedido[]
 }
 
@@ -217,7 +219,11 @@ class BlingIntegrationService {
     throw lastError
   }
 
-  async listPedidosCompra(dias: number): Promise<BlingPedido[]> {
+  async listPedidosCompra(
+    dias: number,
+    pagina = 1,
+  ): Promise<{ data: BlingPedido[]; hasMore: boolean }> {
+    const limite = 10
     const now = new Date()
     const dataInicial = new Date(now.getTime() - dias * 24 * 60 * 60 * 1000)
     const fmt = (d: Date) => d.toISOString().split('T')[0]!
@@ -225,8 +231,8 @@ class BlingIntegrationService {
     const params = new URLSearchParams({
       dataInicial: fmt(dataInicial),
       dataFinal: fmt(now),
-      pagina: '1',
-      limite: '100',
+      pagina: String(pagina),
+      limite: String(limite),
     })
 
     const response = await this.blingRequest<{ data: BlingPedido[] }>(
@@ -234,7 +240,7 @@ class BlingIntegrationService {
       `/pedidos/compras?${params.toString()}`,
     )
 
-    return response.data
+    return { data: response.data, hasMore: response.data.length === limite }
   }
 
   async getPedidoCompra(idBling: number): Promise<BlingPedidoDetalhe> {

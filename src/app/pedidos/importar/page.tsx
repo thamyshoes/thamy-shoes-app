@@ -2,12 +2,11 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { WifiOff, Search } from 'lucide-react'
+import { WifiOff, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { SidebarLayout } from '@/components/layout/sidebar-layout'
 import { DataTable, type Column } from '@/components/ui/data-table'
 import { Button } from '@/components/ui/button'
-import { StatusBadge } from '@/components/ui/status-badge'
 import { Modal } from '@/components/ui/modal'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/hooks/use-auth'
@@ -23,8 +22,8 @@ interface PedidoBling {
   idBling: number
   numero: string
   dataEmissao: string
-  fornecedorNome: string
-  totalItens: number
+  observacoesInternas: string
+  situacao: string
   importado: boolean
   importadoEm: string | null
 }
@@ -36,6 +35,25 @@ interface DuplicataInfo {
   createdAt: string
   fichasGeradas: boolean
 }
+
+// ── Badge de situação ─────────────────────────────────────────────────────────
+
+const SITUACAO_STYLES: Record<string, string> = {
+  'Em aberto': 'bg-blue-50 text-blue-700 border-blue-200',
+  'Atendido':  'bg-green-50 text-green-700 border-green-200',
+  'Cancelado': 'bg-red-50 text-red-600 border-red-200',
+}
+
+function SituacaoBadge({ valor }: { valor: string }) {
+  const style = SITUACAO_STYLES[valor] ?? 'bg-muted text-secondary border-border'
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${style}`}>
+      {valor}
+    </span>
+  )
+}
+
+const SITUACOES_IMPORTAVEIS = new Set(['Em aberto', 'Atendido'])
 
 // ── Colunas da Tabela ─────────────────────────────────────────────────────────
 
@@ -51,46 +69,93 @@ function buildColumns(
     },
     {
       key: 'dataEmissao',
-      header: 'Data Emissão',
+      header: 'Data',
       render: (p) => formatDate(p.dataEmissao),
     },
     {
-      key: 'fornecedorNome',
-      header: 'Fornecedor',
+      key: 'observacoesInternas',
+      header: 'Observação interna',
     },
     {
-      key: 'totalItens',
-      header: 'Itens',
-      align: 'right',
+      key: 'situacao',
+      header: 'Situação',
+      render: (p) => <SituacaoBadge valor={p.situacao} />,
     },
     {
       key: 'status',
       header: 'Status',
       render: (p) =>
         p.importado ? (
-          <StatusBadge status="IMPORTADO" />
+          <span className="inline-flex items-center rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
+            Importado
+          </span>
         ) : (
-          <StatusBadge status="DISPONIVEL" variant="info" />
+          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-secondary">
+            Disponível
+          </span>
         ),
     },
     {
       key: 'acao',
       header: 'Ação',
-      render: (p) => (
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={p.importado || importingId === p.idBling}
-          onClick={(e) => {
-            e.stopPropagation()
-            onImportar(p)
-          }}
-        >
-          {importingId === p.idBling ? 'Importando...' : p.importado ? 'Importado' : 'Importar'}
-        </Button>
-      ),
+      render: (p) => {
+        const podeImportar = SITUACOES_IMPORTAVEIS.has(p.situacao)
+        const isImporting = importingId === p.idBling
+        return (
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={p.importado || isImporting || !podeImportar}
+            title={!podeImportar ? `Situação "${p.situacao}" não permite importação` : undefined}
+            onClick={(e) => {
+              e.stopPropagation()
+              onImportar(p)
+            }}
+          >
+            {isImporting ? 'Importando...' : p.importado ? 'Importado' : 'Importar'}
+          </Button>
+        )
+      },
     },
   ]
+}
+
+// ── Paginação ─────────────────────────────────────────────────────────────────
+
+function Paginacao({
+  pagina,
+  hasMore,
+  onAnterior,
+  onProxima,
+  loading,
+}: {
+  pagina: number
+  hasMore: boolean
+  onAnterior: () => void
+  onProxima: () => void
+  loading: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between border-t border-border pt-3">
+      <button
+        onClick={onAnterior}
+        disabled={pagina === 1 || loading}
+        className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        Anterior
+      </button>
+      <span className="text-sm text-secondary">Página {pagina}</span>
+      <button
+        onClick={onProxima}
+        disabled={!hasMore || loading}
+        className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+      >
+        Próxima
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  )
 }
 
 // ── Página ────────────────────────────────────────────────────────────────────
@@ -101,7 +166,9 @@ export default function ImportarPedidoPage() {
   const { status: blingStatus, loading: blingLoading } = useBlingStatus()
 
   const [dias, setDias] = useState(7)
+  const [pagina, setPagina] = useState(1)
   const [pedidos, setPedidos] = useState<PedidoBling[]>([])
+  const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [importingId, setImportingId] = useState<number | null>(null)
@@ -114,27 +181,32 @@ export default function ImportarPedidoPage() {
 
   // ── Carregar pedidos do Bling ───────────────────────────────────────────────
 
-  const fetchPedidos = useCallback(async () => {
+  const fetchPedidos = useCallback(async (d: number, p: number) => {
     setLoading(true)
     setError(null)
     try {
-      // apiClient unwraps { data } automatically
-      const list = await apiClient.get<PedidoBling[]>(
-        `${API_ROUTES.BLING_PEDIDOS}?dias=${dias}`,
+      const res = await apiClient.get<{ data: PedidoBling[]; pagina: number; hasMore: boolean }>(
+        `${API_ROUTES.BLING_PEDIDOS}?dias=${d}&pagina=${p}`,
       )
-      setPedidos(list)
+      setPedidos(res.data)
+      setHasMore(res.hasMore)
     } catch (err) {
       setError(err instanceof Error ? err.message : MESSAGES.ERROR.GENERIC)
     } finally {
       setLoading(false)
     }
-  }, [dias])
+  }, [])
 
   useEffect(() => {
     if (blingStatus === StatusConexao.CONECTADO) {
-      void fetchPedidos()
+      void fetchPedidos(dias, pagina)
     }
-  }, [dias, blingStatus, fetchPedidos])
+  }, [dias, pagina, blingStatus, fetchPedidos])
+
+  function handleDiasChange(novosDias: number) {
+    setDias(novosDias)
+    setPagina(1)
+  }
 
   // ── Importar pedido ────────────────────────────────────────────────────────
 
@@ -200,9 +272,7 @@ export default function ImportarPedidoPage() {
 
   if (authLoading || !user) return null
 
-  const isDesconectado =
-    !blingLoading && blingStatus !== StatusConexao.CONECTADO
-
+  const isDesconectado = !blingLoading && blingStatus !== StatusConexao.CONECTADO
   const columns = buildColumns(handleImportar, importingId)
 
   return (
@@ -219,7 +289,7 @@ export default function ImportarPedidoPage() {
               <select
                 id="dias-select"
                 value={dias}
-                onChange={(e) => setDias(Number(e.target.value))}
+                onChange={(e) => handleDiasChange(Number(e.target.value))}
                 className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value={3}>3 dias</option>
@@ -252,7 +322,7 @@ export default function ImportarPedidoPage() {
           </div>
         )}
 
-        {/* Busca manual — sempre visível quando Bling offline */}
+        {/* Busca manual — quando Bling offline */}
         {isDesconectado && (
           <section className="rounded-lg border border-border bg-card p-4 space-y-3">
             <div className="flex items-center gap-2">
@@ -286,7 +356,7 @@ export default function ImportarPedidoPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => void fetchPedidos()}
+                  onClick={() => void fetchPedidos(dias, pagina)}
                   className="mt-2"
                 >
                   Tentar novamente
@@ -295,12 +365,21 @@ export default function ImportarPedidoPage() {
             )}
 
             {!error && (
-              <DataTable
-                data={pedidos}
-                columns={columns}
-                loading={loading}
-                emptyMessage={`Nenhum pedido encontrado nos últimos ${dias} dias`}
-              />
+              <div className="space-y-3">
+                <DataTable
+                  data={pedidos}
+                  columns={columns}
+                  loading={loading}
+                  emptyMessage={`Nenhum pedido encontrado nos últimos ${dias} dias`}
+                />
+                <Paginacao
+                  pagina={pagina}
+                  hasMore={hasMore}
+                  onAnterior={() => setPagina((p) => Math.max(p - 1, 1))}
+                  onProxima={() => setPagina((p) => p + 1)}
+                  loading={loading}
+                />
+              </div>
             )}
           </>
         )}

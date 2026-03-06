@@ -4,11 +4,13 @@ import { blingService, BlingApiError } from '@/lib/bling/bling-service'
 import { CircuitOpenError } from '@/lib/bling/circuit-breaker'
 import { StatusConexao } from '@/types'
 
-// GET /api/bling/pedidos?dias=7
+// GET /api/bling/pedidos?dias=7&pagina=1
 // Admin only — protected by middleware
 export async function GET(req: NextRequest) {
   const diasParam = req.nextUrl.searchParams.get('dias')
+  const paginaParam = req.nextUrl.searchParams.get('pagina')
   const dias = diasParam ? Math.min(Math.max(parseInt(diasParam, 10) || 7, 1), 90) : 7
+  const pagina = paginaParam ? Math.max(parseInt(paginaParam, 10) || 1, 1) : 1
 
   // Verificar conexão Bling
   const connection = await prisma.blingConnection.findFirst()
@@ -20,7 +22,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const pedidosBling = await blingService.listPedidosCompra(dias)
+    const { data: pedidosBling, hasMore } = await blingService.listPedidosCompra(dias, pagina)
 
     // Buscar IDs que já foram importados
     const idsBling = pedidosBling.map((p) => BigInt(p.id))
@@ -38,14 +40,14 @@ export async function GET(req: NextRequest) {
         idBling: p.id,
         numero: p.numero,
         dataEmissao: p.dataCompra,
-        fornecedorNome: p.fornecedor?.nome ?? '—',
-        totalItens: p.itens?.length ?? 0,
+        observacoesInternas: p.observacoesInternas ?? p.observacoes ?? '—',
+        situacao: p.situacao?.valor ?? '—',
         importado: !!importadoEm,
         importadoEm: importadoEm ?? null,
       }
     })
 
-    return NextResponse.json({ data })
+    return NextResponse.json({ data, pagina, hasMore })
   } catch (err) {
     if (err instanceof CircuitOpenError) {
       return NextResponse.json(
