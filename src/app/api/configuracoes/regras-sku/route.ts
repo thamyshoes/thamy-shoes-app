@@ -3,11 +3,18 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
 
+const digitosSegmentoSchema = z.object({
+  campo: z.string(),
+  digitos: z.number().int().positive(),
+})
+
 const createSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
-  separador: z.string().length(1, 'Separador deve ter exatamente 1 caractere'),
-  ordem: z.array(z.enum(['modelo', 'cor', 'tamanho'])).length(3),
+  modo: z.enum(['SEPARADOR', 'SUFIXO']).default('SEPARADOR'),
+  separador: z.string().length(1).default('-'),
+  ordem: z.array(z.enum(['modelo', 'cor', 'tamanho'])).length(3).default(['modelo', 'cor', 'tamanho']),
   segmentos: z.array(z.string()).default([]),
+  digitosSufixo: z.array(digitosSegmentoSchema).nullable().optional(),
 })
 
 export async function GET(request: NextRequest) {

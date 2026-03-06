@@ -134,14 +134,16 @@ model ItemPedido {
 }
 
 model RegraSkU {
-  id        String   @id @default(uuid())
-  nome      String
-  separador String
-  ordem     Json
-  segmentos Json
-  ativa     Boolean  @default(false)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  nome          String
+  modo          String   @default("SEPARADOR")
+  separador     String   @default("-")
+  ordem         Json
+  segmentos     Json
+  digitosSufixo Json?    @map("digitos_sufixo")
+  ativa         Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@map("regras_sku")
 }

@@ -12,11 +12,23 @@ interface SkuParseResult {
   status: StatusItem
 }
 
+interface DigitosSegmento {
+  campo: string
+  digitos: number
+}
+
+interface CachedRegra {
+  modo: string
+  separador: string
+  ordem: string[]
+  digitosSufixo: DigitosSegmento[] | null
+}
+
 // ── Cache de regra ativa (por processo, revalidado sob demanda) ───────────────
 
-let cachedRegra: { separador: string; ordem: string[] } | null | undefined = undefined
+let cachedRegra: CachedRegra | null | undefined = undefined
 
-async function getRegraAtiva(): Promise<{ separador: string; ordem: string[] } | null> {
+async function getRegraAtiva(): Promise<CachedRegra | null> {
   if (cachedRegra !== undefined) return cachedRegra
 
   const regra = await prisma.regraSkU.findFirst({ where: { ativa: true } })
@@ -25,14 +37,43 @@ async function getRegraAtiva(): Promise<{ separador: string; ordem: string[] } |
     return null
   }
 
+  const modo = typeof regra.modo === 'string' ? regra.modo : 'SEPARADOR'
   const ordem = Array.isArray(regra.ordem) ? (regra.ordem as string[]) : []
-  cachedRegra = { separador: regra.separador, ordem }
+  const digitosSufixo = Array.isArray(regra.digitosSufixo)
+    ? (regra.digitosSufixo as DigitosSegmento[])
+    : null
+
+  cachedRegra = { modo, separador: regra.separador, ordem, digitosSufixo }
   return cachedRegra
 }
 
 /** Invalida o cache para forçar re-busca (útil após atualização de regra). */
 export function invalidarCacheRegra(): void {
   cachedRegra = undefined
+}
+
+// ── Parsing por sufixo (direita para esquerda) ────────────────────────────────
+
+function parseSkuSufixo(sku: string, digitos: DigitosSegmento[]): SkuParseResult {
+  const mapa: Record<string, string> = {}
+  let remaining = sku
+
+  for (const seg of digitos) {
+    if (remaining.length < seg.digitos) {
+      return { modelo: null, cor: null, tamanho: null, status: StatusItem.PENDENTE }
+    }
+    mapa[seg.campo] = remaining.slice(-seg.digitos)
+    remaining = remaining.slice(0, -seg.digitos)
+  }
+
+  mapa['modelo'] = remaining
+
+  const modelo = mapa['modelo'] || null
+  const cor = mapa['cor'] || null
+  const tamanho = mapa['tamanho'] || null
+  const resolvido = !!modelo && !!cor && !!tamanho
+
+  return { modelo, cor, tamanho, status: resolvido ? StatusItem.RESOLVIDO : StatusItem.PENDENTE }
 }
 
 // ── ST001: parseSku ───────────────────────────────────────────────────────────
@@ -47,6 +88,11 @@ export async function parseSku(skuBruto: string): Promise<SkuParseResult> {
     return { modelo: null, cor: null, tamanho: null, status: StatusItem.PENDENTE }
   }
 
+  if (regra.modo === 'SUFIXO' && regra.digitosSufixo) {
+    return parseSkuSufixo(skuBruto, regra.digitosSufixo)
+  }
+
+  // Modo SEPARADOR (original)
   const segmentos = skuBruto.split(regra.separador)
   const mapa: Record<string, string> = {}
 
@@ -59,8 +105,6 @@ export async function parseSku(skuBruto: string): Promise<SkuParseResult> {
   const modelo = mapa['modelo'] ?? null
   const cor = mapa['cor'] ?? null
   const tamanho = mapa['tamanho'] ?? null
-
-  // Status: RESOLVIDO somente se todos os campos da ordem foram preenchidos
   const resolvido = regra.ordem.every((campo) => mapa[campo] != null)
 
   return { modelo, cor, tamanho, status: resolvido ? StatusItem.RESOLVIDO : StatusItem.PENDENTE }
@@ -71,7 +115,6 @@ export async function parseSku(skuBruto: string): Promise<SkuParseResult> {
 export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpretado[]> {
   if (itens.length === 0) return []
 
-  // Buscar todos os mapeamentos de cor de uma vez
   const coresUnicas = new Set<string>()
   const resultados = await Promise.all(itens.map((item) => parseSku(item.skuBruto ?? '')))
 
@@ -86,7 +129,6 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
 
   const interpretados: ItemInterpretado[] = []
 
-  // Atualizar itens no banco em batch
   await Promise.all(
     itens.map(async (item, idx) => {
       const r = resultados[idx]!
@@ -151,7 +193,6 @@ export async function montarGradesConsolidadas(
 
   if (itens.length === 0) return []
 
-  // Buscar grades para os modelos encontrados
   const modelos = [...new Set(itens.map((i) => i.modelo!).filter(Boolean))]
   const gradesModelo = await prisma.gradeModelo.findMany({
     where: { modelo: { in: modelos } },
@@ -163,7 +204,6 @@ export async function montarGradesConsolidadas(
 
   const agruparPorFaixa = options?.agruparPorFaixa ?? false
 
-  // Agrupar por modelo + cor (+ faixa quando ativado)
   const grupos = new Map<string, {
     modelo: string
     cor: string
@@ -192,7 +232,6 @@ export async function montarGradesConsolidadas(
     grupo.tamanhos.set(tam, (grupo.tamanhos.get(tam) ?? 0) + item.quantidade)
   }
 
-  // Montar GradeRow
   const rows: GradeRow[] = []
 
   for (const grupo of grupos.values()) {

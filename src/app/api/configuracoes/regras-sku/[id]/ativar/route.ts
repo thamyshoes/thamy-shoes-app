@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
+import { invalidarCacheRegra } from '@/lib/bling/sku-parser'
 
 export async function PATCH(
   request: NextRequest,
@@ -20,6 +21,8 @@ export async function PATCH(
     prisma.regraSkU.updateMany({ data: { ativa: false } }),
     prisma.regraSkU.update({ where: { id }, data: { ativa: true } }),
   ])
+
+  invalidarCacheRegra()
 
   const atualizada = await prisma.regraSkU.findUniqueOrThrow({ where: { id } })
   return NextResponse.json(atualizada)

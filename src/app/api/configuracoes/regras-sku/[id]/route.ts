@@ -3,11 +3,18 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
 
+const digitosSegmentoSchema = z.object({
+  campo: z.string(),
+  digitos: z.number().int().positive(),
+})
+
 const updateSchema = z.object({
   nome: z.string().min(1).optional(),
+  modo: z.enum(['SEPARADOR', 'SUFIXO']).optional(),
   separador: z.string().length(1).optional(),
   ordem: z.array(z.enum(['modelo', 'cor', 'tamanho'])).length(3).optional(),
   segmentos: z.array(z.string()).optional(),
+  digitosSufixo: z.array(digitosSegmentoSchema).nullable().optional(),
 })
 
 export async function PATCH(

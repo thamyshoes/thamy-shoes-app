@@ -14,25 +14,63 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 
 type Segmento = 'modelo' | 'cor' | 'tamanho'
+type Modo = 'SEPARADOR' | 'SUFIXO'
+
+interface DigitosSegmento {
+  campo: 'cor' | 'tamanho'
+  digitos: number
+}
 
 interface RegraSkU {
   id: string
   nome: string
+  modo: Modo
   separador: string
   ordem: Segmento[]
   segmentos: string[]
+  digitosSufixo: DigitosSegmento[] | null
   ativa: boolean
   createdAt: string
   updatedAt: string
 }
 
 const SEPARADORES = ['-', '.', '/', '_']
-const SEGMENTOS_OPCOES: Segmento[] = ['modelo', 'cor', 'tamanho']
 const SEGMENTO_LABELS: Record<Segmento, string> = { modelo: 'Modelo', cor: 'Cor', tamanho: 'Tamanho' }
 
-function parseSku(sku: string, separador: string, ordem: Segmento[]) {
+const DEFAULT_DIGITOS_SUFIXO: DigitosSegmento[] = [
+  { campo: 'tamanho', digitos: 2 },
+  { campo: 'cor', digitos: 3 },
+]
+
+// ── Preview helpers ───────────────────────────────────────────────────────────
+
+function parseSkuSeparadorLocal(sku: string, separador: string, ordem: Segmento[]) {
   const partes = sku.split(separador)
-  return ordem.map((seg, i) => ({ campo: seg, valor: partes[i] ?? '' }))
+  return ordem.map((seg, i) => ({ campo: seg, label: SEGMENTO_LABELS[seg], valor: partes[i] ?? '' }))
+}
+
+function parseSkuSufixoLocal(
+  sku: string,
+  digitos: DigitosSegmento[],
+): { campo: string; label: string; valor: string }[] | null {
+  const mapa: Record<string, string> = {}
+  let remaining = sku
+
+  for (const seg of digitos) {
+    if (remaining.length < seg.digitos) return null
+    mapa[seg.campo] = remaining.slice(-seg.digitos)
+    remaining = remaining.slice(0, -seg.digitos)
+  }
+  mapa['modelo'] = remaining
+
+  return [
+    { campo: 'modelo', label: 'Modelo', valor: mapa['modelo'] ?? '' },
+    ...[...digitos].reverse().map((seg) => ({
+      campo: seg.campo,
+      label: SEGMENTO_LABELS[seg.campo as Segmento] ?? seg.campo,
+      valor: mapa[seg.campo] ?? '',
+    })),
+  ]
 }
 
 // ── Inner content ─────────────────────────────────────────────────────────────
@@ -46,8 +84,10 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
   const [modalOpen, setModalOpen] = useState(false)
   const [editando, setEditando] = useState<RegraSkU | null>(null)
   const [formNome, setFormNome] = useState('')
+  const [formModo, setFormModo] = useState<Modo>('SUFIXO')
   const [formSeparador, setFormSeparador] = useState('-')
   const [formOrdem, setFormOrdem] = useState<Segmento[]>(['modelo', 'cor', 'tamanho'])
+  const [formDigitosSufixo, setFormDigitosSufixo] = useState<DigitosSegmento[]>(DEFAULT_DIGITOS_SUFIXO)
   const [saving, setSaving] = useState(false)
 
   // Confirm dialogs
@@ -57,7 +97,7 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
 
   // Teste SKU
   const [skuInput, setSkuInput] = useState('')
-  const [skuResult, setSkuResult] = useState<{ campo: Segmento; valor: string }[]>([])
+  const [skuResult, setSkuResult] = useState<{ campo: string; label: string; valor: string }[] | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fetchRegras = useCallback(async () => {
@@ -80,10 +120,12 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
       const ativa = regras.find((r) => r.ativa)
-      if (ativa && skuInput) {
-        setSkuResult(parseSku(skuInput, ativa.separador, ativa.ordem))
+      if (!ativa || !skuInput) { setSkuResult(null); return }
+
+      if ((ativa.modo ?? 'SEPARADOR') === 'SUFIXO' && ativa.digitosSufixo) {
+        setSkuResult(parseSkuSufixoLocal(skuInput, ativa.digitosSufixo))
       } else {
-        setSkuResult([])
+        setSkuResult(parseSkuSeparadorLocal(skuInput, ativa.separador, ativa.ordem))
       }
     }, TIMING.DEBOUNCE_MS)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
@@ -92,24 +134,38 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
   function abrirCriar() {
     setEditando(null)
     setFormNome('')
+    setFormModo('SUFIXO')
     setFormSeparador('-')
     setFormOrdem(['modelo', 'cor', 'tamanho'])
+    setFormDigitosSufixo([...DEFAULT_DIGITOS_SUFIXO])
     setModalOpen(true)
   }
 
   function abrirEditar(regra: RegraSkU) {
     setEditando(regra)
     setFormNome(regra.nome)
+    setFormModo(regra.modo ?? 'SEPARADOR')
     setFormSeparador(regra.separador)
     setFormOrdem(regra.ordem)
+    setFormDigitosSufixo(regra.digitosSufixo ?? [...DEFAULT_DIGITOS_SUFIXO])
     setModalOpen(true)
   }
 
   async function salvar() {
     if (!formNome.trim()) { toast.error('Nome é obrigatório'); return }
+    if (formModo === 'SUFIXO' && formDigitosSufixo.length === 0) {
+      toast.error('Configure ao menos um segmento'); return
+    }
     setSaving(true)
     try {
-      const body = { nome: formNome.trim(), separador: formSeparador, ordem: formOrdem, segmentos: [] }
+      const body = {
+        nome: formNome.trim(),
+        modo: formModo,
+        separador: formModo === 'SEPARADOR' ? formSeparador : '-',
+        ordem: formModo === 'SEPARADOR' ? formOrdem : (['modelo', 'cor', 'tamanho'] as Segmento[]),
+        segmentos: [],
+        digitosSufixo: formModo === 'SUFIXO' ? formDigitosSufixo : null,
+      }
       if (editando) {
         await apiClient.patch(`${API_ROUTES.REGRAS_SKU}/${editando.id}`, body)
         toast.success('Regra atualizada')
@@ -160,41 +216,77 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
     const nova = [...formOrdem]
     const alvo = index + direcao
     if (alvo < 0 || alvo >= nova.length) return
-    ;[nova[index], nova[alvo]] = [nova[alvo], nova[index]]
+    ;[nova[index], nova[alvo]] = [nova[alvo]!, nova[index]!]
     setFormOrdem(nova)
   }
 
-  const preview = `REF001${formSeparador}PT${formSeparador}38`
-  const previewParsed = parseSku(preview, formSeparador, formOrdem)
+  function moverSufixo(index: number, direcao: -1 | 1) {
+    const nova = [...formDigitosSufixo]
+    const alvo = index + direcao
+    if (alvo < 0 || alvo >= nova.length) return
+    ;[nova[index], nova[alvo]] = [nova[alvo]!, nova[index]!]
+    setFormDigitosSufixo(nova)
+  }
 
-  const regrasAtivas = regras.filter((r) => r.ativa)
-  const regraAtiva = regrasAtivas[0]
+  function updateSufixo(index: number, field: 'campo' | 'digitos', valor: string | number) {
+    const nova = [...formDigitosSufixo]
+    nova[index] = { ...nova[index]!, [field]: valor } as DigitosSegmento
+    setFormDigitosSufixo(nova)
+  }
+
+  // Previews para o modal
+  const previewSufixo = formModo === 'SUFIXO'
+    ? parseSkuSufixoLocal('1611600120', formDigitosSufixo)
+    : null
+
+  const previewSepSku = `REF001${formSeparador}PT${formSeparador}38`
+  const previewSepParsed = parseSkuSeparadorLocal(previewSepSku, formSeparador, formOrdem)
+
+  const regraAtiva = regras.find((r) => r.ativa)
 
   const COLUMNS: Column<RegraSkU>[] = [
+    { key: 'nome', header: 'Nome', sortable: true },
     {
-      key: 'nome',
-      header: 'Nome',
-      sortable: true,
+      key: 'modo',
+      header: 'Modo',
+      render: (r) => (
+        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+          (r.modo ?? 'SEPARADOR') === 'SUFIXO' ? 'bg-primary/10 text-primary' : 'bg-muted text-secondary'
+        }`}>
+          {(r.modo ?? 'SEPARADOR') === 'SUFIXO' ? 'Sufixo ←' : 'Separador'}
+        </span>
+      ),
     },
     {
       key: 'separador',
-      header: 'Separador',
-      mono: true,
-      render: (r) => <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{r.separador}</span>,
-    },
-    {
-      key: 'ordem',
-      header: 'Ordem',
-      render: (r) => (
-        <div className="flex items-center gap-1">
-          {r.ordem.map((seg, i) => (
-            <span key={seg}>
-              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">{SEGMENTO_LABELS[seg]}</span>
-              {i < r.ordem.length - 1 && <span className="mx-0.5 text-secondary">→</span>}
-            </span>
-          ))}
-        </div>
-      ),
+      header: 'Configuração',
+      render: (r) => {
+        if ((r.modo ?? 'SEPARADOR') === 'SUFIXO' && r.digitosSufixo) {
+          return (
+            <div className="flex items-center gap-1 flex-wrap text-xs">
+              <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-secondary">Modelo=resto</span>
+              {[...r.digitosSufixo].reverse().map((seg, i) => (
+                <span key={i} className="flex items-center gap-1">
+                  <span className="text-secondary">←</span>
+                  <span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-primary">
+                    {SEGMENTO_LABELS[seg.campo as Segmento]}={seg.digitos}
+                  </span>
+                </span>
+              ))}
+            </div>
+          )
+        }
+        return (
+          <div className="flex items-center gap-1">
+            {r.ordem.map((seg, i) => (
+              <span key={seg} className="flex items-center gap-1">
+                <span className="rounded bg-muted px-1.5 py-0.5 text-xs">{SEGMENTO_LABELS[seg]}</span>
+                {i < r.ordem.length - 1 && <span className="text-xs text-secondary">{r.separador}</span>}
+              </span>
+            ))}
+          </div>
+        )
+      },
     },
     {
       key: 'ativa',
@@ -211,19 +303,9 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
       align: 'right',
       render: (r) => (
         <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={() => abrirEditar(r)}
-            className="text-xs font-medium text-primary hover:underline focus:outline-none focus:underline"
-          >
-            Editar
-          </button>
+          <button onClick={() => abrirEditar(r)} className="text-xs font-medium text-primary hover:underline focus:outline-none focus:underline">Editar</button>
           {!r.ativa && (
-            <button
-              onClick={() => setConfirmAtivar(r)}
-              className="text-xs font-medium text-primary hover:underline focus:outline-none focus:underline"
-            >
-              Ativar
-            </button>
+            <button onClick={() => setConfirmAtivar(r)} className="text-xs font-medium text-primary hover:underline focus:outline-none focus:underline">Ativar</button>
           )}
           <button
             disabled={r.ativa}
@@ -271,25 +353,28 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
         {regraAtiva ? (
           <>
             <p className="mb-2 text-xs text-secondary">
-              Usando regra ativa: <span className="font-medium text-foreground">{regraAtiva.nome}</span>
-              {' '}(separador: <span className="font-mono">{regraAtiva.separador}</span>)
+              Usando regra ativa:{' '}
+              <span className="font-medium text-foreground">{regraAtiva.nome}</span>
+              <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium ml-2 ${
+                (regraAtiva.modo ?? 'SEPARADOR') === 'SUFIXO' ? 'bg-primary/10 text-primary' : 'bg-muted text-secondary'
+              }`}>
+                {(regraAtiva.modo ?? 'SEPARADOR') === 'SUFIXO' ? 'Sufixo ←' : `sep: "${regraAtiva.separador}"`}
+              </span>
             </p>
             <input
               type="text"
-              placeholder={`Ex: REF001${regraAtiva.separador}PT${regraAtiva.separador}38`}
+              placeholder="Digite um código SKU para testar"
               value={skuInput}
               onChange={(e) => setSkuInput(e.target.value)}
               className="w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
-            {skuResult.length > 0 && (
+            {skuResult && skuResult.length > 0 && (
               <div className="mt-3 overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border">
                       {skuResult.map((r) => (
-                        <th key={r.campo} className="pb-1 text-left font-medium text-secondary">
-                          {SEGMENTO_LABELS[r.campo]}
-                        </th>
+                        <th key={r.campo} className="pb-1 text-left font-medium text-secondary">{r.label}</th>
                       ))}
                       <th className="pb-1 text-left font-medium text-secondary">Status</th>
                     </tr>
@@ -322,6 +407,7 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
         title={editando ? 'Editar Regra SKU' : 'Nova Regra SKU'}
       >
         <div className="space-y-4">
+          {/* Nome */}
           <div>
             <label className="block text-sm font-medium text-foreground" htmlFor="sku-nome">Nome</label>
             <input
@@ -330,49 +416,147 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
               className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               value={formNome}
               onChange={(e) => setFormNome(e.target.value)}
-              placeholder="Ex: Padrão Bling"
+              placeholder="Ex: Padrão Thamy Shoes"
             />
           </div>
 
+          {/* Modo */}
           <div>
-            <label className="block text-sm font-medium text-foreground" htmlFor="sku-sep">Separador</label>
-            <select
-              id="sku-sep"
-              className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              value={formSeparador}
-              onChange={(e) => setFormSeparador(e.target.value)}
-            >
-              {SEPARADORES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <label className="block text-sm font-medium text-foreground mb-1">Modo de parsing</label>
+            <div className="flex gap-2">
+              {(['SUFIXO', 'SEPARADOR'] as Modo[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setFormModo(m)}
+                  className={`flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                    formModo === m
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-white text-secondary hover:text-foreground'
+                  }`}
+                >
+                  {m === 'SUFIXO' ? '← Por sufixo' : 'Por separador'}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-secondary">
+              {formModo === 'SUFIXO'
+                ? 'Lê da direita para a esquerda por número fixo de dígitos. Ideal para SKUs como 1611600120.'
+                : 'Divide o SKU por um caractere separador. Ex: 1500-460-35.'}
+            </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-foreground">Ordem dos Segmentos</label>
-            <p className="mb-1 text-xs text-secondary">Use as setas para reordenar</p>
-            <div className="space-y-1">
-              {formOrdem.map((seg, i) => (
-                <div key={seg} className="flex items-center gap-2 rounded border border-border bg-white p-2">
-                  <span className="w-4 text-xs text-secondary">{i + 1}º</span>
-                  <span className="flex-1 text-sm">{SEGMENTO_LABELS[seg]}</span>
-                  <button type="button" onClick={() => moverSegmento(i, -1)} disabled={i === 0} className="text-secondary hover:text-foreground disabled:opacity-30" aria-label="Mover para cima">↑</button>
-                  <button type="button" onClick={() => moverSegmento(i, 1)} disabled={i === formOrdem.length - 1} className="text-secondary hover:text-foreground disabled:opacity-30" aria-label="Mover para baixo">↓</button>
+          {/* Configuração SUFIXO */}
+          {formModo === 'SUFIXO' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-foreground">Segmentos (direita → esquerda)</label>
+                <p className="mb-2 text-xs text-secondary">
+                  O Modelo sempre recebe os dígitos restantes à esquerda
+                </p>
+                <div className="space-y-2">
+                  {formDigitosSufixo.map((seg, i) => (
+                    <div key={i} className="flex items-center gap-2 rounded border border-border bg-white p-2">
+                      <span className="w-6 text-xs text-secondary font-mono">{i + 1}°</span>
+                      <select
+                        value={seg.campo}
+                        onChange={(e) => updateSufixo(i, 'campo', e.target.value)}
+                        className="flex-1 rounded border border-border bg-white px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        <option value="tamanho">Tamanho</option>
+                        <option value="cor">Cor</option>
+                      </select>
+                      <input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={seg.digitos}
+                        onChange={(e) => updateSufixo(i, 'digitos', parseInt(e.target.value) || 1)}
+                        className="w-16 rounded border border-border bg-white px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <span className="text-xs text-secondary w-12">dígitos</span>
+                      <button type="button" onClick={() => moverSufixo(i, -1)} disabled={i === 0} className="text-secondary hover:text-foreground disabled:opacity-30" aria-label="Mover para cima">↑</button>
+                      <button type="button" onClick={() => moverSufixo(i, 1)} disabled={i === formDigitosSufixo.length - 1} className="text-secondary hover:text-foreground disabled:opacity-30" aria-label="Mover para baixo">↓</button>
+                    </div>
+                  ))}
+                  {/* Modelo — sempre o resto */}
+                  <div className="flex items-center gap-2 rounded border border-border/40 bg-muted/30 p-2">
+                    <span className="w-6 text-xs text-secondary font-mono">{formDigitosSufixo.length + 1}°</span>
+                    <span className="flex-1 text-sm text-secondary">Modelo</span>
+                    <span className="text-xs text-secondary italic">restante à esquerda</span>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* Preview */}
-          <div className="rounded-md bg-muted px-3 py-2">
-            <p className="text-xs font-medium text-secondary mb-1">Preview: <span className="font-mono text-foreground">{preview}</span></p>
-            <div className="flex gap-3">
-              {previewParsed.map((p) => (
-                <span key={p.campo} className="text-xs">
-                  <span className="text-secondary">{SEGMENTO_LABELS[p.campo]}: </span>
-                  <span className="font-mono text-foreground">{p.valor}</span>
-                </span>
-              ))}
-            </div>
-          </div>
+              {/* Preview sufixo */}
+              <div className="rounded-md bg-muted px-3 py-2">
+                <p className="text-xs font-medium text-secondary mb-1">
+                  Preview com <span className="font-mono text-foreground">1611600120</span>:
+                </p>
+                {previewSufixo ? (
+                  <div className="flex gap-4">
+                    {previewSufixo.map((p) => (
+                      <span key={p.campo} className="text-xs">
+                        <span className="text-secondary">{p.label}: </span>
+                        <span className={`font-mono font-medium ${p.valor ? 'text-foreground' : 'text-destructive'}`}>
+                          {p.valor || '?'}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-destructive">SKU muito curto para a configuração atual</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Configuração SEPARADOR */}
+          {formModo === 'SEPARADOR' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-foreground" htmlFor="sku-sep">Separador</label>
+                <select
+                  id="sku-sep"
+                  className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={formSeparador}
+                  onChange={(e) => setFormSeparador(e.target.value)}
+                >
+                  {SEPARADORES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground">Ordem dos Segmentos</label>
+                <p className="mb-1 text-xs text-secondary">Use as setas para reordenar</p>
+                <div className="space-y-1">
+                  {formOrdem.map((seg, i) => (
+                    <div key={seg} className="flex items-center gap-2 rounded border border-border bg-white p-2">
+                      <span className="w-4 text-xs text-secondary">{i + 1}º</span>
+                      <span className="flex-1 text-sm">{SEGMENTO_LABELS[seg]}</span>
+                      <button type="button" onClick={() => moverSegmento(i, -1)} disabled={i === 0} className="text-secondary hover:text-foreground disabled:opacity-30" aria-label="Mover para cima">↑</button>
+                      <button type="button" onClick={() => moverSegmento(i, 1)} disabled={i === formOrdem.length - 1} className="text-secondary hover:text-foreground disabled:opacity-30" aria-label="Mover para baixo">↓</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Preview separador */}
+              <div className="rounded-md bg-muted px-3 py-2">
+                <p className="text-xs font-medium text-secondary mb-1">
+                  Preview: <span className="font-mono text-foreground">{previewSepSku}</span>
+                </p>
+                <div className="flex gap-3">
+                  {previewSepParsed.map((p) => (
+                    <span key={p.campo} className="text-xs">
+                      <span className="text-secondary">{p.label}: </span>
+                      <span className="font-mono text-foreground">{p.valor}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancelar</Button>
