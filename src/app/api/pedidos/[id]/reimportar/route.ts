@@ -35,8 +35,10 @@ export async function POST(
   await prisma.pedidoCompra.update({
     where: { id },
     data: {
-      dataEmissao: new Date(pedidoBling.dataCompra),
-      dataPrevista: pedidoBling.dataPrevista ? new Date(pedidoBling.dataPrevista) : null,
+      dataEmissao: new Date(pedidoBling.dataCompra ?? pedidoBling.data ?? new Date()),
+      dataPrevista: pedidoBling.dataPrevista && pedidoBling.dataPrevista !== '0000-00-00'
+        ? new Date(pedidoBling.dataPrevista)
+        : null,
       fornecedorNome: pedidoBling.fornecedor?.nome ?? '',
       observacoes: pedidoBling.observacoes ?? null,
       status: StatusPedido.IMPORTADO,
@@ -111,8 +113,10 @@ export async function PUT(
   const pedido = await prisma.pedidoCompra.update({
     where: { id },
     data: {
-      dataEmissao: new Date(pedidoBling.dataCompra),
-      dataPrevista: pedidoBling.dataPrevista ? new Date(pedidoBling.dataPrevista) : null,
+      dataEmissao: new Date(pedidoBling.dataCompra ?? pedidoBling.data ?? new Date()),
+      dataPrevista: pedidoBling.dataPrevista && pedidoBling.dataPrevista !== '0000-00-00'
+        ? new Date(pedidoBling.dataPrevista)
+        : null,
       fornecedorNome: pedidoBling.fornecedor?.nome ?? '',
       observacoes: pedidoBling.observacoes ?? null,
       status: StatusPedido.IMPORTADO,
