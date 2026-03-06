@@ -22,7 +22,6 @@ interface PedidoBling {
   idBling: number
   numero: string
   dataEmissao: string
-  observacoesInternas: string
   situacao: string
   importado: boolean
   importadoEm: string | null
@@ -71,10 +70,6 @@ function buildColumns(
       key: 'dataEmissao',
       header: 'Data',
       render: (p) => formatDate(p.dataEmissao),
-    },
-    {
-      key: 'observacoesInternas',
-      header: 'Observação interna',
     },
     {
       key: 'situacao',

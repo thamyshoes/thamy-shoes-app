@@ -50,8 +50,10 @@ export async function POST(req: NextRequest) {
     data: {
       idBling: BigInt(idBling),
       numero: pedidoBling.numero,
-      dataEmissao: new Date(pedidoBling.dataCompra),
-      dataPrevista: pedidoBling.dataPrevista ? new Date(pedidoBling.dataPrevista) : null,
+      dataEmissao: new Date(pedidoBling.dataCompra ?? pedidoBling.data ?? new Date()),
+      dataPrevista: pedidoBling.dataPrevista && pedidoBling.dataPrevista !== '0000-00-00'
+        ? new Date(pedidoBling.dataPrevista)
+        : null,
       fornecedorNome: pedidoBling.fornecedor?.nome ?? '',
       fornecedorId: pedidoBling.fornecedor ? BigInt(pedidoBling.fornecedor.id) : null,
       observacoes: pedidoBling.observacoes ?? null,

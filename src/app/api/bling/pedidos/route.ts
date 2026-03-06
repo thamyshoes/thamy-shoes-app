@@ -22,12 +22,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { data: pedidosBling, hasMore } = await blingService.listPedidosCompra(dias, pagina)
-
-    // Log temporário para depuração dos campos da API Bling
-    if (pedidosBling[0]) {
-      console.log('[Bling pedido[0] raw]', JSON.stringify(pedidosBling[0], null, 2))
-    }
+    const [{ data: pedidosBling, hasMore }, situacoesMap] = await Promise.all([
+      blingService.listPedidosCompra(dias, pagina),
+      blingService.getSituacoesCompra(),
+    ])
 
     // Buscar IDs que já foram importados
     const idsBling = pedidosBling.map((p) => BigInt(p.id))
@@ -41,12 +39,23 @@ export async function GET(req: NextRequest) {
 
     const data = pedidosBling.map((p) => {
       const importadoEm = importadoMap.get(p.id.toString())
+
+      // Resolve situação: pode ser ID numérico ou texto direto
+      const situacaoRaw = p.situacao?.valor
+      let situacaoLabel = '—'
+      if (situacaoRaw != null) {
+        if (typeof situacaoRaw === 'number') {
+          situacaoLabel = situacoesMap.get(situacaoRaw) ?? `Situação ${situacaoRaw}`
+        } else {
+          situacaoLabel = String(situacaoRaw)
+        }
+      }
+
       return {
         idBling: p.id,
-        numero: p.numero,
-        dataEmissao: p.dataCompra,
-        observacoesInternas: p.observacoesInternas ?? p.observacoes ?? '—',
-        situacao: p.situacao?.valor ?? '—',
+        numero: String(p.numero),
+        dataEmissao: p.data ?? p.dataCompra ?? '',
+        situacao: situacaoLabel,
         importado: !!importadoEm,
         importadoEm: importadoEm ?? null,
       }

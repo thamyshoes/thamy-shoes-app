@@ -24,14 +24,22 @@ export interface BlingItemPedido {
 
 export interface BlingPedido {
   id: number
-  numero: string
-  dataCompra: string
+  numero: number | string
+  // Lista usa "data"; detalhe pode usar "dataCompra"
+  data?: string
+  dataCompra?: string
   dataPrevista?: string
-  fornecedor?: { id: number; nome: string }
+  fornecedor?: { id: number; nome?: string }
   observacoes?: string
   observacoesInternas?: string
-  situacao?: { id: number; valor: string }
+  situacao?: { valor: number | string }
   itens: BlingItemPedido[]
+}
+
+export interface BlingSituacao {
+  id: number
+  nome: string
+  cor?: string
 }
 
 export type BlingPedidoDetalhe = BlingPedido
@@ -249,6 +257,18 @@ class BlingIntegrationService {
       `/pedidos/compras/${idBling}`,
     )
     return response.data
+  }
+
+  async getSituacoesCompra(): Promise<Map<number, string>> {
+    try {
+      const response = await this.blingRequest<{ data: BlingSituacao[] }>(
+        'GET',
+        '/situacoes/pedidoCompra',
+      )
+      return new Map(response.data.map((s) => [s.id, s.nome]))
+    } catch {
+      return new Map()
+    }
   }
 
   async checkConnection(): Promise<{ connected: boolean; expiresAt: Date | null }> {
