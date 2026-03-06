@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
         numero: p.numero,
         dataEmissao: p.dataCompra,
         fornecedorNome: p.fornecedor?.nome ?? '—',
-        totalItens: p.itens.length,
+        totalItens: p.itens?.length ?? 0,
         importado: !!importadoEm,
         importadoEm: importadoEm ?? null,
       }
