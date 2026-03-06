@@ -185,9 +185,14 @@ export default function ImportarPedidoPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await apiClient.get<{ data: PedidoBling[]; pagina: number; hasMore: boolean }>(
-        `${API_ROUTES.BLING_PEDIDOS}?dias=${d}&pagina=${p}`,
-      )
+      const raw = await fetch(`${API_ROUTES.BLING_PEDIDOS}?dias=${d}&pagina=${p}`, {
+        credentials: 'include',
+      })
+      if (!raw.ok) {
+        const body = (await raw.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error ?? MESSAGES.ERROR.GENERIC)
+      }
+      const res = (await raw.json()) as { data: PedidoBling[]; pagina: number; hasMore: boolean }
       setPedidos(res.data)
       setHasMore(res.hasMore)
     } catch (err) {
