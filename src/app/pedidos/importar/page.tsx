@@ -22,7 +22,6 @@ interface PedidoBling {
   idBling: number
   numero: string
   dataEmissao: string
-  situacao: string
   importado: boolean
   importadoEm: string | null
 }
@@ -37,22 +36,6 @@ interface DuplicataInfo {
 
 // ── Badge de situação ─────────────────────────────────────────────────────────
 
-const SITUACAO_STYLES: Record<string, string> = {
-  'Em aberto': 'bg-blue-50 text-blue-700 border-blue-200',
-  'Atendido':  'bg-green-50 text-green-700 border-green-200',
-  'Cancelado': 'bg-red-50 text-red-600 border-red-200',
-}
-
-function SituacaoBadge({ valor }: { valor: string }) {
-  const style = SITUACAO_STYLES[valor] ?? 'bg-muted text-secondary border-border'
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${style}`}>
-      {valor}
-    </span>
-  )
-}
-
-const SITUACOES_BLOQUEADAS = new Set(['Cancelado', 'cancelado'])
 
 // ── Colunas da Tabela ─────────────────────────────────────────────────────────
 
@@ -72,42 +55,21 @@ function buildColumns(
       render: (p) => formatDate(p.dataEmissao),
     },
     {
-      key: 'situacao',
-      header: 'Situação',
-      render: (p) => <SituacaoBadge valor={p.situacao} />,
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (p) =>
-        p.importado ? (
-          <span className="inline-flex items-center rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
-            Importado
-          </span>
-        ) : (
-          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-secondary">
-            Disponível
-          </span>
-        ),
-    },
-    {
       key: 'acao',
       header: 'Ação',
       render: (p) => {
-        const bloqueado = SITUACOES_BLOQUEADAS.has(p.situacao)
         const isImporting = importingId === p.idBling
         return (
           <Button
             variant="secondary"
             size="sm"
-            disabled={p.importado || isImporting || bloqueado}
-            title={bloqueado ? `Situação "${p.situacao}" não permite importação` : undefined}
+            disabled={p.importado || isImporting}
             onClick={(e) => {
               e.stopPropagation()
               onImportar(p)
             }}
           >
-            {isImporting ? 'Importando...' : p.importado ? 'Importado' : bloqueado ? 'Cancelado' : 'Importar'}
+            {isImporting ? 'Importando...' : p.importado ? 'Importado' : 'Importar'}
           </Button>
         )
       },

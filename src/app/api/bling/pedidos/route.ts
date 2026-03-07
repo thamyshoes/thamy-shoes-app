@@ -4,9 +4,6 @@ import { blingService, BlingApiError } from '@/lib/bling/bling-service'
 import { CircuitOpenError } from '@/lib/bling/circuit-breaker'
 import { StatusConexao } from '@/types'
 
-// Bling list API always returns situacao.valor=2 for all orders regardless of actual status.
-// Map the known value to a label. Real per-order status is only available via detail endpoint.
-const SITUACAO_LABEL: Record<number, string> = { 2: 'Em aberto' }
 
 // GET /api/bling/pedidos?dias=7&pagina=1
 // Admin only — protected by middleware
@@ -40,20 +37,11 @@ export async function GET(req: NextRequest) {
 
     const data = pedidosBling.map((p) => {
       const importadoEm = importadoMap.get(p.id.toString())
-
-      const situacaoRaw = p.situacao?.valor
-      const situacaoLabel =
-        situacaoRaw == null
-          ? '—'
-          : typeof situacaoRaw === 'number'
-            ? (SITUACAO_LABEL[situacaoRaw] ?? String(situacaoRaw))
-            : String(situacaoRaw)
-
       return {
+        id: p.id.toString(),
         idBling: p.id,
         numero: String(p.numero),
         dataEmissao: p.data ?? p.dataCompra ?? '',
-        situacao: situacaoLabel,
         importado: !!importadoEm,
         importadoEm: importadoEm ?? null,
       }

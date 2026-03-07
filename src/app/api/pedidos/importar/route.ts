@@ -45,6 +45,12 @@ export async function POST(req: NextRequest) {
   // Buscar pedido no Bling
   const pedidoBling = await blingService.getPedidoCompra(idBling)
 
+  // Log temporário para inspecionar estrutura dos itens da API Bling
+  if (pedidoBling.itens?.[0]) {
+    console.log('[importar] item[0] keys:', Object.keys(pedidoBling.itens[0]))
+    console.log('[importar] item[0] raw:', JSON.stringify(pedidoBling.itens[0]))
+  }
+
   // Criar PedidoCompra com seus itens
   const pedido = await prisma.pedidoCompra.create({
     data: {
