@@ -12,12 +12,21 @@ const createSchema = z.object({
 })
 
 export async function GET(request: NextRequest) {
+  console.log('[modelos] GET iniciado')
+
   const guard = requireAdmin(request)
-  if (guard) return guard
+  if (guard) {
+    console.log('[modelos] requireAdmin bloqueou — perfil:', request.headers.get('x-user-perfil'))
+    return guard
+  }
+
+  console.log('[modelos] autenticado como:', request.headers.get('x-user-perfil'))
 
   const search = request.nextUrl.searchParams.get('search') ?? ''
   const page = Math.max(1, parseInt(request.nextUrl.searchParams.get('page') ?? '1', 10))
   const pageSize = Math.min(100, Math.max(1, parseInt(request.nextUrl.searchParams.get('pageSize') ?? '50', 10)))
+
+  console.log('[modelos] params — search:', search, 'page:', page, 'pageSize:', pageSize)
 
   const where = search
     ? {
@@ -30,17 +39,23 @@ export async function GET(request: NextRequest) {
       }
     : {}
 
-  const [modelos, total] = await Promise.all([
-    prisma.modelo.findMany({
-      where,
-      orderBy: { codigo: 'asc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-    prisma.modelo.count({ where }),
-  ])
+  try {
+    const [modelos, total] = await Promise.all([
+      prisma.modelo.findMany({
+        where,
+        orderBy: { codigo: 'asc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.modelo.count({ where }),
+    ])
 
-  return NextResponse.json({ data: modelos, total, page, pageSize, totalPages: Math.ceil(total / pageSize) })
+    console.log('[modelos] resultado — total:', total, 'retornados:', modelos.length)
+    return NextResponse.json({ data: modelos, total, page, pageSize, totalPages: Math.ceil(total / pageSize) })
+  } catch (err) {
+    console.error('[modelos] erro no prisma:', err)
+    return NextResponse.json({ error: 'Erro interno', detail: String(err) }, { status: 500 })
+  }
 }
 
 export async function POST(request: NextRequest) {
