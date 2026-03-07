@@ -28,6 +28,13 @@ const SETOR_LABEL: Record<Setor, string> = {
   SOLA: 'Sola',
 }
 
+function getEspecificacao(grade: GradeRow, setor: Setor): string | undefined {
+  if (setor === Setor.CABEDAL) return grade.modeloCabedal ?? undefined
+  if (setor === Setor.SOLA) return grade.modeloSola ?? undefined
+  if (setor === Setor.PALMILHA) return grade.modeloPalmilha ?? undefined
+  return undefined
+}
+
 function getSortedTamanhos(grades: GradeRow[]): string[] {
   const all = new Set<string>()
   grades.forEach((g) => Object.keys(g.tamanhos).forEach((t) => all.add(t)))
@@ -51,7 +58,8 @@ export function FichaTemplate({
 }: FichaTemplateProps) {
   const tamanhos = getSortedTamanhos(grades)
 
-  const tamanhoWidth = tamanhos.length > 0 ? Math.max(25, Math.floor(200 / tamanhos.length)) : 25
+  const tamanhoWidth = tamanhos.length > 0 ? Math.max(25, Math.floor(160 / tamanhos.length)) : 25
+  const hasEspec = grades.some((g) => !!getEspecificacao(g, setor))
 
   return (
     <Document>
@@ -86,7 +94,10 @@ export function FichaTemplate({
         <View style={pdfStyles.tableContainer}>
           {/* Table header */}
           <View style={pdfStyles.tableHeader}>
-            <Text style={[pdfStyles.tableHeaderCell, { width: 120 }]}>Modelo</Text>
+            <Text style={[pdfStyles.tableHeaderCell, { width: 110 }]}>Modelo</Text>
+            {hasEspec && (
+              <Text style={[pdfStyles.tableHeaderCell, { width: 90 }]}>{SETOR_LABEL[setor]}</Text>
+            )}
             <Text style={[pdfStyles.tableHeaderCell, { width: 80 }]}>Cor</Text>
             {tamanhos.map((t) => (
               <Text key={t} style={[pdfStyles.tableHeaderCell, { width: tamanhoWidth }]}>
@@ -97,22 +108,32 @@ export function FichaTemplate({
           </View>
 
           {/* Table rows */}
-          {grades.map((grade, idx) => (
-            <View key={idx} style={idx % 2 === 0 ? pdfStyles.tableRow : pdfStyles.tableRowAlt}>
-              <Text style={pdfStyles.cellModelo}>{grade.modelo}</Text>
-              <Text style={pdfStyles.cellCor}>{grade.corDescricao || grade.cor}</Text>
-              {tamanhos.map((t) => (
-                <Text key={t} style={[pdfStyles.cellTamanho, { width: tamanhoWidth }]}>
-                  {grade.tamanhos[t] ?? '—'}
-                </Text>
-              ))}
-              <Text style={pdfStyles.cellTotal}>{grade.totalPares}</Text>
-            </View>
-          ))}
+          {grades.map((grade, idx) => {
+            const espec = getEspecificacao(grade, setor)
+            return (
+              <View key={idx} style={idx % 2 === 0 ? pdfStyles.tableRow : pdfStyles.tableRowAlt}>
+                <View style={{ width: 110, paddingHorizontal: 4, justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 8, color: '#111827' }}>
+                    {grade.modeloNome ? `${grade.modelo} — ${grade.modeloNome}` : grade.modelo}
+                  </Text>
+                </View>
+                {hasEspec && (
+                  <Text style={[pdfStyles.cellCor, { width: 90 }]}>{espec ?? '—'}</Text>
+                )}
+                <Text style={pdfStyles.cellCor}>{grade.corDescricao || grade.cor}</Text>
+                {tamanhos.map((t) => (
+                  <Text key={t} style={[pdfStyles.cellTamanho, { width: tamanhoWidth }]}>
+                    {grade.tamanhos[t] ?? '—'}
+                  </Text>
+                ))}
+                <Text style={pdfStyles.cellTotal}>{grade.totalPares}</Text>
+              </View>
+            )
+          })}
 
           {/* Total row */}
           <View style={pdfStyles.totalRow}>
-            <Text style={[pdfStyles.totalLabel, { width: 200 }]}>TOTAL GERAL</Text>
+            <Text style={{ width: hasEspec ? 280 : 190, fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#ffffff' }}>TOTAL GERAL</Text>
             {tamanhos.map((t) => {
               const soma = grades.reduce((acc, g) => acc + (g.tamanhos[t] ?? 0), 0)
               return (

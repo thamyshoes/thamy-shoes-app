@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { API_ROUTES, LIMITS } from '@/lib/constants'
-import type { FichaProducao, PaginatedResponse } from '@/types'
+import type { FichaProducao } from '@/types'
 import { Setor } from '@/types'
 
 export type FichaRow = FichaProducao & {
@@ -12,6 +12,14 @@ export type FichaRow = FichaProducao & {
     id: string
     pedidos: { pedido: { numero: string } }[]
   } | null
+}
+
+interface FichasResponse {
+  items: FichaRow[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
 }
 
 interface UseFichasFilters {
@@ -60,10 +68,10 @@ export function useFichas(filters?: UseFichasFilters): UseFichasReturn {
       if (dataFim) params.set('dataFim', dataFim)
       if (search) params.set('search', search)
 
-      const res = await apiClient.get<PaginatedResponse<FichaRow>>(
+      const res = await apiClient.get<FichasResponse>(
         `${API_ROUTES.FICHAS}?${params}`,
       )
-      setFichas(res.data)
+      setFichas(res.items)
       setTotal(res.total)
       setTotalPages(res.totalPages)
     } catch (err) {

@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     prisma.pedidoCompra.count({ where }),
   ])
 
-  const data = pedidos.map(({ itens, idBling, fornecedorId, ...p }) => ({
+  const items = pedidos.map(({ itens, idBling, fornecedorId, ...p }) => ({
     ...p,
     idBling: idBling.toString(),
     fornecedorId: fornecedorId?.toString() ?? null,
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
   }))
 
   return NextResponse.json({
-    data,
+    items,
     total,
     page,
     pageSize,

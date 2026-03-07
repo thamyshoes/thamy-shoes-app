@@ -5,7 +5,7 @@ import { createServerSupabaseClient, FICHAS_BUCKET } from '@/lib/supabase-server
 import { montarGrades, montarGradesConsolidadas } from '@/lib/bling/sku-parser'
 import { FichaTemplate } from '@/lib/pdf/templates/ficha-template'
 import type { GradeRow } from '@/types'
-import { Setor, StatusPedido } from '@/types'
+import { Setor, StatusPedido, StatusItem } from '@/types'
 
 export interface FichaGerada {
   id: string
@@ -28,7 +28,7 @@ export class PdfGeneratorService {
       throw new Error('Fichas já foram geradas para este pedido')
     }
 
-    const itensPendentes = pedido.itens.filter((i) => i.status !== 'RESOLVIDO')
+    const itensPendentes = pedido.itens.filter((i) => i.status !== StatusItem.RESOLVIDO)
     if (itensPendentes.length > 0) {
       throw new Error('Existem itens pendentes. Resolva todos os itens antes de gerar fichas.')
     }
@@ -46,7 +46,7 @@ export class PdfGeneratorService {
     // Render and upload all 3 PDFs in parallel (Promise.all)
     const pdfUploads = await Promise.all(
       setores.map(async (setor) => {
-        const gradesSetor = this.aplicarEquivalencias(grades, setor)
+        const gradesSetor = grades
         const camposExtras = await this.buscarCamposExtras(setor)
 
         const pdfBuffer = await this.renderPdf({
@@ -105,7 +105,7 @@ export class PdfGeneratorService {
     }
 
     for (const pedido of pedidos) {
-      const itensPendentes = pedido.itens.filter((i) => i.status !== 'RESOLVIDO')
+      const itensPendentes = pedido.itens.filter((i) => i.status !== StatusItem.RESOLVIDO)
       if (itensPendentes.length > 0) {
         throw new Error(
           `Pedido ${pedido.numero} possui itens pendentes. Resolva todos antes de consolidar.`,
@@ -123,7 +123,7 @@ export class PdfGeneratorService {
     // Render and upload all PDFs in parallel before persisting
     const pdfUploads = await Promise.all(
       setores.map(async (setor) => {
-        const gradesSetor = this.aplicarEquivalencias(grades, setor)
+        const gradesSetor = grades
         const camposExtras = await this.buscarCamposExtras(setor)
 
         const pdfBuffer = await this.renderPdf({
@@ -218,12 +218,6 @@ export class PdfGeneratorService {
 
     const { data } = supabase.storage.from(FICHAS_BUCKET).getPublicUrl(storagePath)
     return data.publicUrl
-  }
-
-  private aplicarEquivalencias(grades: GradeRow[], _setor: Setor): GradeRow[] {
-    // Todos os setores recebem as mesmas grades — equivalências futuras
-    // serão aplicadas aqui quando o schema RegraEquivalencia incluir setorOrigem/Destino.
-    return grades
   }
 
   private async buscarCamposExtras(

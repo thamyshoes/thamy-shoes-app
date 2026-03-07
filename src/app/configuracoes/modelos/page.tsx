@@ -19,6 +19,7 @@ interface Modelo {
   id: string
   codigo: string
   nome: string
+  cabedal: string | null
   sola: string | null
   palmilha: string | null
   observacoes: string | null
@@ -37,6 +38,7 @@ interface ListResponse {
 interface PreviewLinha {
   codigo: string
   nome: string
+  cabedal: string
   sola: string
   palmilha: string
   valida: boolean
@@ -58,6 +60,7 @@ function ModelosContent() {
   const [editando, setEditando] = useState<Modelo | null>(null)
   const [formCodigo, setFormCodigo] = useState('')
   const [formNome, setFormNome] = useState('')
+  const [formCabedal, setFormCabedal] = useState('')
   const [formSola, setFormSola] = useState('')
   const [formPalmilha, setFormPalmilha] = useState('')
   const [formObs, setFormObs] = useState('')
@@ -97,6 +100,7 @@ function ModelosContent() {
     setEditando(null)
     setFormCodigo('')
     setFormNome('')
+    setFormCabedal('')
     setFormSola('')
     setFormPalmilha('')
     setFormObs('')
@@ -107,6 +111,7 @@ function ModelosContent() {
     setEditando(m)
     setFormCodigo(m.codigo)
     setFormNome(m.nome)
+    setFormCabedal(m.cabedal ?? '')
     setFormSola(m.sola ?? '')
     setFormPalmilha(m.palmilha ?? '')
     setFormObs(m.observacoes ?? '')
@@ -124,6 +129,7 @@ function ModelosContent() {
       const body = {
         codigo,
         nome,
+        cabedal: formCabedal.trim() || null,
         sola: formSola.trim() || null,
         palmilha: formPalmilha.trim() || null,
         observacoes: formObs.trim() || null,
@@ -172,9 +178,9 @@ function ModelosContent() {
         const codigo = partes[0] ?? ''
         const nome = partes[1] ?? ''
         if (!codigo || !nome) {
-          return { codigo, nome, sola: '', palmilha: '', valida: false, erro: `Linha ${i + 1}: código e nome obrigatórios` }
+          return { codigo, nome, cabedal: '', sola: '', palmilha: '', valida: false, erro: `Linha ${i + 1}: código e nome obrigatórios` }
         }
-        return { codigo, nome, sola: partes[2] ?? '', palmilha: partes[3] ?? '', valida: true }
+        return { codigo, nome, cabedal: partes[2] ?? '', sola: partes[3] ?? '', palmilha: partes[4] ?? '', valida: true }
       })
   }
 
@@ -201,27 +207,25 @@ function ModelosContent() {
 
   // ── Colunas ─────────────────────────────────────────────────────────────────
 
+  const empty = <span className="text-sm text-secondary">—</span>
+
   const COLUMNS: Column<Modelo>[] = [
+    { key: 'codigo', header: 'Código', mono: true, sortable: true },
+    { key: 'nome', header: 'Nome', sortable: true },
     {
-      key: 'codigo',
-      header: 'Código',
-      mono: true,
-      sortable: true,
-    },
-    {
-      key: 'nome',
-      header: 'Nome',
-      sortable: true,
+      key: 'cabedal',
+      header: 'Cabedal',
+      render: (m) => m.cabedal ? <span className="text-sm text-foreground">{m.cabedal}</span> : empty,
     },
     {
       key: 'sola',
       header: 'Sola',
-      render: (m) => m.sola ? <span className="text-sm text-foreground">{m.sola}</span> : <span className="text-sm text-secondary">—</span>,
+      render: (m) => m.sola ? <span className="text-sm text-foreground">{m.sola}</span> : empty,
     },
     {
       key: 'palmilha',
       header: 'Palmilha',
-      render: (m) => m.palmilha ? <span className="text-sm text-foreground">{m.palmilha}</span> : <span className="text-sm text-secondary">—</span>,
+      render: (m) => m.palmilha ? <span className="text-sm text-foreground">{m.palmilha}</span> : empty,
     },
     {
       key: 'id',
@@ -250,6 +254,8 @@ function ModelosContent() {
     return <ErrorState title="Erro ao carregar modelos" description={error} onRetry={fetchModelos} />
   }
 
+  const inputClass = 'mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary'
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -276,7 +282,7 @@ function ModelosContent() {
       {/* Busca */}
       <input
         type="search"
-        placeholder="Buscar por código, nome, sola ou palmilha"
+        placeholder="Buscar por código, nome, cabedal, sola ou palmilha"
         value={search}
         onChange={(e) => { setSearch(e.target.value); setPage(1) }}
         className="w-full max-w-sm rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -306,7 +312,7 @@ function ModelosContent() {
               <input
                 id="m-codigo"
                 type="text"
-                className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className={`${inputClass} font-mono`}
                 value={formCodigo}
                 onChange={(e) => setFormCodigo(e.target.value)}
                 placeholder="Ex: 0101"
@@ -319,20 +325,31 @@ function ModelosContent() {
               <input
                 id="m-nome"
                 type="text"
-                className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className={inputClass}
                 value={formNome}
                 onChange={(e) => setFormNome(e.target.value)}
                 placeholder="Ex: Sandália Tira Fina"
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground" htmlFor="m-cabedal">Cabedal</label>
+              <input
+                id="m-cabedal"
+                type="text"
+                className={inputClass}
+                value={formCabedal}
+                onChange={(e) => setFormCabedal(e.target.value)}
+                placeholder="Ex: Napa"
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-foreground" htmlFor="m-sola">Sola</label>
               <input
                 id="m-sola"
                 type="text"
-                className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className={inputClass}
                 value={formSola}
                 onChange={(e) => setFormSola(e.target.value)}
                 placeholder="Ex: Sola TR Fina"
@@ -343,7 +360,7 @@ function ModelosContent() {
               <input
                 id="m-palmilha"
                 type="text"
-                className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className={inputClass}
                 value={formPalmilha}
                 onChange={(e) => setFormPalmilha(e.target.value)}
                 placeholder="Ex: EVA 3mm"
@@ -355,7 +372,7 @@ function ModelosContent() {
             <textarea
               id="m-obs"
               rows={2}
-              className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className={inputClass}
               value={formObs}
               onChange={(e) => setFormObs(e.target.value)}
               placeholder="Instruções especiais, materiais, etc."
@@ -377,13 +394,13 @@ function ModelosContent() {
         <div className="space-y-4">
           <p className="text-sm text-secondary">
             Cole os dados no formato:<br />
-            <span className="font-mono text-xs">CODIGO;Nome;Sola;Palmilha;Observacoes</span><br />
-            Sola, Palmilha e Observacoes são opcionais. Separador: <span className="font-mono">;</span> ou <span className="font-mono">,</span>
+            <span className="font-mono text-xs">CODIGO;Nome;Cabedal;Sola;Palmilha;Observacoes</span><br />
+            Cabedal, Sola, Palmilha e Observacoes são opcionais. Separador: <span className="font-mono">;</span> ou <span className="font-mono">,</span>
           </p>
           <textarea
             className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             rows={8}
-            placeholder={'0101;Sandália Tira Fina;Sola TR Fina;EVA 3mm\n0102;Scarpin Básico;Sola Couro;EVA 5mm'}
+            placeholder={'0101;Sandália Tira Fina;Napa;Sola TR Fina;EVA 3mm\n0102;Scarpin Básico;;Sola Couro;EVA 5mm'}
             value={csvTexto}
             onChange={(e) => { setCsvTexto(e.target.value); setPreview([]) }}
             aria-label="Dados dos modelos"
@@ -399,6 +416,7 @@ function ModelosContent() {
                   <tr>
                     <th className="px-2 py-1 text-left">Código</th>
                     <th className="px-2 py-1 text-left">Nome</th>
+                    <th className="px-2 py-1 text-left">Cabedal</th>
                     <th className="px-2 py-1 text-left">Sola</th>
                     <th className="px-2 py-1 text-left">Palmilha</th>
                     <th className="px-2 py-1 text-left">Status</th>
@@ -409,6 +427,7 @@ function ModelosContent() {
                     <tr key={i} className={!p.valida ? 'bg-destructive/5' : ''}>
                       <td className="px-2 py-1 font-mono">{p.codigo || '—'}</td>
                       <td className="px-2 py-1">{p.nome || '—'}</td>
+                      <td className="px-2 py-1 text-secondary">{p.cabedal || '—'}</td>
                       <td className="px-2 py-1 text-secondary">{p.sola || '—'}</td>
                       <td className="px-2 py-1 text-secondary">{p.palmilha || '—'}</td>
                       <td className={`px-2 py-1 ${p.valida ? 'text-success' : 'text-destructive'}`}>

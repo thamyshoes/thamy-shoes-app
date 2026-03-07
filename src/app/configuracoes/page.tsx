@@ -32,12 +32,6 @@ const CARDS: ConfigCard[] = [
     icon: '📏',
   },
   {
-    title: 'Equivalências entre Setores',
-    description: 'Quando palmilha e sola são iguais, gere fichas idênticas automaticamente.',
-    href: ROUTES.CONFIG_EQUIVALENCIAS,
-    icon: '🔄',
-  },
-  {
     title: 'Campos Extras',
     description: 'Adicione campos personalizados por setor (Cabedal, Palmilha, Sola).',
     href: ROUTES.CONFIG_CAMPOS_EXTRAS,

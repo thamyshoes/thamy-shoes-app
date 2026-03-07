@@ -59,6 +59,10 @@ export interface PaginatedResponse<T> {
 
 export interface GradeRow {
   modelo: string
+  modeloNome?: string
+  modeloCabedal?: string
+  modeloSola?: string
+  modeloPalmilha?: string
   cor: string
   corDescricao: string
   tamanhos: Record<string, number>

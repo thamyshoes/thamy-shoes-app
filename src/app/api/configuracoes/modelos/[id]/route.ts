@@ -6,6 +6,7 @@ import { requireAdmin } from '@/lib/api-guard'
 const updateSchema = z.object({
   codigo: z.string().min(1).max(30).optional(),
   nome: z.string().min(1).optional(),
+  cabedal: z.string().nullable().optional(),
   sola: z.string().nullable().optional(),
   palmilha: z.string().nullable().optional(),
   observacoes: z.string().nullable().optional(),

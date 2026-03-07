@@ -6,6 +6,7 @@ import { requireAdmin } from '@/lib/api-guard'
 const createSchema = z.object({
   codigo: z.string().min(1).max(30),
   nome: z.string().min(1, 'Nome é obrigatório'),
+  cabedal: z.string().optional(),
   sola: z.string().optional(),
   palmilha: z.string().optional(),
   observacoes: z.string().optional(),
@@ -24,6 +25,7 @@ export async function GET(request: NextRequest) {
         OR: [
           { codigo: { contains: search, mode: 'insensitive' as const } },
           { nome: { contains: search, mode: 'insensitive' as const } },
+          { cabedal: { contains: search, mode: 'insensitive' as const } },
           { sola: { contains: search, mode: 'insensitive' as const } },
           { palmilha: { contains: search, mode: 'insensitive' as const } },
         ],
@@ -59,7 +61,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
-  const { codigo, nome, sola, palmilha, observacoes } = parsed.data
+  const { codigo, nome, cabedal, sola, palmilha, observacoes } = parsed.data
 
   const existing = await prisma.modelo.findUnique({ where: { codigo } })
   if (existing) {
@@ -67,7 +69,14 @@ export async function POST(request: NextRequest) {
   }
 
   const modelo = await prisma.modelo.create({
-    data: { codigo, nome, sola: sola ?? null, palmilha: palmilha ?? null, observacoes: observacoes ?? null },
+    data: {
+      codigo,
+      nome,
+      cabedal: cabedal ?? null,
+      sola: sola ?? null,
+      palmilha: palmilha ?? null,
+      observacoes: observacoes ?? null,
+    },
   })
 
   return NextResponse.json(modelo, { status: 201 })

@@ -171,6 +171,7 @@ model Modelo {
   id          String   @id @default(uuid())
   codigo      String   @unique
   nome        String
+  cabedal     String?
   sola        String?
   palmilha    String?
   observacoes String?

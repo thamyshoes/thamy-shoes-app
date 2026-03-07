@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { type PedidoCompra, StatusPedido } from '@/types'
 import { apiClient } from '@/lib/api-client'
 import { API_ROUTES, LIMITS } from '@/lib/constants'
-import type { PaginatedResponse } from '@/types'
 
 interface UsePedidosFilters {
   status?: StatusPedido
@@ -20,6 +19,14 @@ interface UsePedidosReturn {
   loading: boolean
   error: string | null
   refetch: () => void
+}
+
+interface PedidosResponse {
+  items: PedidoCompra[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
 }
 
 export function usePedidos(filters?: UsePedidosFilters): UsePedidosReturn {
@@ -47,10 +54,10 @@ export function usePedidos(filters?: UsePedidosFilters): UsePedidosReturn {
       if (dataInicio) params.set('dataInicio', dataInicio)
       if (dataFim) params.set('dataFim', dataFim)
 
-      const res = await apiClient.get<PaginatedResponse<PedidoCompra>>(
+      const res = await apiClient.get<PedidosResponse>(
         `${API_ROUTES.PEDIDOS}?${params}`,
       )
-      setPedidos(res.data)
+      setPedidos(res.items)
       setTotal(res.total)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar pedidos')

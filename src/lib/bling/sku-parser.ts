@@ -242,6 +242,16 @@ export async function montarGradesConsolidadas(
     grupo.tamanhos.set(tam, (grupo.tamanhos.get(tam) ?? 0) + item.quantidade)
   }
 
+  // Buscar dados dos modelos cadastrados
+  const modeloCodes = [...new Set([...grupos.values()].map((g) => g.modelo))]
+  const modelosCadastrados = modeloCodes.length > 0
+    ? await prisma.modelo.findMany({
+        where: { codigo: { in: modeloCodes } },
+        select: { codigo: true, nome: true, cabedal: true, sola: true, palmilha: true },
+      })
+    : []
+  const modeloMapa = new Map(modelosCadastrados.map((m) => [m.codigo, m]))
+
   const rows: GradeRow[] = []
 
   for (const grupo of grupos.values()) {
@@ -262,8 +272,14 @@ export async function montarGradesConsolidadas(
       total += qty
     }
 
+    const modeloInfo = modeloMapa.get(grupo.modelo)
+
     rows.push({
       modelo: grupo.faixa ? `${grupo.modelo} (${grupo.faixa})` : grupo.modelo,
+      modeloNome: modeloInfo?.nome,
+      modeloCabedal: modeloInfo?.cabedal ?? undefined,
+      modeloSola: modeloInfo?.sola ?? undefined,
+      modeloPalmilha: modeloInfo?.palmilha ?? undefined,
       cor: grupo.cor,
       corDescricao: grupo.corDescricao,
       tamanhos,
