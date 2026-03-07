@@ -44,6 +44,12 @@ const CARDS: ConfigCard[] = [
     icon: '➕',
   },
   {
+    title: 'Modelos',
+    description: 'Cadastre os modelos de calçados com especificações de sola, palmilha e produção.',
+    href: ROUTES.CONFIG_MODELOS,
+    icon: '👟',
+  },
+  {
     title: 'Conexão Bling',
     description: 'Integre com o Bling ERP para importar pedidos e sincronizar dados.',
     href: ROUTES.CONFIG_BLING,

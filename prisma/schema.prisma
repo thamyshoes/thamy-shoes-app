@@ -167,6 +167,21 @@ model Produto {
   @@map("produtos")
 }
 
+model Modelo {
+  id          String   @id @default(uuid())
+  codigo      String   @unique
+  nome        String
+  sola        String?
+  palmilha    String?
+  observacoes String?
+  ativo       Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([codigo])
+  @@map("modelos")
+}
+
 model MapeamentoCor {
   id        String   @id @default(uuid())
   codigo    String   @unique

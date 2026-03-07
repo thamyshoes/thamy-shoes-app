@@ -30,7 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     label: 'Catálogo',
-    href: ROUTES.PRODUTOS_IMPORTAR,
+    href: ROUTES.PRODUTOS,
     icon: <BookOpen className="h-4 w-4" />,
     perfis: [Perfil.ADMIN],
   },
