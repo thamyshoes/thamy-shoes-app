@@ -37,6 +37,11 @@ export async function GET(req: NextRequest) {
       importados.map((p) => [p.idBling.toString(), p.createdAt.toISOString()]),
     )
 
+    console.log('[bling/pedidos] situacoesMap size:', situacoesMap.size, 'entries:', JSON.stringify([...situacoesMap.entries()]))
+    if (pedidosBling[0]) {
+      console.log('[bling/pedidos] pedido[0].situacao raw:', JSON.stringify(pedidosBling[0].situacao))
+    }
+
     const data = pedidosBling.map((p) => {
       const importadoEm = importadoMap.get(p.id.toString())
 
