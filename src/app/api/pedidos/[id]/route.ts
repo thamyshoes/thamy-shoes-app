@@ -31,9 +31,13 @@ export async function GET(
 
   const totalPendentes = pedido.itens.filter((i) => i.status === StatusItem.PENDENTE).length
 
+  const { idBling, fornecedorId, ...pedidoRest } = pedido
+
   return NextResponse.json({
     data: {
-      ...pedido,
+      ...pedidoRest,
+      idBling: idBling.toString(),
+      fornecedorId: fornecedorId?.toString() ?? null,
       grades,
       totalItens: pedido.itens.length,
       totalPendentes,

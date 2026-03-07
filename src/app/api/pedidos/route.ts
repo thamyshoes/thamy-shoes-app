@@ -63,8 +63,10 @@ export async function GET(req: NextRequest) {
     prisma.pedidoCompra.count({ where }),
   ])
 
-  const data = pedidos.map(({ itens, ...p }) => ({
+  const data = pedidos.map(({ itens, idBling, fornecedorId, ...p }) => ({
     ...p,
+    idBling: idBling.toString(),
+    fornecedorId: fornecedorId?.toString() ?? null,
     totalItens: itens.length,
     totalPendentes: itens.filter((i) => i.status === StatusItem.PENDENTE).length,
   }))
