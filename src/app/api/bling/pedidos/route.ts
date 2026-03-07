@@ -4,6 +4,10 @@ import { blingService, BlingApiError } from '@/lib/bling/bling-service'
 import { CircuitOpenError } from '@/lib/bling/circuit-breaker'
 import { StatusConexao } from '@/types'
 
+// Bling list API always returns situacao.valor=2 for all orders regardless of actual status.
+// Map the known value to a label. Real per-order status is only available via detail endpoint.
+const SITUACAO_LABEL: Record<number, string> = { 2: 'Em aberto' }
+
 // GET /api/bling/pedidos?dias=7&pagina=1
 // Admin only — protected by middleware
 export async function GET(req: NextRequest) {
@@ -22,10 +26,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [{ data: pedidosBling, hasMore }, situacoesMap] = await Promise.all([
-      blingService.listPedidosCompra(dias, pagina),
-      blingService.getSituacoesCompra(),
-    ])
+    const { data: pedidosBling, hasMore } = await blingService.listPedidosCompra(dias, pagina)
 
     // Buscar IDs que já foram importados
     const idsBling = pedidosBling.map((p) => BigInt(p.id))
@@ -37,26 +38,16 @@ export async function GET(req: NextRequest) {
       importados.map((p) => [p.idBling.toString(), p.createdAt.toISOString()]),
     )
 
-    const situacoesUnicas = [...new Map(
-      pedidosBling
-        .filter((p) => p.situacao?.valor != null)
-        .map((p) => [p.situacao!.valor, p.situacao!.valor])
-    ).values()]
-    console.log('[bling/pedidos] situacoesMap size:', situacoesMap.size, '| IDs únicos nos pedidos:', JSON.stringify(situacoesUnicas))
-
     const data = pedidosBling.map((p) => {
       const importadoEm = importadoMap.get(p.id.toString())
 
-      // Resolve situação: pode ser ID numérico ou texto direto
       const situacaoRaw = p.situacao?.valor
-      let situacaoLabel = '—'
-      if (situacaoRaw != null) {
-        if (typeof situacaoRaw === 'number') {
-          situacaoLabel = situacoesMap.get(situacaoRaw) ?? `Situação ${situacaoRaw}`
-        } else {
-          situacaoLabel = String(situacaoRaw)
-        }
-      }
+      const situacaoLabel =
+        situacaoRaw == null
+          ? '—'
+          : typeof situacaoRaw === 'number'
+            ? (SITUACAO_LABEL[situacaoRaw] ?? String(situacaoRaw))
+            : String(situacaoRaw)
 
       return {
         idBling: p.id,
