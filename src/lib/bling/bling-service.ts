@@ -275,12 +275,18 @@ class BlingIntegrationService {
       try {
         const response = await this.blingRequest<{ data: BlingSituacao[] }>('GET', endpoint)
         const key = (s: BlingSituacao) => s.nome ?? (s as unknown as Record<string, string>)['descricao'] ?? ''
-        return new Map(response.data.map((s) => [s.id, key(s)]))
+        const map = new Map(response.data.map((s) => [s.id, key(s)]))
+        if (map.size > 0) return map
       } catch {
         // Tentar próximo endpoint
       }
     }
-    return new Map()
+    // Fallback: IDs confirmados via log desta conta Bling
+    // valor 2 = "Em aberto" (confirmado pelo HTML da interface Bling)
+    // Após reconectar o OAuth com o escopo de situações, este fallback não será usado
+    return new Map([
+      [2, 'Em aberto'],
+    ])
   }
 
   async listProdutos(pagina = 1): Promise<{ data: BlingProduto[]; hasMore: boolean }> {

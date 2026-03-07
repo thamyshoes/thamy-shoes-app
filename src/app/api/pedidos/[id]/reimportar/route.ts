@@ -67,7 +67,11 @@ export async function POST(
     include: { itens: true },
   })
 
-  return NextResponse.json({ data: pedidoAtualizado })
+  return NextResponse.json({
+    data: pedidoAtualizado
+      ? { ...pedidoAtualizado, idBling: pedidoAtualizado.idBling.toString(), fornecedorId: pedidoAtualizado.fornecedorId?.toString() ?? null }
+      : null,
+  })
 }
 
 // PUT /api/pedidos/:id/reimportar
@@ -146,5 +150,9 @@ export async function PUT(
     include: { itens: true },
   })
 
-  return NextResponse.json({ data: pedidoAtualizado })
+  return NextResponse.json({
+    data: pedidoAtualizado
+      ? { ...pedidoAtualizado, idBling: pedidoAtualizado.idBling.toString(), fornecedorId: pedidoAtualizado.fornecedorId?.toString() ?? null }
+      : null,
+  })
 }

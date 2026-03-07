@@ -79,5 +79,11 @@ export async function POST(req: NextRequest) {
   const itens = await prisma.itemPedido.findMany({ where: { pedidoId: pedido.id } })
   await interpretarItens(itens)
 
-  return NextResponse.json({ data: pedido }, { status: 201 })
+  return NextResponse.json({
+    data: {
+      ...pedido,
+      idBling: pedido.idBling.toString(),
+      fornecedorId: pedido.fornecedorId?.toString() ?? null,
+    },
+  }, { status: 201 })
 }
