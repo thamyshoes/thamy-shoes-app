@@ -45,12 +45,6 @@ export async function POST(req: NextRequest) {
   // Buscar pedido no Bling
   const pedidoBling = await blingService.getPedidoCompra(idBling)
 
-  // Log temporário para inspecionar estrutura dos itens da API Bling
-  if (pedidoBling.itens?.[0]) {
-    console.log('[importar] item[0] keys:', Object.keys(pedidoBling.itens[0]))
-    console.log('[importar] item[0] raw:', JSON.stringify(pedidoBling.itens[0]))
-  }
-
   // Criar PedidoCompra com seus itens
   const pedido = await prisma.pedidoCompra.create({
     data: {
@@ -69,9 +63,9 @@ export async function POST(req: NextRequest) {
         createMany: {
           data: pedidoBling.itens.map((item) => ({
             descricaoBruta: item.descricao,
-            skuBruto: item.sku ?? null,
+            skuBruto: item.produto?.codigo ?? null,
             quantidade: item.quantidade,
-            unidade: item.unidade || 'UN',
+            unidade: item.unidade || 'PAR',
             variacoes: item.variacoes ? (item.variacoes as unknown as import('@prisma/client').Prisma.InputJsonValue) : undefined,
             status: StatusItem.PENDENTE,
           })),

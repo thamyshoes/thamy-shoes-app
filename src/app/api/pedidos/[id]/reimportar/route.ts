@@ -46,9 +46,9 @@ export async function POST(
         createMany: {
           data: pedidoBling.itens.map((item) => ({
             descricaoBruta: item.descricao,
-            skuBruto: item.sku ?? null,
+            skuBruto: item.produto?.codigo ?? null,
             quantidade: item.quantidade,
-            unidade: item.unidade || 'UN',
+            unidade: item.unidade || 'PAR',
             variacoes: item.variacoes
               ? (item.variacoes as unknown as import('@prisma/client').Prisma.InputJsonValue)
               : undefined,
@@ -128,9 +128,9 @@ export async function PUT(
         createMany: {
           data: pedidoBling.itens.map((item) => ({
             descricaoBruta: item.descricao,
-            skuBruto: item.sku ?? null,
+            skuBruto: item.produto?.codigo ?? null,
             quantidade: item.quantidade,
-            unidade: item.unidade || 'UN',
+            unidade: item.unidade || 'PAR',
             variacoes: item.variacoes ? (item.variacoes as unknown as import('@prisma/client').Prisma.InputJsonValue) : undefined,
             status: StatusItem.PENDENTE,
           })),

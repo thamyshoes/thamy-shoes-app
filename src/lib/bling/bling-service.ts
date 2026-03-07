@@ -16,9 +16,9 @@ export interface BlingItemVariacao {
 export interface BlingItemPedido {
   id: number
   descricao: string
-  sku?: string
   quantidade: number
   unidade: string
+  produto?: { id: number; codigo: string }
   variacoes?: BlingItemVariacao[]
 }
 
