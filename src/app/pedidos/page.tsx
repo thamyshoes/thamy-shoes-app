@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import { SidebarLayout } from '@/components/layout/sidebar-layout'
 import { DataTable, type Column } from '@/components/ui/data-table'
 import { FilterBar } from '@/components/ui/filter-bar'
-import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/error-state'
+import { ImportarPedidoModal } from '@/components/ui/importar-pedido-modal'
 import { useAuth } from '@/hooks/use-auth'
 import { usePedidos } from '@/hooks/use-pedidos'
 import { formatDate, isValidDateInput, normalizeDateInput } from '@/lib/format'
@@ -34,29 +34,13 @@ const COLUMNS: Column<PedidoRow>[] = [
     render: (p) => formatDate(p.dataEmissao),
     sortable: true,
   },
-  { key: 'fornecedorNome', header: 'Fornecedor', sortable: true },
   { key: 'totalItens', header: 'Itens', align: 'right', sortable: true },
-  {
-    key: 'totalPendentes',
-    header: 'Pendentes',
-    align: 'center',
-    render: (p) =>
-      p.totalPendentes > 0 ? (
-        <StatusBadge status="PENDENTE" size="sm" />
-      ) : (
-        <span className="text-xs text-secondary">—</span>
-      ),
-  },
-  {
-    key: 'status',
-    header: 'Status',
-    render: (p) => <StatusBadge status={p.status} />,
-  },
 ]
 
 export default function PedidosPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
+  const [showImportar, setShowImportar] = useState(false)
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState<StatusPedido | undefined>(undefined)
   const [fornecedor, setFornecedor] = useState('')
@@ -113,7 +97,7 @@ export default function PedidosPage() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => router.push(ROUTES.PEDIDOS_IMPORTAR)}
+                onClick={() => setShowImportar(true)}
               >
                 Importar
               </Button>
@@ -197,6 +181,11 @@ export default function PedidosPage() {
           onPageChange={setPage}
         />
       </div>
+      <ImportarPedidoModal
+        open={showImportar}
+        onClose={() => setShowImportar(false)}
+        onImportado={(id) => router.push(ROUTES.PEDIDO_DETALHE(id))}
+      />
     </SidebarLayout>
   )
 }

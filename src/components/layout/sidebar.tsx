@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Layers, Package, Download, FileText, Settings, Users, BookOpen, Tag } from 'lucide-react'
+import { Layers, Package, FileText, Settings, Users, Tag } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { ROUTES } from '@/lib/constants'
 import { Perfil } from '@/types'
@@ -23,19 +23,7 @@ const NAV_ITEMS: NavItem[] = [
     perfis: [Perfil.ADMIN, Perfil.PCP],
   },
   {
-    label: 'Importar',
-    href: ROUTES.PEDIDOS_IMPORTAR,
-    icon: <Download className="h-4 w-4" />,
-    perfis: [Perfil.ADMIN],
-  },
-  {
-    label: 'Catálogo',
-    href: ROUTES.PRODUTOS,
-    icon: <BookOpen className="h-4 w-4" />,
-    perfis: [Perfil.ADMIN],
-  },
-  {
-    label: 'Consolidar',
+    label: 'Gerar Ficha',
     href: ROUTES.PEDIDOS_CONSOLIDAR,
     icon: <Layers className="h-4 w-4" />,
     perfis: [Perfil.ADMIN, Perfil.PCP],
@@ -47,7 +35,7 @@ const NAV_ITEMS: NavItem[] = [
     perfis: [Perfil.ADMIN, Perfil.PCP, Perfil.PRODUCAO],
   },
   {
-    label: 'Mapeamento de SKU',
+    label: 'Detalhes dos Produtos',
     href: ROUTES.MAPEAMENTO_SKU,
     icon: <Tag className="h-4 w-4" />,
     perfis: [Perfil.ADMIN],

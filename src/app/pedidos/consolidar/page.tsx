@@ -10,13 +10,12 @@ import { FilterBar } from '@/components/ui/filter-bar'
 import { GradeTable } from '@/components/ui/grade-table'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { StatusBadge } from '@/components/ui/status-badge'
 import { ErrorState } from '@/components/ui/error-state'
 import { useAuth } from '@/hooks/use-auth'
 import { usePedidos } from '@/hooks/use-pedidos'
 import { apiClient } from '@/lib/api-client'
 import { formatDate, isValidDateInput, normalizeDateInput } from '@/lib/format'
-import { API_ROUTES, ROUTES } from '@/lib/constants'
+import { API_ROUTES, MESSAGES, ROUTES } from '@/lib/constants'
 import { StatusPedido } from '@/types'
 import type { PedidoCompra, GradeRow } from '@/types'
 
@@ -29,46 +28,71 @@ const STATUS_OPTIONS = [
   { value: StatusPedido.FICHAS_GERADAS, label: 'Fichas Geradas' },
 ]
 
-const COLUMNS: Column<PedidoRow & { selecionado: boolean }>[] = [
-  {
-    key: 'selecionado',
-    header: '',
-    render: (p) => (
-      <input
-        type="checkbox"
-        checked={p.selecionado}
-        onChange={() => {}}
-        className="h-4 w-4 cursor-pointer rounded border-border accent-primary"
-        aria-label={`Selecionar pedido ${p.numero}`}
-      />
-    ),
-  },
-  { key: 'numero', header: 'Número', mono: true, sortable: true },
-  {
-    key: 'dataEmissao',
-    header: 'Data Emissão',
-    render: (p) => formatDate(p.dataEmissao),
-    sortable: true,
-  },
-  { key: 'fornecedorNome', header: 'Fornecedor', sortable: true },
-  { key: 'totalItens', header: 'Itens', align: 'right', sortable: true },
-  {
-    key: 'totalPendentes',
-    header: 'Pendentes',
-    align: 'center',
-    render: (p) =>
-      p.totalPendentes > 0 ? (
-        <StatusBadge status="PENDENTE" size="sm" />
-      ) : (
-        <span className="text-xs text-secondary">—</span>
+type PedidoRowExt = PedidoRow & { selecionado: boolean }
+
+function buildColumns(
+  onImprimir: (pedidoId: string) => void,
+  gerandoFichaId: string | null,
+): Column<PedidoRowExt>[] {
+  return [
+    {
+      key: 'selecionado',
+      header: '',
+      render: (p) => (
+        <input
+          type="checkbox"
+          checked={p.selecionado}
+          onChange={() => {}}
+          className="h-4 w-4 cursor-pointer rounded border-border accent-primary"
+          aria-label={`Selecionar pedido ${p.numero}`}
+        />
       ),
-  },
-  {
-    key: 'status',
-    header: 'Status',
-    render: (p) => <StatusBadge status={p.status} />,
-  },
-]
+    },
+    { key: 'numero', header: 'Número', mono: true, sortable: true },
+    {
+      key: 'dataEmissao',
+      header: 'Data Emissão',
+      render: (p) => formatDate(p.dataEmissao),
+      sortable: true,
+    },
+    { key: 'totalItens', header: 'Itens', align: 'right', sortable: true },
+    {
+      key: 'id',
+      header: '',
+      align: 'right',
+      render: (p) => {
+        if (p.status === StatusPedido.FICHAS_GERADAS) {
+          return (
+            <Link
+              href={ROUTES.FICHAS}
+              className="text-xs font-medium text-primary hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Ver fichas
+            </Link>
+          )
+        }
+        const isGerando = gerandoFichaId === p.id
+        const pendente = p.totalPendentes > 0
+        return (
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={isGerando}
+            disabled={pendente || isGerando}
+            title={pendente ? 'Resolva os itens pendentes antes de imprimir' : undefined}
+            onClick={(e) => {
+              e.stopPropagation()
+              onImprimir(p.id)
+            }}
+          >
+            Imprimir
+          </Button>
+        )
+      },
+    },
+  ]
+}
 
 export default function ConsolidarPage() {
   const router = useRouter()
@@ -84,6 +108,7 @@ export default function ConsolidarPage() {
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [gerando, setGerando] = useState(false)
+  const [gerandoFichaId, setGerandoFichaId] = useState<string | null>(null)
 
   const dataInicioFilter = isValidDateInput(dataInicio) ? dataInicio : undefined
   const dataFimFilter = isValidDateInput(dataFim) ? dataFim : undefined
@@ -162,6 +187,19 @@ export default function ConsolidarPage() {
     }
   }
 
+  async function handleImprimir(pedidoId: string) {
+    setGerandoFichaId(pedidoId)
+    try {
+      await apiClient.post(API_ROUTES.FICHAS_GERAR, { pedidoId })
+      toast.success(MESSAGES.SUCCESS.FICHAS_GENERATED)
+      router.push(ROUTES.FICHAS)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : MESSAGES.ERROR.GENERIC)
+    } finally {
+      setGerandoFichaId(null)
+    }
+  }
+
   if (authLoading || !user) return null
 
   if (error) {
@@ -177,6 +215,7 @@ export default function ConsolidarPage() {
     selecionado: selectedIds.has(p.id),
   }))
   const selectedCount = selectedIds.size
+  const columns = buildColumns(handleImprimir, gerandoFichaId)
 
   return (
     <SidebarLayout user={user}>
@@ -186,14 +225,14 @@ export default function ConsolidarPage() {
           Pedidos
         </Link>
         <span>/</span>
-        <span className="font-medium text-foreground">Consolidar</span>
+        <span className="font-medium text-foreground">Gerar Ficha</span>
       </nav>
 
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-foreground">Consolidar Pedidos</h1>
+            <h1 className="text-xl font-semibold text-foreground">Gerar Ficha</h1>
             {selectedCount > 0 && (
               <p className="mt-1 text-sm text-secondary">
                 <span className="font-medium text-primary">{selectedCount} pedido{selectedCount !== 1 ? 's' : ''}</span>{' '}
@@ -260,14 +299,14 @@ export default function ConsolidarPage() {
 
         {/* Instruções */}
         <p className="text-sm text-secondary">
-          Selecione dois ou mais pedidos para consolidar as fichas. Apenas pedidos com todos os
-          itens resolvidos podem ser consolidados.
+          Clique em <strong>Imprimir</strong> na linha para gerar a ficha de um pedido individual.
+          Para consolidar múltiplos pedidos numa única ficha, selecione-os e clique em <strong>Gerar Fichas Consolidadas</strong>.
         </p>
 
         {/* Tabela de pedidos com seleção */}
         <DataTable
           data={pedidoRows}
-          columns={COLUMNS}
+          columns={columns}
           loading={loading}
           emptyMessage="Nenhum pedido encontrado"
           onRowClick={(p) => toggleSelect(p.id)}
