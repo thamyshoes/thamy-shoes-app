@@ -113,6 +113,7 @@ model PedidoCompra {
 model ItemPedido {
   id            String     @id @default(uuid())
   pedidoId      String     @map("pedido_id")
+  produtoId     String?    @map("produto_id")
   descricaoBruta String    @map("descricao_bruta")
   skuBruto      String?    @map("sku_bruto")
   quantidade    Int
@@ -125,9 +126,11 @@ model ItemPedido {
   status        StatusItem @default(PENDENTE)
   createdAt     DateTime   @default(now()) @map("created_at")
 
-  pedido PedidoCompra @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  pedido  PedidoCompra @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto Produto?     @relation(fields: [produtoId], references: [id], onDelete: SetNull)
 
   @@index([pedidoId])
+  @@index([produtoId])
   @@index([status])
   @@index([modelo, cor])
   @@map("itens_pedido")
@@ -146,6 +149,22 @@ model RegraSkU {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@map("regras_sku")
+}
+
+model Produto {
+  id        String   @id @default(uuid())
+  idBling   BigInt   @unique @map("id_bling")
+  nome      String
+  codigo    String   @unique
+  imagemUrl String?  @map("imagem_url")
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  itens ItemPedido[]
+
+  @@index([codigo])
+  @@map("produtos")
 }
 
 model MapeamentoCor {

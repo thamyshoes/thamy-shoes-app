@@ -52,7 +52,7 @@ function SituacaoBadge({ valor }: { valor: string }) {
   )
 }
 
-const SITUACOES_IMPORTAVEIS = new Set(['Em aberto', 'Atendido'])
+const SITUACOES_BLOQUEADAS = new Set(['Cancelado', 'cancelado'])
 
 // ── Colunas da Tabela ─────────────────────────────────────────────────────────
 
@@ -94,20 +94,20 @@ function buildColumns(
       key: 'acao',
       header: 'Ação',
       render: (p) => {
-        const podeImportar = SITUACOES_IMPORTAVEIS.has(p.situacao)
+        const bloqueado = SITUACOES_BLOQUEADAS.has(p.situacao)
         const isImporting = importingId === p.idBling
         return (
           <Button
             variant="secondary"
             size="sm"
-            disabled={p.importado || isImporting || !podeImportar}
-            title={!podeImportar ? `Situação "${p.situacao}" não permite importação` : undefined}
+            disabled={p.importado || isImporting || bloqueado}
+            title={bloqueado ? `Situação "${p.situacao}" não permite importação` : undefined}
             onClick={(e) => {
               e.stopPropagation()
               onImportar(p)
             }}
           >
-            {isImporting ? 'Importando...' : p.importado ? 'Importado' : 'Importar'}
+            {isImporting ? 'Importando...' : p.importado ? 'Importado' : bloqueado ? 'Cancelado' : 'Importar'}
           </Button>
         )
       },

@@ -122,10 +122,18 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
     if (r.cor) coresUnicas.add(r.cor)
   })
 
-  const mapeamentos = await prisma.mapeamentoCor.findMany({
-    where: { codigo: { in: [...coresUnicas] } },
-  })
+  // Buscar mapeamentos de cor e produtos por código de uma vez
+  const modelosUnicos = [...new Set(resultados.map((r) => r.modelo).filter(Boolean) as string[])]
+
+  const [mapeamentos, produtos] = await Promise.all([
+    prisma.mapeamentoCor.findMany({ where: { codigo: { in: [...coresUnicas] } } }),
+    modelosUnicos.length > 0
+      ? prisma.produto.findMany({ where: { codigo: { in: modelosUnicos } }, select: { id: true, codigo: true } })
+      : Promise.resolve([]),
+  ])
+
   const mapaDescricao = new Map(mapeamentos.map((m) => [m.codigo, m.descricao]))
+  const mapaProduto = new Map(produtos.map((p) => [p.codigo, p.id]))
 
   const interpretados: ItemInterpretado[] = []
 
@@ -133,6 +141,7 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
     itens.map(async (item, idx) => {
       const r = resultados[idx]!
       const corDescricao = r.cor ? (mapaDescricao.get(r.cor) ?? r.cor) : ''
+      const produtoId = r.modelo ? (mapaProduto.get(r.modelo) ?? null) : null
 
       await prisma.itemPedido.update({
         where: { id: item.id },
@@ -142,6 +151,7 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
           corDescricao: corDescricao || null,
           tamanho: r.tamanho ? parseInt(r.tamanho, 10) || null : null,
           status: r.status,
+          produtoId,
         },
       })
 

@@ -42,6 +42,16 @@ export interface BlingSituacao {
   cor?: string
 }
 
+export interface BlingProduto {
+  id: number
+  nome: string
+  codigo: string
+  preco?: number
+  situacao?: string       // "A" ativo, "I" inativo
+  tipo?: string           // "P" produto, "S" serviço
+  imagemThumbnail?: string
+}
+
 export type BlingPedidoDetalhe = BlingPedido
 
 // ── Erros ─────────────────────────────────────────────────────────────────────
@@ -260,15 +270,31 @@ class BlingIntegrationService {
   }
 
   async getSituacoesCompra(): Promise<Map<number, string>> {
-    try {
-      const response = await this.blingRequest<{ data: BlingSituacao[] }>(
-        'GET',
-        '/situacoes/pedidoCompra',
-      )
-      return new Map(response.data.map((s) => [s.id, s.nome]))
-    } catch {
-      return new Map()
+    const endpoints = ['/situacoes/pedidoCompra', '/situacoes/compras', '/situacoes/pedidosCompra']
+    for (const endpoint of endpoints) {
+      try {
+        const response = await this.blingRequest<{ data: BlingSituacao[] }>('GET', endpoint)
+        const key = (s: BlingSituacao) => s.nome ?? (s as unknown as Record<string, string>)['descricao'] ?? ''
+        return new Map(response.data.map((s) => [s.id, key(s)]))
+      } catch {
+        // Tentar próximo endpoint
+      }
     }
+    return new Map()
+  }
+
+  async listProdutos(pagina = 1): Promise<{ data: BlingProduto[]; hasMore: boolean }> {
+    const limite = 20
+    const params = new URLSearchParams({
+      pagina: String(pagina),
+      limite: String(limite),
+      situacao: 'A',
+    })
+    const response = await this.blingRequest<{ data: BlingProduto[] }>(
+      'GET',
+      `/produtos?${params.toString()}`,
+    )
+    return { data: response.data, hasMore: response.data.length === limite }
   }
 
   async checkConnection(): Promise<{ connected: boolean; expiresAt: Date | null }> {

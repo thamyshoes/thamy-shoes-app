@@ -14,6 +14,7 @@ export const ROUTES = {
   CONFIG_EQUIVALENCIAS: '/configuracoes/equivalencias',
   CONFIG_CAMPOS_EXTRAS: '/configuracoes/campos-extras',
   USUARIOS: '/usuarios',
+  PRODUTOS_IMPORTAR: '/produtos/importar',
 } as const
 
 export const API_ROUTES = {
@@ -41,6 +42,9 @@ export const API_ROUTES = {
   GRADES: '/api/configuracoes/grades',
   EQUIVALENCIAS: '/api/configuracoes/equivalencias',
   CAMPOS_EXTRAS: '/api/configuracoes/campos-extras',
+  BLING_PRODUTOS: '/api/bling/produtos',
+  PRODUTOS_IMPORTAR: '/api/produtos/importar',
+  PRODUTOS: '/api/produtos',
 } as const
 
 export const MESSAGES = {

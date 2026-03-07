@@ -8,6 +8,7 @@ const mockPrisma = {
   mapeamentoCor: { findMany: vi.fn() },
   itemPedido: { findMany: vi.fn(), update: vi.fn() },
   gradeModelo: { findMany: vi.fn() },
+  produto: { findMany: vi.fn() },
 }
 
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
@@ -45,6 +46,7 @@ function makeItem(overrides: Partial<{
     corDescricao: null,
     tamanho: null,
     variacoes: null,
+    produtoId: null,
     status: StatusItem.PENDENTE,
     createdAt: new Date(),
     ...overrides,
@@ -104,6 +106,7 @@ describe('interpretarItens', () => {
     vi.clearAllMocks()
     mockPrisma.regraSkU.findFirst.mockResolvedValue(makeRegra())
     mockPrisma.itemPedido.update.mockResolvedValue({})
+    mockPrisma.produto.findMany.mockResolvedValue([])
   })
 
   it('retorna lista vazia para itens vazios', async () => {

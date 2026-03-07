@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Layers, Package, Download, FileText, Settings, Users } from 'lucide-react'
+import { Layers, Package, Download, FileText, Settings, Users, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { ROUTES } from '@/lib/constants'
 import { Perfil } from '@/types'
@@ -26,6 +26,12 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Importar',
     href: ROUTES.PEDIDOS_IMPORTAR,
     icon: <Download className="h-4 w-4" />,
+    perfis: [Perfil.ADMIN],
+  },
+  {
+    label: 'Catálogo',
+    href: ROUTES.PRODUTOS_IMPORTAR,
+    icon: <BookOpen className="h-4 w-4" />,
     perfis: [Perfil.ADMIN],
   },
   {
