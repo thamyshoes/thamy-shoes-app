@@ -27,7 +27,7 @@ interface Modelo {
 }
 
 interface ListResponse {
-  data: Modelo[]
+  items: Modelo[]
   total: number
   page: number
   pageSize: number
@@ -80,7 +80,7 @@ function ModelosContent() {
       const params = new URLSearchParams({ page: String(page), pageSize: '50' })
       if (search) params.set('search', search)
       const data = await apiClient.get<ListResponse>(`${API_ROUTES.MODELOS}?${params.toString()}`)
-      setModelos(data.data)
+      setModelos(data.items)
       setTotal(data.total)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar modelos')
