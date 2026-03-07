@@ -14,40 +14,22 @@ interface ConfigCard {
 
 const CARDS: ConfigCard[] = [
   {
+    title: 'Conexão Bling',
+    description: 'Integre com o Bling ERP para importar pedidos e sincronizar dados.',
+    href: ROUTES.CONFIG_BLING,
+    icon: '🔗',
+  },
+  {
     title: 'Regras de SKU',
     description: 'Configure os padrões de geração automática de códigos SKU.',
     href: ROUTES.CONFIG_SKU,
     icon: '🏷️',
   },
   {
-    title: 'Mapeamento de Cores',
-    description: 'Mapeie códigos de cores internos para descrições padronizadas.',
-    href: ROUTES.CONFIG_CORES,
-    icon: '🎨',
-  },
-  {
-    title: 'Grades de Numeração',
-    description: 'Gerencie as grades de tamanhos e os modelos associados a cada grade.',
-    href: ROUTES.CONFIG_GRADES,
-    icon: '📏',
-  },
-  {
-    title: 'Campos Extras',
+    title: 'Campos Extras por Setor',
     description: 'Adicione campos personalizados por setor (Cabedal, Palmilha, Sola).',
     href: ROUTES.CONFIG_CAMPOS_EXTRAS,
     icon: '➕',
-  },
-  {
-    title: 'Modelos',
-    description: 'Cadastre os modelos de calçados com especificações de sola, palmilha e produção.',
-    href: ROUTES.CONFIG_MODELOS,
-    icon: '👟',
-  },
-  {
-    title: 'Conexão Bling',
-    description: 'Integre com o Bling ERP para importar pedidos e sincronizar dados.',
-    href: ROUTES.CONFIG_BLING,
-    icon: '🔗',
   },
 ]
 

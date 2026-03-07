@@ -7,6 +7,7 @@ export const ROUTES = {
   FICHAS: '/fichas',
   PEDIDOS_CONSOLIDAR: '/pedidos/consolidar',
   CONFIGURACOES: '/configuracoes',
+  MAPEAMENTO_SKU: '/mapeamento-sku',
   CONFIG_BLING: '/configuracoes/bling',
   CONFIG_SKU: '/configuracoes/sku',
   CONFIG_CORES: '/configuracoes/cores',

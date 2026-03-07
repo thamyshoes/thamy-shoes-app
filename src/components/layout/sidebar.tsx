@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Layers, Package, Download, FileText, Settings, Users, BookOpen } from 'lucide-react'
+import { Layers, Package, Download, FileText, Settings, Users, BookOpen, Tag } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { ROUTES } from '@/lib/constants'
 import { Perfil } from '@/types'
@@ -47,6 +47,12 @@ const NAV_ITEMS: NavItem[] = [
     perfis: [Perfil.ADMIN, Perfil.PCP, Perfil.PRODUCAO],
   },
   {
+    label: 'Mapeamento de SKU',
+    href: ROUTES.MAPEAMENTO_SKU,
+    icon: <Tag className="h-4 w-4" />,
+    perfis: [Perfil.ADMIN],
+  },
+  {
     label: 'Configurações',
     href: ROUTES.CONFIGURACOES,
     icon: <Settings className="h-4 w-4" />,
@@ -69,6 +75,8 @@ export function Sidebar({ perfil, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const visibleItems = NAV_ITEMS.filter((item) => item.perfis.includes(perfil))
 
+  const MAPEAMENTO_SUB_ROUTES = [ROUTES.CONFIG_CORES, ROUTES.CONFIG_GRADES, ROUTES.CONFIG_MODELOS]
+
   return (
     <aside className="flex h-full w-56 flex-col border-r border-border bg-surface">
       <div className="flex h-14 items-center border-b border-border px-4">
@@ -88,10 +96,18 @@ export function Sidebar({ perfil, onNavigate }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto py-2">
         <ul className="space-y-0.5 px-2">
           {visibleItems.map((item) => {
-            const isActive =
-              item.href === ROUTES.PEDIDOS
-                ? pathname === item.href
-                : pathname.startsWith(item.href)
+            const isActive = (() => {
+              if (item.href === ROUTES.PEDIDOS) return pathname === item.href
+              if (item.href === ROUTES.MAPEAMENTO_SKU) {
+                return pathname === ROUTES.MAPEAMENTO_SKU ||
+                  MAPEAMENTO_SUB_ROUTES.some((r) => pathname.startsWith(r))
+              }
+              if (item.href === ROUTES.CONFIGURACOES) {
+                return pathname.startsWith(ROUTES.CONFIGURACOES) &&
+                  !MAPEAMENTO_SUB_ROUTES.some((r) => pathname.startsWith(r))
+              }
+              return pathname.startsWith(item.href)
+            })()
             return (
               <li key={item.href}>
                 <Link
