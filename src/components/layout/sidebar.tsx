@@ -8,12 +8,24 @@ import { cn } from '@/lib/cn'
 import { ROUTES } from '@/lib/constants'
 import { Perfil } from '@/types'
 
-interface NavItem {
+interface NavChild {
   label: string
   href: string
+}
+
+interface NavItem {
+  label: string
+  href?: string
   icon: React.ReactNode
   perfis: Perfil[]
+  children?: NavChild[]
 }
+
+const SKU_CHILDREN: NavChild[] = [
+  { label: 'Modelos',   href: ROUTES.CONFIG_MODELOS },
+  { label: 'Cores',     href: ROUTES.CONFIG_CORES },
+  { label: 'Numeração', href: ROUTES.CONFIG_GRADES },
+]
 
 const NAV_ITEMS: NavItem[] = [
   {
@@ -35,10 +47,10 @@ const NAV_ITEMS: NavItem[] = [
     perfis: [Perfil.ADMIN, Perfil.PCP, Perfil.PRODUCAO],
   },
   {
-    label: 'Detalhes dos Produtos',
-    href: ROUTES.MAPEAMENTO_SKU,
+    label: 'Gestão de SKU',
     icon: <Tag className="h-4 w-4" />,
     perfis: [Perfil.ADMIN],
+    children: SKU_CHILDREN,
   },
   {
     label: 'Configurações',
@@ -54,6 +66,8 @@ const NAV_ITEMS: NavItem[] = [
   },
 ]
 
+const SKU_ROUTES = SKU_CHILDREN.map((c) => c.href)
+
 interface SidebarProps {
   perfil: Perfil
   onNavigate?: () => void
@@ -63,7 +77,17 @@ export function Sidebar({ perfil, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const visibleItems = NAV_ITEMS.filter((item) => item.perfis.includes(perfil))
 
-  const MAPEAMENTO_SUB_ROUTES = [ROUTES.CONFIG_CORES, ROUTES.CONFIG_GRADES, ROUTES.CONFIG_MODELOS]
+  function isItemActive(item: NavItem): boolean {
+    if (item.children) {
+      return item.children.some((c) => pathname.startsWith(c.href))
+    }
+    if (item.href === ROUTES.PEDIDOS) return pathname === item.href
+    if (item.href === ROUTES.CONFIGURACOES) {
+      return pathname.startsWith(ROUTES.CONFIGURACOES) &&
+        !SKU_ROUTES.some((r) => pathname.startsWith(r))
+    }
+    return !!item.href && pathname.startsWith(item.href)
+  }
 
   return (
     <aside className="flex h-full w-56 flex-col border-r border-border bg-surface">
@@ -84,26 +108,55 @@ export function Sidebar({ perfil, onNavigate }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto py-2">
         <ul className="space-y-0.5 px-2">
           {visibleItems.map((item) => {
-            const isActive = (() => {
-              if (item.href === ROUTES.PEDIDOS) return pathname === item.href
-              if (item.href === ROUTES.MAPEAMENTO_SKU) {
-                return pathname === ROUTES.MAPEAMENTO_SKU ||
-                  MAPEAMENTO_SUB_ROUTES.some((r) => pathname.startsWith(r))
-              }
-              if (item.href === ROUTES.CONFIGURACOES) {
-                return pathname.startsWith(ROUTES.CONFIGURACOES) &&
-                  !MAPEAMENTO_SUB_ROUTES.some((r) => pathname.startsWith(r))
-              }
-              return pathname.startsWith(item.href)
-            })()
+            const groupActive = isItemActive(item)
+
+            if (item.children) {
+              return (
+                <li key={item.label}>
+                  {/* Group header — não clicável */}
+                  <div
+                    className={cn(
+                      'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm',
+                      groupActive ? 'font-semibold text-primary' : 'text-secondary',
+                    )}
+                  >
+                    {item.icon}
+                    {item.label}
+                  </div>
+                  {/* Sub-items */}
+                  <ul className="mt-0.5 space-y-0.5">
+                    {item.children.map((child) => {
+                      const childActive = pathname.startsWith(child.href)
+                      return (
+                        <li key={child.href}>
+                          <Link
+                            href={child.href}
+                            onClick={onNavigate}
+                            className={cn(
+                              'flex items-center rounded-md py-1.5 pl-9 pr-3 text-sm transition-colors',
+                              childActive
+                                ? 'bg-muted font-semibold text-primary'
+                                : 'text-secondary hover:bg-muted hover:text-foreground',
+                            )}
+                          >
+                            {child.label}
+                          </Link>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </li>
+              )
+            }
+
             return (
               <li key={item.href}>
                 <Link
-                  href={item.href}
+                  href={item.href!}
                   onClick={onNavigate}
                   className={cn(
                     'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors',
-                    isActive
+                    groupActive
                       ? 'bg-muted font-semibold text-primary'
                       : 'text-secondary hover:bg-muted hover:text-foreground',
                   )}
