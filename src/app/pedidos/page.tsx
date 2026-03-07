@@ -172,7 +172,7 @@ export default function PedidosPage() {
             isAdmin
               ? {
                   label: 'Importar primeiro pedido',
-                  onClick: () => router.push(ROUTES.PEDIDOS_IMPORTAR),
+                  onClick: () => setShowImportar(true),
                 }
               : undefined
           }
@@ -185,6 +185,7 @@ export default function PedidosPage() {
         open={showImportar}
         onClose={() => setShowImportar(false)}
         onImportado={(id) => router.push(ROUTES.PEDIDO_DETALHE(id))}
+        onNavegar={(href) => router.push(href)}
       />
     </SidebarLayout>
   )

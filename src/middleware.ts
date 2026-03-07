@@ -30,6 +30,7 @@ function requiresAdmin(pathname: string): boolean {
   return (
     pathname.startsWith('/pedidos/importar') ||
     pathname.startsWith('/configuracoes') ||
+    pathname.startsWith('/mapeamento-sku') ||
     pathname.startsWith('/usuarios') ||
     pathname.startsWith('/api/usuarios') ||
     pathname.startsWith('/api/configuracoes') ||

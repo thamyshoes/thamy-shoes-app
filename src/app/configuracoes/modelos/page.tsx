@@ -262,7 +262,7 @@ function ModelosContent() {
       <div className="flex items-center justify-between">
         <div>
           <nav className="text-sm text-secondary" aria-label="Breadcrumb">
-            <Link href={ROUTES.CONFIGURACOES} className="hover:underline">Configurações</Link>
+            <Link href={ROUTES.MAPEAMENTO_SKU} className="hover:underline">Detalhes dos Produtos</Link>
             <span className="mx-1.5">/</span>
             <span className="text-foreground">Modelos</span>
           </nav>

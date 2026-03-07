@@ -172,7 +172,7 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-foreground">Central de Fichas</h1>
+        <h1 className="text-xl font-semibold text-foreground">Fichas Geradas</h1>
         {!loading && (
           <p className="mt-1 text-sm text-secondary">
             {total} ficha{total !== 1 ? 's' : ''} encontrada{total !== 1 ? 's' : ''}
@@ -273,7 +273,7 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
         columns={COLUMNS}
         loading={loading}
         emptyMessage="Nenhuma ficha gerada ainda"
-        emptyAction={{ label: 'Ir para Pedidos', onClick: () => router.push(ROUTES.PEDIDOS) }}
+        emptyAction={{ label: 'Ir para Gerar Ficha', onClick: () => router.push(ROUTES.PEDIDOS_CONSOLIDAR) }}
       />
 
       {/* Paginação */}

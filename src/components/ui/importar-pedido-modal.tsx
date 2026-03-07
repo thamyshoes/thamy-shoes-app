@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, WifiOff } from 'lucide-react'
+import { ChevronLeft, ChevronRight, WifiOff, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type Column } from '@/components/ui/data-table'
 import { Button } from '@/components/ui/button'
 import { useBlingStatus } from '@/hooks/use-bling-status'
 import { formatDate, formatDateTime } from '@/lib/format'
-import { API_ROUTES, MESSAGES } from '@/lib/constants'
+import { API_ROUTES, MESSAGES, ROUTES } from '@/lib/constants'
 import { StatusConexao } from '@/types'
 
 interface PedidoBling {
@@ -32,6 +32,7 @@ interface Props {
   open: boolean
   onClose: () => void
   onImportado: (pedidoId: string) => void
+  onNavegar?: (href: string) => void
 }
 
 function buildColumns(
@@ -69,7 +70,7 @@ function buildColumns(
   ]
 }
 
-export function ImportarPedidoModal({ open, onClose, onImportado }: Props) {
+export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: Props) {
   const { status: blingStatus, loading: blingLoading } = useBlingStatus()
 
   const [dias, setDias] = useState(7)
@@ -119,6 +120,8 @@ export function ImportarPedidoModal({ open, onClose, onImportado }: Props) {
       setPagina(1)
       setPedidos([])
       setError(null)
+      setConflito(null)
+      setPedidoConflito(null)
     }
   }, [open])
 
@@ -217,14 +220,34 @@ export function ImportarPedidoModal({ open, onClose, onImportado }: Props) {
       >
         <div className="space-y-4">
           {isDesconectado ? (
-            <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-4">
-              <WifiOff className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Bling desconectado</p>
-                <p className="mt-0.5 text-xs text-secondary">
-                  Conecte o Bling nas configurações para importar pedidos.
-                </p>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-4">
+                <WifiOff className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Bling desconectado</p>
+                  <p className="mt-0.5 text-xs text-secondary">
+                    Conecte o Bling nas configurações para importar pedidos.
+                  </p>
+                </div>
               </div>
+              {onNavegar && (
+                <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Search className="h-4 w-4 text-secondary" />
+                    <p className="text-sm font-medium text-foreground">Pedido já importado?</p>
+                  </div>
+                  <p className="text-xs text-secondary">
+                    Localize pedidos já importados diretamente na lista de pedidos.
+                  </p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => { onClose(); onNavegar(ROUTES.PEDIDOS) }}
+                  >
+                    Ir para Pedidos
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             <>

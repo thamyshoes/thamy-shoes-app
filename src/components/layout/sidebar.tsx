@@ -17,7 +17,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    label: 'Pedidos',
+    label: 'Importar Pedidos',
     href: ROUTES.PEDIDOS,
     icon: <Package className="h-4 w-4" />,
     perfis: [Perfil.ADMIN, Perfil.PCP],
@@ -29,7 +29,7 @@ const NAV_ITEMS: NavItem[] = [
     perfis: [Perfil.ADMIN, Perfil.PCP],
   },
   {
-    label: 'Central de Fichas',
+    label: 'Fichas Geradas',
     href: ROUTES.FICHAS,
     icon: <FileText className="h-4 w-4" />,
     perfis: [Perfil.ADMIN, Perfil.PCP, Perfil.PRODUCAO],
@@ -47,7 +47,7 @@ const NAV_ITEMS: NavItem[] = [
     perfis: [Perfil.ADMIN],
   },
   {
-    label: 'Usuários',
+    label: 'Gestão de Usuários',
     href: ROUTES.USUARIOS,
     icon: <Users className="h-4 w-4" />,
     perfis: [Perfil.ADMIN],
