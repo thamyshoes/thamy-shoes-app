@@ -231,6 +231,7 @@ export class PdfGeneratorService {
             React.createElement(Text, null, 'Teste')
           )
         )
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ) as any
       await renderToBuffer(minDoc)
       console.log('[renderPdf] Teste mínimo OK')
