@@ -40,6 +40,7 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['@react-pdf/renderer'],
   poweredByHeader: false,
   async headers() {
     return [
