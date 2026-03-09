@@ -37,6 +37,8 @@ interface Props {
 
 type Ordenacao = 'recente' | 'antigo'
 
+const PAGE_SIZE = 10
+
 function buildColumns(
   onImportar: (pedido: PedidoBling) => void,
   importingId: number | null,
@@ -76,15 +78,14 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
   const { status: blingStatus, loading: blingLoading } = useBlingStatus()
 
   const [dias, setDias] = useState(7)
-  const [pagina, setPagina] = useState(1)
-  const [pedidos, setPedidos] = useState<PedidoBling[]>([])
-  const [hasMore, setHasMore] = useState(false)
+  const [todosPedidos, setTodosPedidos] = useState<PedidoBling[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [importingId, setImportingId] = useState<number | null>(null)
 
   const [busca, setBusca] = useState('')
   const [ordenacao, setOrdenacao] = useState<Ordenacao>('recente')
+  const [pagina, setPagina] = useState(1)
 
   const [conflito, setConflito] = useState<DuplicataInfo | null>(null)
   const [pedidoConflito, setPedidoConflito] = useState<PedidoBling | null>(null)
@@ -92,20 +93,30 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
 
   const isDesconectado = !blingLoading && blingStatus !== StatusConexao.CONECTADO
 
-  const fetchPedidos = useCallback(async (d: number, p: number) => {
+  // Busca TODAS as páginas da API do Bling de uma vez
+  const fetchTodosPedidos = useCallback(async (d: number) => {
     setLoading(true)
     setError(null)
     try {
-      const raw = await fetch(`${API_ROUTES.BLING_PEDIDOS}?dias=${d}&pagina=${p}`, {
-        credentials: 'include',
-      })
-      if (!raw.ok) {
-        const body = (await raw.json().catch(() => ({}))) as { error?: string }
-        throw new Error(body.error ?? MESSAGES.ERROR.GENERIC)
+      const todos: PedidoBling[] = []
+      let pag = 1
+      let continuar = true
+
+      while (continuar) {
+        const raw = await fetch(`${API_ROUTES.BLING_PEDIDOS}?dias=${d}&pagina=${pag}`, {
+          credentials: 'include',
+        })
+        if (!raw.ok) {
+          const body = (await raw.json().catch(() => ({}))) as { error?: string }
+          throw new Error(body.error ?? MESSAGES.ERROR.GENERIC)
+        }
+        const res = (await raw.json()) as { data: PedidoBling[]; pagina: number; hasMore: boolean }
+        todos.push(...res.data)
+        continuar = res.hasMore
+        pag++
       }
-      const res = (await raw.json()) as { data: PedidoBling[]; pagina: number; hasMore: boolean }
-      setPedidos(res.data)
-      setHasMore(res.hasMore)
+
+      setTodosPedidos(todos)
     } catch (err) {
       setError(err instanceof Error ? err.message : MESSAGES.ERROR.GENERIC)
     } finally {
@@ -115,15 +126,15 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
 
   useEffect(() => {
     if (open && blingStatus === StatusConexao.CONECTADO) {
-      void fetchPedidos(dias, pagina)
+      void fetchTodosPedidos(dias)
     }
-  }, [open, dias, pagina, blingStatus, fetchPedidos])
+  }, [open, dias, blingStatus, fetchTodosPedidos])
 
   // Reset ao fechar
   useEffect(() => {
     if (!open) {
       setPagina(1)
-      setPedidos([])
+      setTodosPedidos([])
       setError(null)
       setBusca('')
       setOrdenacao('recente')
@@ -132,11 +143,11 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
     }
   }, [open])
 
-  // Filtrar e ordenar pedidos localmente
-  const pedidosFiltrados = useMemo(() => {
-    let resultado = [...pedidos]
+  // Filtrar, ordenar e paginar localmente
+  const { pedidosPagina, totalFiltrados, totalPages } = useMemo(() => {
+    let resultado = [...todosPedidos]
 
-    // Filtro por busca (número do pedido)
+    // Filtro por busca
     if (busca.trim()) {
       const termo = busca.trim().toLowerCase()
       resultado = resultado.filter((p) => p.numero.toLowerCase().includes(termo))
@@ -152,12 +163,23 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
       return dateCompare !== 0 ? dateCompare : numCompare
     })
 
-    return resultado
-  }, [pedidos, busca, ordenacao])
+    const total = resultado.length
+    const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+    const start = (pagina - 1) * PAGE_SIZE
+    const paginados = resultado.slice(start, start + PAGE_SIZE)
+
+    return { pedidosPagina: paginados, totalFiltrados: total, totalPages: pages }
+  }, [todosPedidos, busca, ordenacao, pagina])
+
+  // Reset pagina quando busca ou ordenação muda
+  useEffect(() => {
+    setPagina(1)
+  }, [busca, ordenacao])
 
   function handleDiasChange(novosDias: number) {
     setDias(novosDias)
     setPagina(1)
+    setBusca('')
   }
 
   async function handleImportar(pedido: PedidoBling) {
@@ -174,6 +196,10 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
       if (raw.status === 201) {
         const id = body.data?.id ?? ''
         toast.success(MESSAGES.SUCCESS.IMPORTED)
+        // Marcar como importado localmente
+        setTodosPedidos((prev) =>
+          prev.map((p) => p.idBling === pedido.idBling ? { ...p, importado: true } : p),
+        )
         onClose()
         onImportado(id)
       } else if (raw.status === 409 && body.pedido) {
@@ -225,7 +251,7 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
         title="Importar Pedido"
         size="lg"
         footer={
-          !isDesconectado ? (
+          !isDesconectado && totalPages > 1 ? (
             <div className="flex items-center justify-between">
               <button
                 onClick={() => setPagina((p) => Math.max(p - 1, 1))}
@@ -235,15 +261,26 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
                 <ChevronLeft className="h-4 w-4" />
                 Anterior
               </button>
-              <span className="text-sm text-secondary">Página {pagina}</span>
+              <span className="text-sm text-secondary">
+                Página {pagina} de {totalPages}
+                {totalFiltrados > 0 && (
+                  <span className="ml-1 text-xs">({totalFiltrados} pedido{totalFiltrados !== 1 ? 's' : ''})</span>
+                )}
+              </span>
               <button
-                onClick={() => setPagina((p) => p + 1)}
-                disabled={!hasMore || loading}
+                onClick={() => setPagina((p) => Math.min(p + 1, totalPages))}
+                disabled={pagina >= totalPages || loading}
                 className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
               >
                 Próxima
                 <ChevronRight className="h-4 w-4" />
               </button>
+            </div>
+          ) : !isDesconectado && totalFiltrados > 0 ? (
+            <div className="flex items-center justify-center">
+              <span className="text-sm text-secondary">
+                {totalFiltrados} pedido{totalFiltrados !== 1 ? 's' : ''}
+              </span>
             </div>
           ) : undefined
         }
@@ -328,7 +365,7 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => void fetchPedidos(dias, pagina)}
+                    onClick={() => void fetchTodosPedidos(dias)}
                     className="mt-2"
                   >
                     Tentar novamente
@@ -336,7 +373,7 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
                 </div>
               ) : (
                 <DataTable
-                  data={pedidosFiltrados}
+                  data={pedidosPagina}
                   columns={columns}
                   loading={loading}
                   emptyMessage={
