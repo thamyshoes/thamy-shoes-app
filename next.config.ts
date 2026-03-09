@@ -40,7 +40,14 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['@react-pdf/renderer'],
+  serverExternalPackages: [
+    '@react-pdf/renderer',
+    '@react-pdf/layout',
+    '@react-pdf/pdfkit',
+    '@react-pdf/primitives',
+    'react-reconciler',
+    'scheduler',
+  ],
   poweredByHeader: false,
   async headers() {
     return [

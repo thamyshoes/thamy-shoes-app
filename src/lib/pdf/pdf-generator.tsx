@@ -1,9 +1,7 @@
-import React from 'react'
-import { renderToBuffer } from '@react-pdf/renderer'
 import { prisma } from '@/lib/prisma'
 import { createServerSupabaseClient, FICHAS_BUCKET } from '@/lib/supabase-server'
 import { montarGrades, montarGradesConsolidadas } from '@/lib/bling/sku-parser'
-import { FichaTemplate } from '@/lib/pdf/templates/ficha-template'
+import type { FichaTemplateProps } from '@/lib/pdf/templates/ficha-template'
 import type { GradeRow } from '@/types'
 import { Setor, StatusPedido, StatusItem } from '@/types'
 
@@ -211,16 +209,58 @@ export class PdfGeneratorService {
 
   // ── Privados ────────────────────────────────────────────────────────────────
 
-  private async renderPdf(props: {
-    numeroPedido: string
-    dataEmissao: Date
-    fornecedor: string
-    setor: Setor
-    grades: GradeRow[]
-    totalPares: number
-    camposExtras: { nome: string; tipo: string; obrigatorio: boolean }[]
-    geradoEm: Date
-  }): Promise<Buffer> {
+  private async renderPdf(props: FichaTemplateProps): Promise<Buffer> {
+    // Dynamic import para diagnóstico e para garantir mesma instância React
+    const reactPdf = await import('@react-pdf/renderer')
+    const { renderToBuffer, Document, Page, View, Text } = reactPdf
+
+    // Debug: verificar o que os primitivos realmente são
+    console.log('[renderPdf] Document type:', typeof Document, '| value:', String(Document))
+    console.log('[renderPdf] Page type:', typeof Page, '| value:', String(Page))
+    console.log('[renderPdf] View type:', typeof View, '| value:', String(View))
+    console.log('[renderPdf] Text type:', typeof Text, '| value:', String(Text))
+    console.log('[renderPdf] React.version:', (await import('react')).version)
+    console.log('[renderPdf] renderToBuffer type:', typeof renderToBuffer)
+
+    // Teste mínimo com primitivos do mesmo import
+    const React = (await import('react')).default
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const testEl = React.createElement(Document as any, null,
+        React.createElement(Page as any, null,
+          React.createElement(View as any, null,
+            React.createElement(Text as any, null, 'Teste')
+          )
+        )
+      )
+      console.log('[renderPdf] testEl type:', typeof testEl, '| $$typeof:', String(testEl?.$$typeof))
+      console.log('[renderPdf] testEl.type:', typeof testEl?.type, '| value:', String(testEl?.type))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await renderToBuffer(testEl as any)
+      console.log('[renderPdf] Teste mínimo OK!')
+    } catch (err) {
+      console.error('[renderPdf] Teste mínimo FALHOU:', err instanceof Error ? err.message : err)
+      // Tentar com strings diretas como primitivos
+      try {
+        console.log('[renderPdf] Tentando com strings diretas...')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const testEl2 = React.createElement('DOCUMENT' as any, null,
+          React.createElement('PAGE' as any, null,
+            React.createElement('VIEW' as any, null,
+              React.createElement('TEXT' as any, null, 'Teste')
+            )
+          )
+        )
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await renderToBuffer(testEl2 as any)
+        console.log('[renderPdf] Strings diretas OK!')
+      } catch (err2) {
+        console.error('[renderPdf] Strings diretas FALHOU:', err2 instanceof Error ? err2.message : err2)
+      }
+      throw err
+    }
+
+    const { FichaTemplate } = await import('@/lib/pdf/templates/ficha-template')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const element = React.createElement(FichaTemplate, props) as any
     return renderToBuffer(element)
