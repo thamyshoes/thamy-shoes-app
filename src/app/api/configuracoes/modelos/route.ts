@@ -9,6 +9,9 @@ const createSchema = z.object({
   cabedal: z.string().optional(),
   sola: z.string().optional(),
   palmilha: z.string().optional(),
+  temFacheta: z.boolean().optional(),
+  materialBasePalmilha: z.string().optional(),
+  linha: z.string().optional(),
   observacoes: z.string().optional(),
 })
 
@@ -28,6 +31,7 @@ export async function GET(request: NextRequest) {
           { cabedal: { contains: search, mode: 'insensitive' as const } },
           { sola: { contains: search, mode: 'insensitive' as const } },
           { palmilha: { contains: search, mode: 'insensitive' as const } },
+          { linha: { contains: search, mode: 'insensitive' as const } },
         ],
       }
     : {}
@@ -35,6 +39,7 @@ export async function GET(request: NextRequest) {
   const [modelos, total] = await Promise.all([
     prisma.modelo.findMany({
       where,
+      include: { variantesCor: { orderBy: { corCodigo: 'asc' } } },
       orderBy: { codigo: 'asc' },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -61,7 +66,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
-  const { codigo, nome, cabedal, sola, palmilha, observacoes } = parsed.data
+  const { codigo, nome, cabedal, sola, palmilha, temFacheta, materialBasePalmilha, linha, observacoes } = parsed.data
 
   const existing = await prisma.modelo.findUnique({ where: { codigo } })
   if (existing) {
@@ -75,8 +80,12 @@ export async function POST(request: NextRequest) {
       cabedal: cabedal ?? null,
       sola: sola ?? null,
       palmilha: palmilha ?? null,
+      temFacheta: temFacheta ?? false,
+      materialBasePalmilha: materialBasePalmilha ?? null,
+      linha: linha ?? null,
       observacoes: observacoes ?? null,
     },
+    include: { variantesCor: true },
   })
 
   return NextResponse.json(modelo, { status: 201 })

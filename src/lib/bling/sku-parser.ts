@@ -242,12 +242,21 @@ export async function montarGradesConsolidadas(
     grupo.tamanhos.set(tam, (grupo.tamanhos.get(tam) ?? 0) + item.quantidade)
   }
 
-  // Buscar dados dos modelos cadastrados
+  // Buscar dados dos modelos cadastrados (incluindo variantes por cor)
   const modeloCodes = [...new Set([...grupos.values()].map((g) => g.modelo))]
   const modelosCadastrados = modeloCodes.length > 0
     ? await prisma.modelo.findMany({
         where: { codigo: { in: modeloCodes } },
-        select: { codigo: true, nome: true, cabedal: true, sola: true, palmilha: true },
+        select: {
+          codigo: true,
+          nome: true,
+          cabedal: true,
+          sola: true,
+          palmilha: true,
+          temFacheta: true,
+          materialBasePalmilha: true,
+          variantesCor: true,
+        },
       })
     : []
   const modeloMapa = new Map(modelosCadastrados.map((m) => [m.codigo, m]))
@@ -274,12 +283,23 @@ export async function montarGradesConsolidadas(
 
     const modeloInfo = modeloMapa.get(grupo.modelo)
 
+    // Buscar variante específica para esta cor
+    const variante = modeloInfo?.variantesCor.find((v) => v.corCodigo === grupo.cor)
+
     rows.push({
       modelo: grupo.faixa ? `${grupo.modelo} (${grupo.faixa})` : grupo.modelo,
       modeloNome: modeloInfo?.nome,
-      modeloCabedal: modeloInfo?.cabedal ?? undefined,
+      // Cabedal: se há override por cor, usa o override; senão usa o padrão
+      modeloCabedal: variante?.cabedalOverride ?? modeloInfo?.cabedal ?? undefined,
       modeloSola: modeloInfo?.sola ?? undefined,
       modeloPalmilha: modeloInfo?.palmilha ?? undefined,
+      // Dados de variante por cor
+      modeloTemFacheta: modeloInfo?.temFacheta ?? false,
+      corFacheta: variante?.corFacheta ?? undefined,
+      corSola: variante?.corSola ?? undefined,
+      corForroPalmilha: variante?.corForroPalmilha ?? undefined,
+      codigoFichaPalmilha: variante?.codigoFichaPalmilha ?? undefined,
+      descricaoPalmilha: variante?.descricaoPalmilha ?? undefined,
       cor: grupo.cor,
       corDescricao: grupo.corDescricao,
       tamanhos,

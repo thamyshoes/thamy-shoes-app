@@ -14,6 +14,9 @@ export type {
   ConsolidadoPedido,
   CampoExtra,
   NotificacaoLog,
+  Material,
+  Modelo,
+  ModeloVarianteCor,
 } from '@prisma/client'
 
 export {
@@ -24,6 +27,7 @@ export {
   StatusConexao,
   EscopoEquivalencia,
   TipoCampo,
+  CategoriaMaterial,
 } from '@prisma/client'
 
 // ── DTOs de usuário ─────────────────────────────────────────────────────────
@@ -63,6 +67,12 @@ export interface GradeRow {
   modeloCabedal?: string
   modeloSola?: string
   modeloPalmilha?: string
+  modeloTemFacheta?: boolean
+  corFacheta?: string
+  corSola?: string
+  corForroPalmilha?: string
+  codigoFichaPalmilha?: string
+  descricaoPalmilha?: string
   cor: string
   corDescricao: string
   tamanhos: Record<string, number>

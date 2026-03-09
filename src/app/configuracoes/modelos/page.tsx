@@ -15,6 +15,17 @@ import { toast } from 'sonner'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
+interface VarianteCor {
+  id: string
+  corCodigo: string
+  cabedalOverride: string | null
+  corSola: string | null
+  corFacheta: string | null
+  corForroPalmilha: string | null
+  codigoFichaPalmilha: string | null
+  descricaoPalmilha: string | null
+}
+
 interface Modelo {
   id: string
   codigo: string
@@ -22,9 +33,13 @@ interface Modelo {
   cabedal: string | null
   sola: string | null
   palmilha: string | null
+  temFacheta: boolean
+  materialBasePalmilha: string | null
+  linha: string | null
   observacoes: string | null
   ativo: boolean
   createdAt: string
+  variantesCor: VarianteCor[]
 }
 
 interface ListResponse {
@@ -63,8 +78,26 @@ function ModelosContent() {
   const [formCabedal, setFormCabedal] = useState('')
   const [formSola, setFormSola] = useState('')
   const [formPalmilha, setFormPalmilha] = useState('')
+  const [formTemFacheta, setFormTemFacheta] = useState(false)
+  const [formMaterialBasePalmilha, setFormMaterialBasePalmilha] = useState('')
+  const [formLinha, setFormLinha] = useState('')
   const [formObs, setFormObs] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // Modal variantes por cor
+  const [variantesModalOpen, setVariantesModalOpen] = useState(false)
+  const [variantesModelo, setVariantesModelo] = useState<Modelo | null>(null)
+  const [varianteForm, setVarianteForm] = useState({
+    corCodigo: '',
+    cabedalOverride: '',
+    corSola: '',
+    corFacheta: '',
+    corForroPalmilha: '',
+    codigoFichaPalmilha: '',
+    descricaoPalmilha: '',
+  })
+  const [editandoVariante, setEditandoVariante] = useState<VarianteCor | null>(null)
+  const [savingVariante, setSavingVariante] = useState(false)
 
   // Modal importação em lote
   const [importModalOpen, setImportModalOpen] = useState(false)
@@ -103,6 +136,9 @@ function ModelosContent() {
     setFormCabedal('')
     setFormSola('')
     setFormPalmilha('')
+    setFormTemFacheta(false)
+    setFormMaterialBasePalmilha('')
+    setFormLinha('')
     setFormObs('')
     setModalOpen(true)
   }
@@ -114,6 +150,9 @@ function ModelosContent() {
     setFormCabedal(m.cabedal ?? '')
     setFormSola(m.sola ?? '')
     setFormPalmilha(m.palmilha ?? '')
+    setFormTemFacheta(m.temFacheta)
+    setFormMaterialBasePalmilha(m.materialBasePalmilha ?? '')
+    setFormLinha(m.linha ?? '')
     setFormObs(m.observacoes ?? '')
     setModalOpen(true)
   }
@@ -132,6 +171,9 @@ function ModelosContent() {
         cabedal: formCabedal.trim() || null,
         sola: formSola.trim() || null,
         palmilha: formPalmilha.trim() || null,
+        temFacheta: formTemFacheta,
+        materialBasePalmilha: formMaterialBasePalmilha.trim() || null,
+        linha: formLinha.trim() || null,
         observacoes: formObs.trim() || null,
       }
       if (editando) {
@@ -164,6 +206,102 @@ function ModelosContent() {
       setDeleting(false)
     }
   }
+
+  // ── Variantes por cor ─────────────────────────────────────────────────────
+
+  function abrirVariantes(m: Modelo) {
+    setVariantesModelo(m)
+    setEditandoVariante(null)
+    resetVarianteForm()
+    setVariantesModalOpen(true)
+  }
+
+  function resetVarianteForm() {
+    setVarianteForm({
+      corCodigo: '',
+      cabedalOverride: '',
+      corSola: '',
+      corFacheta: '',
+      corForroPalmilha: '',
+      codigoFichaPalmilha: '',
+      descricaoPalmilha: '',
+    })
+  }
+
+  function editarVariante(v: VarianteCor) {
+    setEditandoVariante(v)
+    setVarianteForm({
+      corCodigo: v.corCodigo,
+      cabedalOverride: v.cabedalOverride ?? '',
+      corSola: v.corSola ?? '',
+      corFacheta: v.corFacheta ?? '',
+      corForroPalmilha: v.corForroPalmilha ?? '',
+      codigoFichaPalmilha: v.codigoFichaPalmilha ?? '',
+      descricaoPalmilha: v.descricaoPalmilha ?? '',
+    })
+  }
+
+  async function salvarVariante() {
+    if (!variantesModelo) return
+    if (!varianteForm.corCodigo.trim()) { toast.error('Código da cor é obrigatório'); return }
+
+    setSavingVariante(true)
+    try {
+      const body = {
+        corCodigo: varianteForm.corCodigo.trim(),
+        cabedalOverride: varianteForm.cabedalOverride.trim() || null,
+        corSola: varianteForm.corSola.trim() || null,
+        corFacheta: varianteForm.corFacheta.trim() || null,
+        corForroPalmilha: varianteForm.corForroPalmilha.trim() || null,
+        codigoFichaPalmilha: varianteForm.codigoFichaPalmilha.trim() || null,
+        descricaoPalmilha: varianteForm.descricaoPalmilha.trim() || null,
+      }
+
+      if (editandoVariante) {
+        await apiClient.patch(
+          `${API_ROUTES.MODELOS}/${variantesModelo.id}/variantes-cor/${editandoVariante.id}`,
+          body,
+        )
+        toast.success('Variante atualizada')
+      } else {
+        await apiClient.post(
+          `${API_ROUTES.MODELOS}/${variantesModelo.id}/variantes-cor`,
+          body,
+        )
+        toast.success('Variante criada')
+      }
+      setEditandoVariante(null)
+      resetVarianteForm()
+      await fetchModelos()
+      // Atualizar o modelo local
+      const updated = modelos.find((m) => m.id === variantesModelo.id)
+      if (updated) setVariantesModelo(updated)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao salvar variante')
+    } finally {
+      setSavingVariante(false)
+    }
+  }
+
+  async function excluirVariante(v: VarianteCor) {
+    if (!variantesModelo) return
+    try {
+      await apiClient.delete(`${API_ROUTES.MODELOS}/${variantesModelo.id}/variantes-cor/${v.id}`)
+      toast.success('Variante excluída')
+      await fetchModelos()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao excluir variante')
+    }
+  }
+
+  // Sincronizar variantesModelo com modelos atualizados
+  useEffect(() => {
+    if (variantesModelo) {
+      const updated = modelos.find((m) => m.id === variantesModelo.id)
+      if (updated) setVariantesModelo(updated)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelos])
 
   // ── Bulk import ─────────────────────────────────────────────────────────────
 
@@ -228,6 +366,23 @@ function ModelosContent() {
       render: (m) => m.palmilha ? <span className="text-sm text-foreground">{m.palmilha}</span> : empty,
     },
     {
+      key: 'linha',
+      header: 'Linha',
+      render: (m) => m.linha ? <span className="text-sm text-secondary">{m.linha}</span> : empty,
+    },
+    {
+      key: 'variantesCor',
+      header: 'Variantes',
+      render: (m) => (
+        <button
+          onClick={() => abrirVariantes(m)}
+          className="text-xs font-medium text-primary hover:underline focus:outline-none focus:underline"
+        >
+          {m.variantesCor.length > 0 ? `${m.variantesCor.length} cor${m.variantesCor.length > 1 ? 'es' : ''}` : 'Adicionar'}
+        </button>
+      ),
+    },
+    {
       key: 'id',
       header: 'Ações',
       align: 'right' as const,
@@ -282,7 +437,7 @@ function ModelosContent() {
       {/* Busca */}
       <input
         type="search"
-        placeholder="Buscar por código, nome, cabedal, sola ou palmilha"
+        placeholder="Buscar por código, nome, cabedal, sola, palmilha ou linha"
         value={search}
         onChange={(e) => { setSearch(e.target.value); setPage(1) }}
         className="w-full max-w-sm rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -315,7 +470,7 @@ function ModelosContent() {
                 className={`${inputClass} font-mono`}
                 value={formCodigo}
                 onChange={(e) => setFormCodigo(e.target.value)}
-                placeholder="Ex: 0101"
+                placeholder="Ex: 607"
                 maxLength={30}
                 disabled={!!editando}
               />
@@ -328,7 +483,7 @@ function ModelosContent() {
                 className={inputClass}
                 value={formNome}
                 onChange={(e) => setFormNome(e.target.value)}
-                placeholder="Ex: Sandália Tira Fina"
+                placeholder="Ex: Modelo 607"
               />
             </div>
           </div>
@@ -341,7 +496,7 @@ function ModelosContent() {
                 className={inputClass}
                 value={formCabedal}
                 onChange={(e) => setFormCabedal(e.target.value)}
-                placeholder="Ex: Napa"
+                placeholder="Ex: SANTORINE"
               />
             </div>
             <div>
@@ -352,7 +507,7 @@ function ModelosContent() {
                 className={inputClass}
                 value={formSola}
                 onChange={(e) => setFormSola(e.target.value)}
-                placeholder="Ex: Sola TR Fina"
+                placeholder="Ex: 100"
               />
             </div>
             <div>
@@ -363,8 +518,44 @@ function ModelosContent() {
                 className={inputClass}
                 value={formPalmilha}
                 onChange={(e) => setFormPalmilha(e.target.value)}
-                placeholder="Ex: EVA 3mm"
+                placeholder="Ex: 100"
               />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground" htmlFor="m-linha">Linha</label>
+              <input
+                id="m-linha"
+                type="text"
+                className={inputClass}
+                value={formLinha}
+                onChange={(e) => setFormLinha(e.target.value)}
+                placeholder="Ex: 607-611"
+              />
+              <p className="mt-0.5 text-xs text-secondary">Agrupa modelos da mesma linha</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground" htmlFor="m-mat-palmilha">Material Base Palmilha</label>
+              <input
+                id="m-mat-palmilha"
+                type="text"
+                className={inputClass}
+                value={formMaterialBasePalmilha}
+                onChange={(e) => setFormMaterialBasePalmilha(e.target.value)}
+                placeholder="Ex: PLANTEX 1.4"
+              />
+            </div>
+            <div className="flex items-end pb-1">
+              <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formTemFacheta}
+                  onChange={(e) => setFormTemFacheta(e.target.checked)}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                />
+                Possui facheta do salto
+              </label>
             </div>
           </div>
           <div>
@@ -385,6 +576,174 @@ function ModelosContent() {
         </div>
       </Modal>
 
+      {/* ── Modal variantes por cor ────────────────────────────────────────── */}
+      <Modal
+        open={variantesModalOpen}
+        onClose={() => setVariantesModalOpen(false)}
+        title={`Variantes por Cor — ${variantesModelo?.codigo ?? ''}`}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-secondary">
+            Defina materiais e detalhes que variam conforme a cor do produto.
+            {variantesModelo?.cabedal && <> Cabedal padrão: <strong>{variantesModelo.cabedal}</strong>.</>}
+          </p>
+
+          {/* Lista de variantes existentes */}
+          {variantesModelo && variantesModelo.variantesCor.length > 0 && (
+            <div className="max-h-48 overflow-y-auto rounded border border-border">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-muted">
+                  <tr>
+                    <th className="px-2 py-1 text-left">Cor</th>
+                    <th className="px-2 py-1 text-left">Cabedal</th>
+                    <th className="px-2 py-1 text-left">Cor Sola</th>
+                    <th className="px-2 py-1 text-left">Facheta</th>
+                    <th className="px-2 py-1 text-left">Forro Palm.</th>
+                    <th className="px-2 py-1 text-left">Ficha Palm.</th>
+                    <th className="px-2 py-1 text-left">Desc. Palm.</th>
+                    <th className="px-2 py-1 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {variantesModelo.variantesCor.map((v) => (
+                    <tr key={v.id} className="border-t border-border">
+                      <td className="px-2 py-1 font-mono">{v.corCodigo}</td>
+                      <td className="px-2 py-1 text-secondary">{v.cabedalOverride ?? '—'}</td>
+                      <td className="px-2 py-1 text-secondary">{v.corSola ?? '—'}</td>
+                      <td className="px-2 py-1 text-secondary">{v.corFacheta ?? '—'}</td>
+                      <td className="px-2 py-1 text-secondary">{v.corForroPalmilha ?? '—'}</td>
+                      <td className="px-2 py-1 text-secondary font-mono">{v.codigoFichaPalmilha ?? '—'}</td>
+                      <td className="px-2 py-1 text-secondary">{v.descricaoPalmilha ?? '—'}</td>
+                      <td className="px-2 py-1 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => editarVariante(v)}
+                            className="text-primary hover:underline"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => excluirVariante(v)}
+                            className="text-destructive hover:underline"
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Formulário de variante */}
+          <div className="rounded-md border border-border p-3 space-y-3">
+            <p className="text-xs font-medium text-foreground">
+              {editandoVariante ? `Editando variante: ${editandoVariante.corCodigo}` : 'Nova variante'}
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs text-secondary" htmlFor="v-cor">Código da Cor *</label>
+                <input
+                  id="v-cor"
+                  type="text"
+                  className={`${inputClass} text-xs font-mono`}
+                  value={varianteForm.corCodigo}
+                  onChange={(e) => setVarianteForm({ ...varianteForm, corCodigo: e.target.value })}
+                  placeholder="Ex: 444"
+                  disabled={!!editandoVariante}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-secondary" htmlFor="v-cabedal">Cabedal (override)</label>
+                <input
+                  id="v-cabedal"
+                  type="text"
+                  className={`${inputClass} text-xs`}
+                  value={varianteForm.cabedalOverride}
+                  onChange={(e) => setVarianteForm({ ...varianteForm, cabedalOverride: e.target.value })}
+                  placeholder="Só se diferente do padrão"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-secondary" htmlFor="v-cor-sola">Cor da Sola</label>
+                <input
+                  id="v-cor-sola"
+                  type="text"
+                  className={`${inputClass} text-xs`}
+                  value={varianteForm.corSola}
+                  onChange={(e) => setVarianteForm({ ...varianteForm, corSola: e.target.value })}
+                  placeholder="Ex: BEGE"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-secondary" htmlFor="v-facheta">Cor da Facheta</label>
+                <input
+                  id="v-facheta"
+                  type="text"
+                  className={`${inputClass} text-xs`}
+                  value={varianteForm.corFacheta}
+                  onChange={(e) => setVarianteForm({ ...varianteForm, corFacheta: e.target.value })}
+                  placeholder="Ex: BALÉ"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-secondary" htmlFor="v-forro">Cor Forro Palmilha</label>
+                <input
+                  id="v-forro"
+                  type="text"
+                  className={`${inputClass} text-xs`}
+                  value={varianteForm.corForroPalmilha}
+                  onChange={(e) => setVarianteForm({ ...varianteForm, corForroPalmilha: e.target.value })}
+                  placeholder="Ex: OURO LIGHT"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-secondary" htmlFor="v-cod-palm">Código Ficha Palmilha</label>
+                <input
+                  id="v-cod-palm"
+                  type="text"
+                  className={`${inputClass} text-xs font-mono`}
+                  value={varianteForm.codigoFichaPalmilha}
+                  onChange={(e) => setVarianteForm({ ...varianteForm, codigoFichaPalmilha: e.target.value })}
+                  placeholder="Ex: 607444"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-secondary" htmlFor="v-desc-palm">Descrição Palmilha</label>
+                <input
+                  id="v-desc-palm"
+                  type="text"
+                  className={`${inputClass} text-xs`}
+                  value={varianteForm.descricaoPalmilha}
+                  onChange={(e) => setVarianteForm({ ...varianteForm, descricaoPalmilha: e.target.value })}
+                  placeholder="Ex: PALMILHA BALÉ"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              {editandoVariante && (
+                <Button variant="secondary" onClick={() => { setEditandoVariante(null); resetVarianteForm() }}>
+                  Cancelar
+                </Button>
+              )}
+              <Button onClick={salvarVariante} disabled={savingVariante}>
+                {savingVariante ? 'Salvando…' : editandoVariante ? 'Atualizar' : 'Adicionar'}
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button variant="secondary" onClick={() => setVariantesModalOpen(false)}>Fechar</Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* ── Modal importação em lote ───────────────────────────────────────── */}
       <Modal
         open={importModalOpen}
@@ -394,13 +753,13 @@ function ModelosContent() {
         <div className="space-y-4">
           <p className="text-sm text-secondary">
             Cole os dados no formato:<br />
-            <span className="font-mono text-xs">CODIGO;Nome;Cabedal;Sola;Palmilha;Observacoes</span><br />
-            Cabedal, Sola, Palmilha e Observacoes são opcionais. Separador: <span className="font-mono">;</span> ou <span className="font-mono">,</span>
+            <span className="font-mono text-xs">CODIGO;Nome;Cabedal;Sola;Palmilha;Linha;Observacoes</span><br />
+            Cabedal, Sola, Palmilha, Linha e Observacoes são opcionais. Separador: <span className="font-mono">;</span> ou <span className="font-mono">,</span>
           </p>
           <textarea
             className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             rows={8}
-            placeholder={'0101;Sandália Tira Fina;Napa;Sola TR Fina;EVA 3mm\n0102;Scarpin Básico;;Sola Couro;EVA 5mm'}
+            placeholder={'607;Modelo 607;SANTORINE;100;100;607-611\n608;Modelo 608;SANTORINE;100;100;607-611'}
             value={csvTexto}
             onChange={(e) => { setCsvTexto(e.target.value); setPreview([]) }}
             aria-label="Dados dos modelos"

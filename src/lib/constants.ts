@@ -46,6 +46,7 @@ export const API_ROUTES = {
   EQUIVALENCIAS: '/api/configuracoes/equivalencias',
   CAMPOS_EXTRAS: '/api/configuracoes/campos-extras',
   MODELOS: '/api/configuracoes/modelos',
+  MATERIAIS: '/api/configuracoes/materiais',
   BLING_PRODUTOS: '/api/bling/produtos',
   PRODUTOS_IMPORTAR: '/api/produtos/importar',
   PRODUTOS: '/api/produtos',

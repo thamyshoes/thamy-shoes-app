@@ -35,6 +35,24 @@ function getEspecificacao(grade: GradeRow, setor: Setor): string | undefined {
   return undefined
 }
 
+/** Retorna info extra por cor para exibir na ficha de produção */
+function getInfoExtra(grade: GradeRow, setor: Setor): string | undefined {
+  if (setor === Setor.SOLA) {
+    const partes: string[] = []
+    if (grade.corSola) partes.push(`Cor: ${grade.corSola}`)
+    if (grade.modeloTemFacheta && grade.corFacheta) partes.push(`Facheta: ${grade.corFacheta}`)
+    return partes.length > 0 ? partes.join(' | ') : undefined
+  }
+  if (setor === Setor.PALMILHA) {
+    const partes: string[] = []
+    if (grade.corForroPalmilha) partes.push(`Forro: ${grade.corForroPalmilha}`)
+    if (grade.descricaoPalmilha) partes.push(grade.descricaoPalmilha)
+    if (grade.codigoFichaPalmilha) partes.push(`Ficha: ${grade.codigoFichaPalmilha}`)
+    return partes.length > 0 ? partes.join(' | ') : undefined
+  }
+  return undefined
+}
+
 function getSortedTamanhos(grades: GradeRow[]): string[] {
   const all = new Set<string>()
   grades.forEach((g) => Object.keys(g.tamanhos).forEach((t) => all.add(t)))
@@ -60,6 +78,7 @@ export function FichaTemplate({
 
   const tamanhoWidth = tamanhos.length > 0 ? Math.max(25, Math.floor(160 / tamanhos.length)) : 25
   const hasEspec = grades.some((g) => !!getEspecificacao(g, setor))
+  const hasExtra = grades.some((g) => !!getInfoExtra(g, setor))
 
   return (
     <Document>
@@ -99,6 +118,9 @@ export function FichaTemplate({
               <Text style={[pdfStyles.tableHeaderCell, { width: 90 }]}>{SETOR_LABEL[setor]}</Text>
             )}
             <Text style={[pdfStyles.tableHeaderCell, { width: 80 }]}>Cor</Text>
+            {hasExtra && (
+              <Text style={[pdfStyles.tableHeaderCell, { width: 100 }]}>Detalhes</Text>
+            )}
             {tamanhos.map((t) => (
               <Text key={t} style={[pdfStyles.tableHeaderCell, { width: tamanhoWidth }]}>
                 {t}
@@ -110,6 +132,7 @@ export function FichaTemplate({
           {/* Table rows */}
           {grades.map((grade, idx) => {
             const espec = getEspecificacao(grade, setor)
+            const extra = getInfoExtra(grade, setor)
             return (
               <View key={idx} style={idx % 2 === 0 ? pdfStyles.tableRow : pdfStyles.tableRowAlt}>
                 <View style={{ width: 110, paddingHorizontal: 4, justifyContent: 'center' }}>
@@ -121,6 +144,9 @@ export function FichaTemplate({
                   <Text style={[pdfStyles.cellCor, { width: 90 }]}>{espec ?? '—'}</Text>
                 )}
                 <Text style={pdfStyles.cellCor}>{grade.corDescricao || grade.cor}</Text>
+                {hasExtra && (
+                  <Text style={[pdfStyles.cellCor, { width: 100, fontSize: 6 }]}>{extra ?? '—'}</Text>
+                )}
                 {tamanhos.map((t) => (
                   <Text key={t} style={[pdfStyles.cellTamanho, { width: tamanhoWidth }]}>
                     {grade.tamanhos[t] ?? '—'}
@@ -133,7 +159,12 @@ export function FichaTemplate({
 
           {/* Total row */}
           <View style={pdfStyles.totalRow}>
-            <Text style={{ width: hasEspec ? 280 : 190, fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#ffffff' }}>TOTAL GERAL</Text>
+            <Text style={{
+              width: (hasEspec ? 280 : 190) + (hasExtra ? 100 : 0),
+              fontSize: 9,
+              fontFamily: 'Helvetica-Bold',
+              color: '#ffffff',
+            }}>TOTAL GERAL</Text>
             {tamanhos.map((t) => {
               const soma = grades.reduce((acc, g) => acc + (g.tamanhos[t] ?? 0), 0)
               return (

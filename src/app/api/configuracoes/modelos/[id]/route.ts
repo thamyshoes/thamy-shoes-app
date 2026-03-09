@@ -9,6 +9,9 @@ const updateSchema = z.object({
   cabedal: z.string().nullable().optional(),
   sola: z.string().nullable().optional(),
   palmilha: z.string().nullable().optional(),
+  temFacheta: z.boolean().optional(),
+  materialBasePalmilha: z.string().nullable().optional(),
+  linha: z.string().nullable().optional(),
   observacoes: z.string().nullable().optional(),
   ativo: z.boolean().optional(),
 })
@@ -34,7 +37,11 @@ export async function PATCH(
   }
 
   try {
-    const modelo = await prisma.modelo.update({ where: { id }, data: parsed.data })
+    const modelo = await prisma.modelo.update({
+      where: { id },
+      data: parsed.data,
+      include: { variantesCor: { orderBy: { corCodigo: 'asc' } } },
+    })
     return NextResponse.json(modelo)
   } catch {
     return NextResponse.json({ error: 'Modelo não encontrado' }, { status: 404 })

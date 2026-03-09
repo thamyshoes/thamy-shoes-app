@@ -53,6 +53,12 @@ enum TipoCampo {
   SELECAO
 }
 
+enum CategoriaMaterial {
+  CABEDAL
+  SOLA
+  PALMILHA
+}
+
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model User {
@@ -167,20 +173,58 @@ model Produto {
   @@map("produtos")
 }
 
+model Material {
+  id        String             @id @default(uuid())
+  nome      String
+  categoria CategoriaMaterial
+  ativo     Boolean            @default(true)
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+
+  @@unique([nome, categoria])
+  @@index([categoria])
+  @@map("materiais")
+}
+
 model Modelo {
-  id          String   @id @default(uuid())
-  codigo      String   @unique
-  nome        String
-  cabedal     String?
-  sola        String?
-  palmilha    String?
-  observacoes String?
-  ativo       Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                   String   @id @default(uuid())
+  codigo               String   @unique
+  nome                 String
+  cabedal              String?
+  sola                 String?
+  palmilha             String?
+  temFacheta           Boolean  @default(false) @map("tem_facheta")
+  materialBasePalmilha String?  @map("material_base_palmilha")
+  linha                String?
+  observacoes          String?
+  ativo                Boolean  @default(true)
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  variantesCor ModeloVarianteCor[]
 
   @@index([codigo])
+  @@index([linha])
   @@map("modelos")
+}
+
+model ModeloVarianteCor {
+  id                  String   @id @default(uuid())
+  modeloId            String   @map("modelo_id")
+  corCodigo           String   @map("cor_codigo")
+  cabedalOverride     String?  @map("cabedal_override")
+  corSola             String?  @map("cor_sola")
+  corFacheta          String?  @map("cor_facheta")
+  corForroPalmilha    String?  @map("cor_forro_palmilha")
+  codigoFichaPalmilha String?  @map("codigo_ficha_palmilha")
+  descricaoPalmilha   String?  @map("descricao_palmilha")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  modelo Modelo @relation(fields: [modeloId], references: [id], onDelete: Cascade)
+
+  @@unique([modeloId, corCodigo])
+  @@index([modeloId])
+  @@map("modelo_variantes_cor")
 }
 
 model MapeamentoCor {

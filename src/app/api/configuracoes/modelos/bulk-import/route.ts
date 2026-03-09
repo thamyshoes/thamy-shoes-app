@@ -5,8 +5,10 @@ import { requireAdmin } from '@/lib/api-guard'
 interface LinhaParseada {
   codigo: string
   nome: string
+  cabedal: string | null
   sola: string | null
   palmilha: string | null
+  linha: string | null
   observacoes: string | null
 }
 
@@ -25,9 +27,11 @@ function parseLinha(linha: string, idx: number): { data: LinhaParseada } | { err
     data: {
       codigo,
       nome,
-      sola: partes[2] || null,
-      palmilha: partes[3] || null,
-      observacoes: partes[4] || null,
+      cabedal: partes[2] || null,
+      sola: partes[3] || null,
+      palmilha: partes[4] || null,
+      linha: partes[5] || null,
+      observacoes: partes[6] || null,
     },
   }
 }
@@ -78,7 +82,14 @@ export async function POST(request: NextRequest) {
     if (existing) {
       await prisma.modelo.update({
         where: { codigo: linha.codigo },
-        data: { nome: linha.nome, sola: linha.sola, palmilha: linha.palmilha, observacoes: linha.observacoes },
+        data: {
+          nome: linha.nome,
+          cabedal: linha.cabedal,
+          sola: linha.sola,
+          palmilha: linha.palmilha,
+          linha: linha.linha,
+          observacoes: linha.observacoes,
+        },
       })
       atualizados++
     } else {
