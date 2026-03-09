@@ -1,5 +1,5 @@
 import React from 'react'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { Document, Page, View, Text, renderToBuffer } from '@react-pdf/renderer'
 import { prisma } from '@/lib/prisma'
 import { createServerSupabaseClient, FICHAS_BUCKET } from '@/lib/supabase-server'
 import { montarGrades, montarGradesConsolidadas } from '@/lib/bling/sku-parser'
@@ -221,6 +221,27 @@ export class PdfGeneratorService {
     camposExtras: { nome: string; tipo: string; obrigatorio: boolean }[]
     geradoEm: Date
   }): Promise<Buffer> {
+    // Teste mínimo: verificar se react-pdf consegue renderizar algo básico
+    try {
+      console.log('[renderPdf] Testando render mínimo...')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const minDoc = React.createElement(Document, null,
+        React.createElement(Page, null,
+          React.createElement(View, null,
+            React.createElement(Text, null, 'Teste')
+          )
+        )
+      ) as any
+      await renderToBuffer(minDoc)
+      console.log('[renderPdf] Teste mínimo OK')
+    } catch (testErr) {
+      console.error('[renderPdf] Teste mínimo FALHOU:', testErr instanceof Error ? testErr.message : testErr)
+      console.error('[renderPdf] Teste mínimo stack:', testErr instanceof Error ? testErr.stack : '')
+      throw new Error(`react-pdf não funciona neste ambiente: ${testErr instanceof Error ? testErr.message : 'erro desconhecido'}`)
+    }
+
+    // Render real
+    console.log('[renderPdf] Renderizando template real...')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const element = React.createElement(FichaTemplate, props) as any
     return renderToBuffer(element)
