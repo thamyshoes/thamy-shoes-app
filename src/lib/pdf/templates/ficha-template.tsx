@@ -101,7 +101,7 @@ export function FichaTemplate({
             <Text style={pdfStyles.metaLabel}>Data Emissão:</Text>
             <Text style={pdfStyles.metaValue}>{formatDate(dataEmissao)}</Text>
             <Text style={pdfStyles.metaLabel}>Total de Pares:</Text>
-            <Text style={pdfStyles.metaValue}>{totalPares}</Text>
+            <Text style={pdfStyles.metaValue}>{String(totalPares)}</Text>
           </View>
           <View style={pdfStyles.metaRow}>
             <Text style={pdfStyles.metaLabel}>Setor:</Text>
@@ -149,10 +149,10 @@ export function FichaTemplate({
                 )}
                 {tamanhos.map((t) => (
                   <Text key={t} style={[pdfStyles.cellTamanho, { width: tamanhoWidth }]}>
-                    {grade.tamanhos[t] ?? '—'}
+                    {grade.tamanhos[t] != null ? String(grade.tamanhos[t]) : '—'}
                   </Text>
                 ))}
-                <Text style={pdfStyles.cellTotal}>{grade.totalPares}</Text>
+                <Text style={pdfStyles.cellTotal}>{String(grade.totalPares)}</Text>
               </View>
             )
           })}
@@ -169,11 +169,11 @@ export function FichaTemplate({
               const soma = grades.reduce((acc, g) => acc + (g.tamanhos[t] ?? 0), 0)
               return (
                 <Text key={t} style={[pdfStyles.cellTamanho, { width: tamanhoWidth, color: '#ffffff', fontFamily: 'Helvetica-Bold' }]}>
-                  {soma > 0 ? soma : '—'}
+                  {soma > 0 ? String(soma) : '—'}
                 </Text>
               )
             })}
-            <Text style={pdfStyles.totalValue}>{totalPares}</Text>
+            <Text style={pdfStyles.totalValue}>{String(totalPares)}</Text>
           </View>
         </View>
 
@@ -208,10 +208,9 @@ export function FichaTemplate({
           <Text style={pdfStyles.footerText}>
             Gerado em {formatDate(geradoEm)} — Thamy Shoes
           </Text>
-          <Text
-            style={pdfStyles.footerText}
-            render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`}
-          />
+          <Text style={pdfStyles.footerText}>
+            {`Página 1 de 1`}
+          </Text>
         </View>
       </Page>
     </Document>
