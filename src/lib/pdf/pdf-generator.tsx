@@ -232,7 +232,7 @@ export class PdfGeneratorService {
           )
         )
       )
-      console.log('[renderPdf] testEl type:', typeof testEl, '| $$typeof:', String(testEl?.$$typeof))
+      console.log('[renderPdf] testEl type:', typeof testEl, '| $$typeof:', String((testEl as any)['$$typeof']))
       console.log('[renderPdf] testEl.type:', typeof testEl?.type, '| value:', String(testEl?.type))
       await renderToBuffer(testEl as any)
       console.log('[renderPdf] Teste mínimo OK!')
