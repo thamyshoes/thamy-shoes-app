@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, WifiOff, Search } from 'lucide-react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
+import { ChevronLeft, ChevronRight, WifiOff, Search, ArrowUpDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type Column } from '@/components/ui/data-table'
@@ -34,6 +34,8 @@ interface Props {
   onImportado: (pedidoId: string) => void
   onNavegar?: (href: string) => void
 }
+
+type Ordenacao = 'recente' | 'antigo'
 
 function buildColumns(
   onImportar: (pedido: PedidoBling) => void,
@@ -81,6 +83,9 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
   const [error, setError] = useState<string | null>(null)
   const [importingId, setImportingId] = useState<number | null>(null)
 
+  const [busca, setBusca] = useState('')
+  const [ordenacao, setOrdenacao] = useState<Ordenacao>('recente')
+
   const [conflito, setConflito] = useState<DuplicataInfo | null>(null)
   const [pedidoConflito, setPedidoConflito] = useState<PedidoBling | null>(null)
   const [confirmandoConflito, setConfirmandoConflito] = useState(false)
@@ -120,10 +125,35 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
       setPagina(1)
       setPedidos([])
       setError(null)
+      setBusca('')
+      setOrdenacao('recente')
       setConflito(null)
       setPedidoConflito(null)
     }
   }, [open])
+
+  // Filtrar e ordenar pedidos localmente
+  const pedidosFiltrados = useMemo(() => {
+    let resultado = [...pedidos]
+
+    // Filtro por busca (número do pedido)
+    if (busca.trim()) {
+      const termo = busca.trim().toLowerCase()
+      resultado = resultado.filter((p) => p.numero.toLowerCase().includes(termo))
+    }
+
+    // Ordenação
+    resultado.sort((a, b) => {
+      const dateCompare = a.dataEmissao.localeCompare(b.dataEmissao)
+      const numCompare = Number(a.idBling) - Number(b.idBling)
+      if (ordenacao === 'recente') {
+        return dateCompare !== 0 ? -dateCompare : -numCompare
+      }
+      return dateCompare !== 0 ? dateCompare : numCompare
+    })
+
+    return resultado
+  }, [pedidos, busca, ordenacao])
 
   function handleDiasChange(novosDias: number) {
     setDias(novosDias)
@@ -251,21 +281,45 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-2">
-                <label htmlFor="dias-select-modal" className="text-sm text-secondary">
-                  Pedidos dos últimos:
-                </label>
-                <select
-                  id="dias-select-modal"
-                  value={dias}
-                  onChange={(e) => handleDiasChange(Number(e.target.value))}
-                  className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              {/* Filtros: dias + busca + ordenação */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="dias-select-modal" className="text-sm text-secondary whitespace-nowrap">
+                    Últimos:
+                  </label>
+                  <select
+                    id="dias-select-modal"
+                    value={dias}
+                    onChange={(e) => handleDiasChange(Number(e.target.value))}
+                    className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value={3}>3 dias</option>
+                    <option value={7}>7 dias</option>
+                    <option value={15}>15 dias</option>
+                    <option value={30}>30 dias</option>
+                  </select>
+                </div>
+
+                <div className="relative flex-1 min-w-[140px]">
+                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary" />
+                  <input
+                    type="search"
+                    placeholder="Buscar nº pedido"
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    className="w-full rounded-md border border-border bg-white pl-8 pr-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    aria-label="Buscar por número do pedido"
+                  />
+                </div>
+
+                <button
+                  onClick={() => setOrdenacao((o) => o === 'recente' ? 'antigo' : 'recente')}
+                  className="flex items-center gap-1.5 rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground hover:bg-muted transition-colors"
+                  title={ordenacao === 'recente' ? 'Mais recente primeiro' : 'Mais antigo primeiro'}
                 >
-                  <option value={3}>3 dias</option>
-                  <option value={7}>7 dias</option>
-                  <option value={15}>15 dias</option>
-                  <option value={30}>30 dias</option>
-                </select>
+                  <ArrowUpDown className="h-3.5 w-3.5 text-secondary" />
+                  {ordenacao === 'recente' ? 'Recente' : 'Antigo'}
+                </button>
               </div>
 
               {error ? (
@@ -282,10 +336,14 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
                 </div>
               ) : (
                 <DataTable
-                  data={pedidos}
+                  data={pedidosFiltrados}
                   columns={columns}
                   loading={loading}
-                  emptyMessage={`Nenhum pedido encontrado nos últimos ${dias} dias`}
+                  emptyMessage={
+                    busca.trim()
+                      ? `Nenhum pedido "${busca}" encontrado`
+                      : `Nenhum pedido encontrado nos últimos ${dias} dias`
+                  }
                 />
               )}
             </>
