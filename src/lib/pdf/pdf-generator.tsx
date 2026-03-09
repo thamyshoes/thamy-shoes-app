@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { createServerSupabaseClient, FICHAS_BUCKET } from '@/lib/supabase-server'
 import { montarGrades, montarGradesConsolidadas } from '@/lib/bling/sku-parser'
 import type { FichaTemplateProps } from '@/lib/pdf/templates/ficha-template'
-import type { GradeRow } from '@/types'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Setor, StatusPedido, StatusItem } from '@/types'
 
 export interface FichaGerada {
@@ -225,7 +225,6 @@ export class PdfGeneratorService {
     // Teste mínimo com primitivos do mesmo import
     const React = (await import('react')).default
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const testEl = React.createElement(Document as any, null,
         React.createElement(Page as any, null,
           React.createElement(View as any, null,
@@ -235,7 +234,6 @@ export class PdfGeneratorService {
       )
       console.log('[renderPdf] testEl type:', typeof testEl, '| $$typeof:', String(testEl?.$$typeof))
       console.log('[renderPdf] testEl.type:', typeof testEl?.type, '| value:', String(testEl?.type))
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await renderToBuffer(testEl as any)
       console.log('[renderPdf] Teste mínimo OK!')
     } catch (err) {
@@ -243,16 +241,14 @@ export class PdfGeneratorService {
       // Tentar com strings diretas como primitivos
       try {
         console.log('[renderPdf] Tentando com strings diretas...')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const testEl2 = React.createElement('DOCUMENT' as any, null,
+          const testEl2 = React.createElement('DOCUMENT' as any, null,
           React.createElement('PAGE' as any, null,
             React.createElement('VIEW' as any, null,
               React.createElement('TEXT' as any, null, 'Teste')
             )
           )
         )
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await renderToBuffer(testEl2 as any)
+          await renderToBuffer(testEl2 as any)
         console.log('[renderPdf] Strings diretas OK!')
       } catch (err2) {
         console.error('[renderPdf] Strings diretas FALHOU:', err2 instanceof Error ? err2.message : err2)
@@ -261,7 +257,6 @@ export class PdfGeneratorService {
     }
 
     const { FichaTemplate } = await import('@/lib/pdf/templates/ficha-template')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const element = React.createElement(FichaTemplate, props) as any
     return renderToBuffer(element)
   }
