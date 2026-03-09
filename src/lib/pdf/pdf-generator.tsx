@@ -18,10 +18,13 @@ export class PdfGeneratorService {
   // ── Gerar fichas individuais ────────────────────────────────────────────────
 
   async gerarFichas(pedidoId: string): Promise<FichaGerada[]> {
+    console.log('[gerarFichas] Iniciando para pedidoId:', pedidoId)
+
     const pedido = await prisma.pedidoCompra.findUnique({
       where: { id: pedidoId },
       include: { itens: true },
     })
+    console.log('[gerarFichas] Pedido encontrado:', !!pedido, 'status:', pedido?.status, 'itens:', pedido?.itens?.length)
 
     if (!pedido) throw new Error('Pedido não encontrado')
     if (pedido.status === StatusPedido.FICHAS_GERADAS) {
@@ -29,6 +32,7 @@ export class PdfGeneratorService {
     }
 
     const itensPendentes = pedido.itens.filter((i) => i.status !== StatusItem.RESOLVIDO)
+    console.log('[gerarFichas] Itens pendentes:', itensPendentes.length, 'de', pedido.itens.length)
     if (itensPendentes.length > 0) {
       throw new Error('Existem itens pendentes. Resolva todos os itens antes de gerar fichas.')
     }
@@ -37,8 +41,11 @@ export class PdfGeneratorService {
       throw new Error('O pedido não possui itens')
     }
 
+    console.log('[gerarFichas] Montando grades...')
     const grades = await montarGrades(pedidoId)
+    console.log('[gerarFichas] Grades montadas:', grades.length)
     const totalPares = grades.reduce((acc, g) => acc + g.totalPares, 0)
+    console.log('[gerarFichas] Total pares:', totalPares)
 
     const fichasGeradas: FichaGerada[] = []
     const setores = [Setor.CABEDAL, Setor.PALMILHA, Setor.SOLA]
@@ -46,26 +53,38 @@ export class PdfGeneratorService {
     // Render and upload all 3 PDFs in parallel (Promise.all)
     const pdfUploads = await Promise.all(
       setores.map(async (setor) => {
+        console.log(`[gerarFichas] Renderizando PDF setor: ${setor}`)
         const gradesSetor = grades
         const camposExtras = await this.buscarCamposExtras(setor)
+        console.log(`[gerarFichas] Campos extras ${setor}:`, camposExtras.length)
 
-        const pdfBuffer = await this.renderPdf({
-          numeroPedido: pedido.numero,
-          dataEmissao: pedido.dataEmissao,
-          fornecedor: pedido.fornecedorNome,
-          setor,
-          grades: gradesSetor,
-          totalPares,
-          camposExtras,
-          geradoEm: new Date(),
-        })
+        try {
+          const pdfBuffer = await this.renderPdf({
+            numeroPedido: pedido.numero,
+            dataEmissao: pedido.dataEmissao,
+            fornecedor: pedido.fornecedorNome,
+            setor,
+            grades: gradesSetor,
+            totalPares,
+            camposExtras,
+            geradoEm: new Date(),
+          })
+          console.log(`[gerarFichas] PDF ${setor} renderizado, tamanho: ${pdfBuffer.length}`)
 
-        const storagePath = `pedidos/${pedidoId}/${setor.toLowerCase()}.pdf`
-        const pdfUrl = await this.uploadToStorage(pdfBuffer, storagePath)
+          const storagePath = `pedidos/${pedidoId}/${setor.toLowerCase()}.pdf`
+          const pdfUrl = await this.uploadToStorage(pdfBuffer, storagePath)
+          console.log(`[gerarFichas] PDF ${setor} upload OK: ${pdfUrl}`)
 
-        return { setor, pdfUrl, gradesSetor }
+          return { setor, pdfUrl, gradesSetor }
+        } catch (renderErr) {
+          console.error(`[gerarFichas] ERRO renderizando/upload ${setor}:`, renderErr instanceof Error ? renderErr.message : renderErr)
+          console.error(`[gerarFichas] Stack ${setor}:`, renderErr instanceof Error ? renderErr.stack : '')
+          throw renderErr
+        }
       }),
     )
+
+    console.log('[gerarFichas] Todos PDFs prontos, persistindo no banco...')
 
     // Persist all records in a single transaction (rollback on failure)
     await prisma.$transaction(async (tx) => {
@@ -89,6 +108,7 @@ export class PdfGeneratorService {
       })
     })
 
+    console.log('[gerarFichas] Transação OK, fichas criadas:', fichasGeradas.length)
     return fichasGeradas
   }
 

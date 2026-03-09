@@ -189,6 +189,7 @@ export async function montarGradesConsolidadas(
   pedidoIds: string[],
   options?: { agruparPorFaixa?: boolean },
 ): Promise<GradeRow[]> {
+  console.log('[montarGradesConsolidadas] pedidoIds:', pedidoIds)
   if (pedidoIds.length === 0) return []
 
   const itens = await prisma.itemPedido.findMany({
@@ -200,14 +201,17 @@ export async function montarGradesConsolidadas(
       tamanho: { not: null },
     },
   })
+  console.log('[montarGradesConsolidadas] Itens resolvidos encontrados:', itens.length)
 
   if (itens.length === 0) return []
 
   const modelos = [...new Set(itens.map((i) => i.modelo!).filter(Boolean))]
+  console.log('[montarGradesConsolidadas] Modelos únicos:', modelos)
   const gradesModelo = await prisma.gradeModelo.findMany({
     where: { modelo: { in: modelos } },
     include: { grade: true },
   })
+  console.log('[montarGradesConsolidadas] Grades encontradas:', gradesModelo.length)
   const modeloParaGrade = new Map(
     gradesModelo.map((gm) => [gm.modelo, gm.grade]),
   )
@@ -257,6 +261,7 @@ export async function montarGradesConsolidadas(
 
   if (modeloCodes.length > 0) {
     try {
+      console.log('[montarGradesConsolidadas] Buscando modelos com campos novos...')
       modelosCadastrados = await prisma.modelo.findMany({
         where: { codigo: { in: modeloCodes } },
         select: {
@@ -270,12 +275,15 @@ export async function montarGradesConsolidadas(
           variantesCor: true,
         },
       })
-    } catch {
+      console.log('[montarGradesConsolidadas] Modelos encontrados (com variantes):', modelosCadastrados.length)
+    } catch (queryErr) {
       // Fallback: migration não aplicada ainda, buscar sem campos novos
+      console.warn('[montarGradesConsolidadas] Fallback sem campos novos. Erro:', queryErr instanceof Error ? queryErr.message : queryErr)
       modelosCadastrados = await prisma.modelo.findMany({
         where: { codigo: { in: modeloCodes } },
         select: { codigo: true, nome: true, cabedal: true, sola: true, palmilha: true },
       })
+      console.log('[montarGradesConsolidadas] Modelos encontrados (fallback):', modelosCadastrados.length)
     }
   }
   const modeloMapa = new Map(modelosCadastrados.map((m) => [m.codigo, m]))
