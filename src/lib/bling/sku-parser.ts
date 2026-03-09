@@ -315,7 +315,7 @@ export async function montarGradesConsolidadas(
 
     rows.push({
       modelo: grupo.faixa ? `${grupo.modelo} (${grupo.faixa})` : grupo.modelo,
-      modeloNome: modeloInfo?.nome,
+      modeloNome: modeloInfo?.nome ?? undefined,
       // Cabedal: se há override por cor, usa o override; senão usa o padrão
       modeloCabedal: variante?.cabedalOverride ?? modeloInfo?.cabedal ?? undefined,
       modeloSola: modeloInfo?.sola ?? undefined,
