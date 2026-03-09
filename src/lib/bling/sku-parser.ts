@@ -244,8 +244,20 @@ export async function montarGradesConsolidadas(
 
   // Buscar dados dos modelos cadastrados (incluindo variantes por cor)
   const modeloCodes = [...new Set([...grupos.values()].map((g) => g.modelo))]
-  const modelosCadastrados = modeloCodes.length > 0
-    ? await prisma.modelo.findMany({
+  let modelosCadastrados: {
+    codigo: string
+    nome: string | null
+    cabedal: string | null
+    sola: string | null
+    palmilha: string | null
+    temFacheta?: boolean
+    materialBasePalmilha?: string | null
+    variantesCor?: { corCodigo: string; cabedalOverride: string | null; corSola: string | null; corFacheta: string | null; corForroPalmilha: string | null; codigoFichaPalmilha: string | null; descricaoPalmilha: string | null }[]
+  }[] = []
+
+  if (modeloCodes.length > 0) {
+    try {
+      modelosCadastrados = await prisma.modelo.findMany({
         where: { codigo: { in: modeloCodes } },
         select: {
           codigo: true,
@@ -258,7 +270,14 @@ export async function montarGradesConsolidadas(
           variantesCor: true,
         },
       })
-    : []
+    } catch {
+      // Fallback: migration não aplicada ainda, buscar sem campos novos
+      modelosCadastrados = await prisma.modelo.findMany({
+        where: { codigo: { in: modeloCodes } },
+        select: { codigo: true, nome: true, cabedal: true, sola: true, palmilha: true },
+      })
+    }
+  }
   const modeloMapa = new Map(modelosCadastrados.map((m) => [m.codigo, m]))
 
   const rows: GradeRow[] = []
@@ -283,8 +302,8 @@ export async function montarGradesConsolidadas(
 
     const modeloInfo = modeloMapa.get(grupo.modelo)
 
-    // Buscar variante específica para esta cor
-    const variante = modeloInfo?.variantesCor.find((v) => v.corCodigo === grupo.cor)
+    // Buscar variante específica para esta cor (pode não existir se migration não aplicada)
+    const variante = modeloInfo?.variantesCor?.find((v) => v.corCodigo === grupo.cor)
 
     rows.push({
       modelo: grupo.faixa ? `${grupo.modelo} (${grupo.faixa})` : grupo.modelo,
