@@ -210,55 +210,45 @@ export class PdfGeneratorService {
   // ── Privados ────────────────────────────────────────────────────────────────
 
   private async renderPdf(props: FichaTemplateProps): Promise<Buffer> {
-    // Dynamic import para diagnóstico e para garantir mesma instância React
-    const reactPdf = await import('@react-pdf/renderer')
-    const { renderToBuffer, Document, Page, View, Text } = reactPdf
-
-    // Debug: verificar o que os primitivos realmente são
-    console.log('[renderPdf] Document type:', typeof Document, '| value:', String(Document))
-    console.log('[renderPdf] Page type:', typeof Page, '| value:', String(Page))
-    console.log('[renderPdf] View type:', typeof View, '| value:', String(View))
-    console.log('[renderPdf] Text type:', typeof Text, '| value:', String(Text))
-    console.log('[renderPdf] React.version:', (await import('react')).version)
-    console.log('[renderPdf] renderToBuffer type:', typeof renderToBuffer)
-
-    // Teste mínimo com primitivos do mesmo import
+    // Next.js 15 usa React 19 canary ($$typeof = Symbol(react.transitional.element))
+    // mas @react-pdf/renderer v3.4 espera React 18 ($$typeof = Symbol(react.element)).
+    // Solução: criar elementos com $$typeof do React 18 e passar ao renderToBuffer.
+    const { renderToBuffer } = await import('@react-pdf/renderer')
+    const { FichaTemplate } = await import('@/lib/pdf/templates/ficha-template')
     const React = (await import('react')).default
-    try {
-      const testEl = React.createElement(Document as any, null,
-        React.createElement(Page as any, null,
-          React.createElement(View as any, null,
-            React.createElement(Text as any, null, 'Teste')
-          )
-        )
-      )
-      console.log('[renderPdf] testEl type:', typeof testEl, '| $$typeof:', String((testEl as any)['$$typeof']))
-      console.log('[renderPdf] testEl.type:', typeof testEl?.type, '| value:', String(testEl?.type))
-      await renderToBuffer(testEl as any)
-      console.log('[renderPdf] Teste mínimo OK!')
-    } catch (err) {
-      console.error('[renderPdf] Teste mínimo FALHOU:', err instanceof Error ? err.message : err)
-      // Tentar com strings diretas como primitivos
-      try {
-        console.log('[renderPdf] Tentando com strings diretas...')
-          const testEl2 = React.createElement('DOCUMENT' as any, null,
-          React.createElement('PAGE' as any, null,
-            React.createElement('VIEW' as any, null,
-              React.createElement('TEXT' as any, null, 'Teste')
-            )
-          )
-        )
-          await renderToBuffer(testEl2 as any)
-        console.log('[renderPdf] Strings diretas OK!')
-      } catch (err2) {
-        console.error('[renderPdf] Strings diretas FALHOU:', err2 instanceof Error ? err2.message : err2)
+
+    const element = React.createElement(FichaTemplate, props)
+    const patched = this.patchReactElements(element)
+    return renderToBuffer(patched as any)
+  }
+
+  /** Corrige $$typeof de react.transitional.element (React 19) para react.element (React 18) */
+  private patchReactElements(node: any): any {
+    if (node == null || typeof node !== 'object') return node
+    if (Array.isArray(node)) return node.map((n) => this.patchReactElements(n))
+
+    // Verificar se é um React element (tem $$typeof)
+    const typeofSymbol = node['$$typeof']
+    if (!typeofSymbol) return node
+
+    // Trocar Symbol(react.transitional.element) para Symbol(react.element)
+    const REACT_ELEMENT_TYPE = Symbol.for('react.element')
+    const patched = { ...node, '$$typeof': REACT_ELEMENT_TYPE }
+
+    // Recursivamente corrigir children
+    if (patched.props?.children != null) {
+      const children = patched.props.children
+      patched.props = {
+        ...patched.props,
+        children: Array.isArray(children)
+          ? children.map((c: any) => this.patchReactElements(c))
+          : typeof children === 'object' && children?.['$$typeof']
+            ? this.patchReactElements(children)
+            : children,
       }
-      throw err
     }
 
-    const { FichaTemplate } = await import('@/lib/pdf/templates/ficha-template')
-    const element = React.createElement(FichaTemplate, props) as any
-    return renderToBuffer(element)
+    return patched
   }
 
   private async uploadToStorage(buffer: Buffer, storagePath: string): Promise<string> {
