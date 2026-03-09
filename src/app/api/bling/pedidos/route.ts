@@ -47,6 +47,13 @@ export async function GET(req: NextRequest) {
       }
     })
 
+    // Ordenar do mais recente para o mais antigo
+    data.sort((a, b) => {
+      const dateCompare = b.dataEmissao.localeCompare(a.dataEmissao)
+      if (dateCompare !== 0) return dateCompare
+      return Number(b.idBling) - Number(a.idBling)
+    })
+
     return NextResponse.json({ data, pagina, hasMore })
   } catch (err) {
     if (err instanceof CircuitOpenError) {
