@@ -212,43 +212,20 @@ export class PdfGeneratorService {
   private async renderPdf(props: FichaTemplateProps): Promise<Buffer> {
     // Next.js 15 usa React 19 canary ($$typeof = Symbol(react.transitional.element))
     // mas @react-pdf/renderer v3.4 espera React 18 ($$typeof = Symbol(react.element)).
-    // Solução: criar elementos com $$typeof do React 18 e passar ao renderToBuffer.
+    // O template usa @jsx h pragma que cria elementos com Symbol(react.element).
+    // Aqui criamos o root element também com o $$typeof correto.
     const { renderToBuffer } = await import('@react-pdf/renderer')
     const { FichaTemplate } = await import('@/lib/pdf/templates/ficha-template')
-    const React = (await import('react')).default
 
-    const element = React.createElement(FichaTemplate, props)
-    const patched = this.patchReactElements(element)
-    return renderToBuffer(patched as any)
-  }
-
-  /** Corrige $$typeof de react.transitional.element (React 19) para react.element (React 18) */
-  private patchReactElements(node: any): any {
-    if (node == null || typeof node !== 'object') return node
-    if (Array.isArray(node)) return node.map((n) => this.patchReactElements(n))
-
-    // Verificar se é um React element (tem $$typeof)
-    const typeofSymbol = node['$$typeof']
-    if (!typeofSymbol) return node
-
-    // Trocar Symbol(react.transitional.element) para Symbol(react.element)
     const REACT_ELEMENT_TYPE = Symbol.for('react.element')
-    const patched = { ...node, '$$typeof': REACT_ELEMENT_TYPE }
-
-    // Recursivamente corrigir children
-    if (patched.props?.children != null) {
-      const children = patched.props.children
-      patched.props = {
-        ...patched.props,
-        children: Array.isArray(children)
-          ? children.map((c: any) => this.patchReactElements(c))
-          : typeof children === 'object' && children?.['$$typeof']
-            ? this.patchReactElements(children)
-            : children,
-      }
+    const element = {
+      '$$typeof': REACT_ELEMENT_TYPE,
+      type: FichaTemplate,
+      key: null,
+      ref: null,
+      props,
     }
-
-    return patched
+    return renderToBuffer(element as any)
   }
 
   private async uploadToStorage(buffer: Buffer, storagePath: string): Promise<string> {

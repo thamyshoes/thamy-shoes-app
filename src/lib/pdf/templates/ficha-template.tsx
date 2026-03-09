@@ -1,9 +1,35 @@
-import React from 'react'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * @jsxRuntime classic
+ * @jsx h
+ */
 import { Document, Page, View, Text } from '@react-pdf/renderer'
 import { pdfStyles } from './shared-styles'
 import type { GradeRow } from '@/types'
 import { Setor } from '@/types'
 import { formatDate } from '@/lib/format'
+
+/**
+ * Custom JSX factory que cria elementos com Symbol(react.element) (React 18).
+ * Necessário porque Next.js 15 usa React 19 canary (Symbol(react.transitional.element))
+ * mas @react-pdf/renderer v3.4 espera React 18 elements.
+ */
+const REACT_ELEMENT_TYPE = Symbol.for('react.element')
+function h(type: any, props: any, ...children: any[]): any {
+  const { key, ref, ...rest } = props || {}
+  const flatChildren = children.length === 0
+    ? undefined
+    : children.length === 1
+      ? children[0]
+      : children
+  return {
+    '$$typeof': REACT_ELEMENT_TYPE,
+    type,
+    key: key ?? null,
+    ref: ref ?? null,
+    props: flatChildren !== undefined ? { ...rest, children: flatChildren } : { ...rest },
+  }
+}
 
 export interface CampoExtraValor {
   nome: string
