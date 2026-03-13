@@ -103,21 +103,25 @@ export class PdfGeneratorService {
     const fichasGeradas: FichaGerada[] = []
     const avisos: string[] = []
 
-    // Usar setores solicitados ou fallback para os 3 padrão
-    const setores = setoresSolicitados ?? [Setor.CABEDAL, Setor.PALMILHA, Setor.SOLA]
-
-    // Verificar se FACHETA foi solicitado: apenas incluir se algum modelo tem facheta preenchida
+    // Detectar se algum modelo do pedido tem facheta
     const codigosModelo = [...new Set(pedido.itens.map((i) => i.modelo).filter((m): m is string => !!m))]
-    let setoresFiltrados = setores
-    if (setores.includes(Setor.FACHETA) && codigosModelo.length > 0) {
+    let temFacheta = false
+    if (codigosModelo.length > 0) {
       const modelosComFacheta = await prisma.modelo.count({
         where: { codigo: { in: codigosModelo }, facheta: { not: null } },
       })
-      if (modelosComFacheta === 0) {
-        console.log('[gerarFichas] FACHETA solicitado mas nenhum modelo tem facheta — removendo setor')
-        setoresFiltrados = setores.filter((s) => s !== Setor.FACHETA)
-      }
+      temFacheta = modelosComFacheta > 0
     }
+
+    // Usar setores solicitados ou auto-detectar (inclui FACHETA se algum modelo tem)
+    const setoresBase = setoresSolicitados ?? [Setor.CABEDAL, Setor.PALMILHA, Setor.SOLA]
+    const setoresFiltrados = temFacheta && !setoresBase.includes(Setor.FACHETA)
+      ? [...setoresBase, Setor.FACHETA]
+      : temFacheta
+        ? setoresBase
+        : setoresBase.filter((s) => s !== Setor.FACHETA)
+
+    console.log('[gerarFichas] temFacheta:', temFacheta, 'setores:', setoresFiltrados)
 
     // Pre-convert images to base64 for CABEDAL setor (runs once, shared across renders)
     let imagensBase64: Map<string, string> | undefined
