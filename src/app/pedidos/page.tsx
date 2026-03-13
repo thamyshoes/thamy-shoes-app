@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList } from 'lucide-react'
+import { ClipboardList, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { SidebarLayout } from '@/components/layout/sidebar-layout'
 import { DataTable, type Column } from '@/components/ui/data-table'
 import { FilterBar } from '@/components/ui/filter-bar'
@@ -13,7 +14,7 @@ import { ImportarPedidoModal } from '@/components/ui/importar-pedido-modal'
 import { useAuth } from '@/hooks/use-auth'
 import { usePedidos } from '@/hooks/use-pedidos'
 import { formatDate, isValidDateInput, normalizeDateInput } from '@/lib/format'
-import { ROUTES } from '@/lib/constants'
+import { ROUTES, API_ROUTES } from '@/lib/constants'
 import { StatusPedido, Perfil } from '@/types'
 import type { PedidoCompra } from '@/types'
 
@@ -28,9 +29,55 @@ const STATUS_OPTIONS = [
   { value: StatusPedido.FICHAS_GERADAS, label: 'Fichas Geradas' },
 ]
 
+function BotaoGerarInline({ pedidoId, onGerado }: { pedidoId: string; onGerado: () => void }) {
+  const [gerando, setGerando] = useState(false)
+  const router = useRouter()
+
+  async function handleGerar(e: React.MouseEvent) {
+    e.stopPropagation()
+    setGerando(true)
+    try {
+      const res = await fetch(API_ROUTES.FICHAS_GERAR, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pedidoId }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string }
+        toast.error(data.error ?? 'Erro ao gerar fichas')
+        return
+      }
+      const result = await res.json() as { data?: { fichas?: unknown[] }; avisos?: string[] }
+      const count = result?.data?.fichas?.length ?? 0
+      toast.success(count > 0 ? `${count} fichas geradas com sucesso` : 'Fichas geradas')
+      if (result.avisos) {
+        for (const aviso of result.avisos) toast.warning(aviso, { duration: 8000 })
+      }
+      onGerado()
+      router.push(ROUTES.FICHAS)
+    } catch {
+      toast.error('Erro ao gerar fichas. Tente novamente.')
+    } finally {
+      setGerando(false)
+    }
+  }
+
+  return (
+    <Button
+      variant="secondary"
+      size="sm"
+      icon={gerando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ClipboardList className="h-3.5 w-3.5" />}
+      onClick={handleGerar}
+      disabled={gerando}
+    >
+      {gerando ? 'Gerando...' : 'Gerar Fichas'}
+    </Button>
+  )
+}
+
 function buildColumns(
-  router: ReturnType<typeof useRouter>,
   canGerarFichas: boolean,
+  onGerado: () => void,
 ): Column<PedidoRow>[] {
   const cols: Column<PedidoRow>[] = [
     { key: 'numero', header: 'Número', mono: true, sortable: true },
@@ -60,19 +107,7 @@ function buildColumns(
 
         if (!canGerar) return null
 
-        return (
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<ClipboardList className="h-3.5 w-3.5" />}
-            onClick={(e) => {
-              e.stopPropagation()
-              router.push(ROUTES.PEDIDO_DETALHE(p.id))
-            }}
-          >
-            Gerar Fichas
-          </Button>
-        )
+        return <BotaoGerarInline pedidoId={p.id} onGerado={onGerado} />
       },
     })
   }
@@ -120,7 +155,7 @@ export default function PedidosPage() {
 
   const isAdmin = user.perfil === Perfil.ADMIN
   const canConsolidar = isAdminOrPCP(user.perfil)
-  const columns = buildColumns(router, canConsolidar)
+  const columns = buildColumns(canConsolidar, refetch)
 
   return (
     <SidebarLayout user={user}>

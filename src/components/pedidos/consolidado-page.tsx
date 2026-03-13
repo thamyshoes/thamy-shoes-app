@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import { SidebarLayout } from '@/components/layout/sidebar-layout'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/use-auth'
-import { ROUTES } from '@/lib/constants'
+import { ROUTES, API_ROUTES } from '@/lib/constants'
 
 export interface PedidoItemConsolidado {
   id: string
@@ -29,6 +29,52 @@ interface ConsolidadoResultado {
 }
 
 const SETORES_PADRAO = ['CABEDAL', 'SOLA', 'PALMILHA'] as const
+
+function BotaoGerarIndividual({ pedidoId, disabled }: { pedidoId: string; disabled: boolean }) {
+  const [gerando, setGerando] = useState(false)
+  const router = useRouter()
+
+  async function handleGerar(e: React.MouseEvent) {
+    e.stopPropagation()
+    e.preventDefault()
+    setGerando(true)
+    try {
+      const res = await fetch(API_ROUTES.FICHAS_GERAR, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pedidoId }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string }
+        toast.error(data.error ?? 'Erro ao gerar fichas')
+        return
+      }
+      const result = await res.json() as { data?: { fichas?: unknown[] }; avisos?: string[] }
+      const count = result?.data?.fichas?.length ?? 0
+      toast.success(count > 0 ? `${count} fichas geradas com sucesso` : 'Fichas geradas')
+      if (result.avisos) {
+        for (const aviso of result.avisos) toast.warning(aviso, { duration: 8000 })
+      }
+      router.push(ROUTES.FICHAS)
+    } catch {
+      toast.error('Erro ao gerar fichas. Tente novamente.')
+    } finally {
+      setGerando(false)
+    }
+  }
+
+  return (
+    <Button
+      variant="secondary"
+      size="sm"
+      icon={gerando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ClipboardList className="h-3.5 w-3.5" />}
+      onClick={handleGerar}
+      disabled={disabled || gerando}
+    >
+      {gerando ? 'Gerando...' : 'Gerar Individual'}
+    </Button>
+  )
+}
 
 // ST002: Client Component com estado de seleção
 export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
@@ -176,19 +222,10 @@ export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
                       <span className="font-medium">#{pedido.numero}</span>
                       <span className="text-muted-foreground">{pedido.cliente}</span>
                       <span className="ml-auto flex items-center gap-2">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          icon={<ClipboardList className="h-3.5 w-3.5" />}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            e.preventDefault()
-                            router.push(ROUTES.PEDIDO_DETALHE(pedido.id))
-                          }}
+                        <BotaoGerarIndividual
+                          pedidoId={pedido.id}
                           disabled={isLoading}
-                        >
-                          Gerar Individual
-                        </Button>
+                        />
                         <span className="text-xs text-muted-foreground">
                           {pedido.totalItens} {pedido.totalItens === 1 ? 'item' : 'itens'}
                         </span>
