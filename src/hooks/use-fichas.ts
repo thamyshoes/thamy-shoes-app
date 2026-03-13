@@ -14,8 +14,11 @@ export type FichaRow = FichaProducao & {
   } | null
 }
 
+/** Um grupo = todas as fichas de um mesmo pedido/consolidado */
+export type FichaGroup = FichaRow[]
+
 interface FichasResponse {
-  items: FichaRow[]
+  groups: FichaGroup[]
   total: number
   page: number
   pageSize: number
@@ -32,7 +35,7 @@ interface UseFichasFilters {
 }
 
 interface UseFichasReturn {
-  fichas: FichaRow[]
+  groups: FichaGroup[]
   total: number
   totalPages: number
   loading: boolean
@@ -41,7 +44,7 @@ interface UseFichasReturn {
 }
 
 export function useFichas(filters?: UseFichasFilters): UseFichasReturn {
-  const [fichas, setFichas] = useState<FichaRow[]>([])
+  const [groups, setGroups] = useState<FichaGroup[]>([])
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -56,7 +59,6 @@ export function useFichas(filters?: UseFichasFilters): UseFichasReturn {
   const search = filters?.search
 
   const fetchData = useCallback(async () => {
-    // keepPreviousData: só mostra skeleton se não tem dados anteriores
     if (!hasDataRef.current) setLoading(true)
     setError(null)
     try {
@@ -73,7 +75,7 @@ export function useFichas(filters?: UseFichasFilters): UseFichasReturn {
       const res = await apiClient.get<FichasResponse>(
         `${API_ROUTES.FICHAS}?${params}`,
       )
-      setFichas(res.items)
+      setGroups(res.groups)
       setTotal(res.total)
       setTotalPages(res.totalPages)
       hasDataRef.current = true
@@ -88,5 +90,5 @@ export function useFichas(filters?: UseFichasFilters): UseFichasReturn {
     void fetchData()
   }, [fetchData])
 
-  return { fichas, total, totalPages, loading, error, refetch: fetchData }
+  return { groups, total, totalPages, loading, error, refetch: fetchData }
 }

@@ -73,36 +73,51 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const skip = (page - 1) * pageSize
-
-  const [fichas, total] = await Promise.all([
-    prisma.fichaProducao.findMany({
-      where,
-      skip,
-      take: pageSize,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        pedido: {
-          select: { numero: true, fornecedorNome: true },
-        },
-        consolidado: {
-          select: {
-            id: true,
-            pedidos: {
-              select: { pedido: { select: { numero: true } } },
-            },
+  // ── Buscar todas as fichas que batem no filtro ────────────────────────────
+  const allFichas = await prisma.fichaProducao.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      pedido: {
+        select: { numero: true, fornecedorNome: true },
+      },
+      consolidado: {
+        select: {
+          id: true,
+          pedidos: {
+            select: { pedido: { select: { numero: true } } },
           },
         },
       },
-    }),
-    prisma.fichaProducao.count({ where }),
-  ])
+    },
+  })
+
+  // ── Agrupar por pedido/consolidado ────────────────────────────────────────
+  const groupMap = new Map<string, typeof allFichas>()
+
+  for (const f of allFichas) {
+    const key = f.consolidadoId
+      ? `consolidado-${f.consolidadoId}`
+      : `pedido-${f.pedidoId ?? f.id}`
+
+    if (!groupMap.has(key)) {
+      groupMap.set(key, [])
+    }
+    groupMap.get(key)!.push(f)
+  }
+
+  const allGroups = Array.from(groupMap.values())
+  const totalGroups = allGroups.length
+
+  // ── Paginar por grupo (pedido) ────────────────────────────────────────────
+  const skip = (page - 1) * pageSize
+  const pagedGroups = allGroups.slice(skip, skip + pageSize)
 
   return NextResponse.json({
-    items: fichas,
-    total,
+    groups: pagedGroups,
+    total: totalGroups,
     page,
     pageSize,
-    totalPages: Math.ceil(total / pageSize),
+    totalPages: Math.ceil(totalGroups / pageSize),
   })
 }
