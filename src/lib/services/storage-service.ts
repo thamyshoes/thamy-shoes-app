@@ -49,4 +49,42 @@ export const StorageService = {
     const { data } = supabase.storage.from(VARIANTES_BUCKET).getPublicUrl(path)
     return data.publicUrl
   },
+
+  /**
+   * Baixa imagem de URL remota e faz upload para Supabase Storage.
+   * Retorna a URL pública permanente ou null se falhar.
+   */
+  async uploadFromUrl(
+    remoteUrl: string,
+    fileName: string,
+  ): Promise<string | null> {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10_000)
+
+      const res = await fetch(remoteUrl, { signal: controller.signal })
+      clearTimeout(timeout)
+
+      if (!res.ok) return null
+
+      const contentType = res.headers.get('content-type') ?? 'image/jpeg'
+      const buffer = Buffer.from(await res.arrayBuffer())
+
+      if (buffer.length === 0) return null
+
+      const supabase = createServerSupabaseClient()
+      const path = `variantes/${Date.now()}-${fileName}`
+
+      const { error } = await supabase.storage
+        .from(VARIANTES_BUCKET)
+        .upload(path, buffer, { contentType, upsert: true })
+
+      if (error) return null
+
+      const { data } = supabase.storage.from(VARIANTES_BUCKET).getPublicUrl(path)
+      return data.publicUrl
+    } catch {
+      return null
+    }
+  },
 }

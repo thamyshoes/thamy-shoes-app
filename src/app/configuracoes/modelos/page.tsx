@@ -241,13 +241,14 @@ function ModelosContent() {
   async function syncBling() {
     setSyncing(true)
     try {
-      const result = await apiClient.post<{ criadas: number; atualizadas: number; semModelo: number; semImagem: number; erros: string[] }>(
+      const result = await apiClient.post<{ criadas: number; atualizadas: number; semModelo: number; semImagem: number; imagensBaixadas: number; erros: string[] }>(
         API_ROUTES.VARIANTES_SYNC_BLING,
         {},
       )
       const partes: string[] = []
       if (result.criadas > 0) partes.push(`${result.criadas} criada${result.criadas !== 1 ? 's' : ''}`)
       if (result.atualizadas > 0) partes.push(`${result.atualizadas} atualizada${result.atualizadas !== 1 ? 's' : ''}`)
+      if (result.imagensBaixadas > 0) partes.push(`${result.imagensBaixadas} imagem(ns) importada(s)`)
       if (result.semModelo > 0) partes.push(`${result.semModelo} sem modelo cadastrado`)
       if (result.erros.length > 0) partes.push(`${result.erros.length} erro${result.erros.length !== 1 ? 's' : ''}`)
       const msg = partes.length > 0 ? partes.join(', ') : 'Nenhuma variante encontrada'
