@@ -8,10 +8,18 @@ import { apiClient } from '@/lib/api-client'
 import { API_ROUTES } from '@/lib/constants'
 import type { ModeloRow } from './tabela-modelos'
 
+export interface GradeOption {
+  id: string
+  nome: string
+  tamanhoMin: number
+  tamanhoMax: number
+}
+
 interface ModalEdicaoModeloProps {
   open: boolean
   modelo: ModeloRow | null
   mode: 'create' | 'edit'
+  grades: GradeOption[]
   onClose: () => void
   onSaved: () => void
 }
@@ -20,6 +28,7 @@ interface FormData {
   codigo: string
   nome: string
   linha: string
+  gradeId: string
   cabedal: string
   sola: string
   palmilha: string
@@ -34,6 +43,7 @@ const EMPTY: FormData = {
   codigo: '',
   nome: '',
   linha: '',
+  gradeId: '',
   cabedal: '',
   sola: '',
   palmilha: '',
@@ -44,7 +54,7 @@ const EMPTY: FormData = {
   materialFacheta: '',
 }
 
-export function ModalEdicaoModelo({ open, modelo, mode, onClose, onSaved }: ModalEdicaoModeloProps) {
+export function ModalEdicaoModelo({ open, modelo, mode, grades, onClose, onSaved }: ModalEdicaoModeloProps) {
   const [form, setForm] = useState<FormData>(EMPTY)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Partial<FormData>>({})
@@ -52,13 +62,14 @@ export function ModalEdicaoModelo({ open, modelo, mode, onClose, onSaved }: Moda
   useEffect(() => {
     if (modelo && mode === 'edit') {
       setForm({
-        codigo:          modelo.codigo,
-        nome:            modelo.nome,
-        linha:           modelo.linha           ?? '',
-        cabedal:         modelo.cabedal         ?? '',
-        sola:            modelo.sola            ?? '',
-        palmilha:        modelo.palmilha        ?? '',
-        facheta:         modelo.facheta         ?? '',
+        codigo:           modelo.codigo,
+        nome:             modelo.nome,
+        linha:            modelo.linha           ?? '',
+        gradeId:          modelo.gradeId         ?? '',
+        cabedal:          modelo.cabedal         ?? '',
+        sola:             modelo.sola            ?? '',
+        palmilha:         modelo.palmilha        ?? '',
+        facheta:          modelo.facheta         ?? '',
         materialCabedal:  modelo.materialCabedal  ?? '',
         materialSola:     modelo.materialSola      ?? '',
         materialPalmilha: modelo.materialPalmilha  ?? '',
@@ -101,6 +112,7 @@ export function ModalEdicaoModelo({ open, modelo, mode, onClose, onSaved }: Moda
         codigo:           form.codigo.trim(),
         nome:             form.nome.trim(),
         linha:            nullIfEmpty(form.linha),
+        gradeId:          form.gradeId || null,
         cabedal:          nullIfEmpty(form.cabedal),
         sola:             nullIfEmpty(form.sola),
         palmilha:         nullIfEmpty(form.palmilha),
@@ -205,6 +217,25 @@ export function ModalEdicaoModelo({ open, modelo, mode, onClose, onSaved }: Moda
               {errors.linha && (
                 <p id="err-linha" className="mt-1 text-xs text-danger">{errors.linha}</p>
               )}
+            </div>
+            <div>
+              <label htmlFor="modelo-grade" className="mb-1 block text-xs font-medium text-secondary">
+                Grade de Numeração
+              </label>
+              <select
+                id="modelo-grade"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                value={form.gradeId}
+                onChange={(e) => setForm((f) => ({ ...f, gradeId: e.target.value }))}
+                disabled={saving}
+              >
+                <option value="">Sem grade</option>
+                {grades.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.nome} ({g.tamanhoMin}–{g.tamanhoMax})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

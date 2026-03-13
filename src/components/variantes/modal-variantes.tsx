@@ -248,7 +248,7 @@ export function ModalVariantes({
   if (!open) return null
 
   const ativas = variantes.filter((v) => !v._deleted)
-  const coreOptions = cores.map((c) => ({ value: c.codigo, label: c.descricao, hex: undefined as string | undefined }))
+  const coreOptions = cores.map((c) => ({ value: c.codigo, label: `${c.codigo} - ${c.descricao}`, hex: undefined as string | undefined }))
   let ativaIndex = 0
 
   return (

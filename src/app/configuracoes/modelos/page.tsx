@@ -13,7 +13,7 @@ import { apiClient } from '@/lib/api-client'
 import { API_ROUTES, ROUTES } from '@/lib/constants'
 import { toast } from 'sonner'
 import { TabelaModelos, type ModeloRow } from '@/components/modelos/tabela-modelos'
-import { ModalEdicaoModelo } from '@/components/modelos/modal-edicao-modelo'
+import { ModalEdicaoModelo, type GradeOption } from '@/components/modelos/modal-edicao-modelo'
 import { ModalVariantes, type VarianteRow } from '@/components/variantes/modal-variantes'
 
 // ── Tipos da API ───────────────────────────────────────────────────────────────
@@ -42,6 +42,7 @@ interface ModeloApi {
   materialPalmilha: string | null
   materialFacheta: string | null
   variantesCor: VarianteCor[]
+  gradeAtual: { id: string; nome: string; tamanhoMin: number; tamanhoMax: number } | null
 }
 
 interface ListResponse {
@@ -64,19 +65,21 @@ interface PreviewLinha {
 
 function toModeloRow(m: ModeloApi): ModeloRow {
   return {
-    id:              m.id,
-    codigo:          m.codigo,
-    nome:            m.nome,
-    linha:           m.linha,
-    cabedal:         m.cabedal,
-    sola:            m.sola,
-    palmilha:        m.palmilha,
-    facheta:         m.facheta,
+    id:               m.id,
+    codigo:           m.codigo,
+    nome:             m.nome,
+    linha:            m.linha,
+    gradeNome:        m.gradeAtual?.nome ?? null,
+    gradeId:          m.gradeAtual?.id ?? null,
+    cabedal:          m.cabedal,
+    sola:             m.sola,
+    palmilha:         m.palmilha,
+    facheta:          m.facheta,
     materialCabedal:  m.materialCabedal,
     materialSola:     m.materialSola,
     materialPalmilha: m.materialPalmilha,
     materialFacheta:  m.materialFacheta,
-    totalVariantes:  m.variantesCor.length,
+    totalVariantes:   m.variantesCor.length,
   }
 }
 
@@ -100,6 +103,7 @@ function ModelosContent() {
   const pathname = usePathname()
 
   const [modelos, setModelos] = useState<ModeloApi[]>([])
+  const [grades, setGrades] = useState<GradeOption[]>([])
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [page, setPage] = useState(() => {
@@ -129,6 +133,15 @@ function ModelosContent() {
   const [confirmExcluir, setConfirmExcluir] = useState<ModeloRow | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  const fetchGrades = useCallback(async () => {
+    try {
+      const data = await apiClient.get<GradeOption[]>(API_ROUTES.GRADES)
+      setGrades(data)
+    } catch {
+      // grades são opcionais — não bloquear a tela
+    }
+  }, [])
+
   const fetchModelos = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -146,6 +159,7 @@ function ModelosContent() {
     }
   }, [search, page])
 
+  useEffect(() => { void fetchGrades() }, [fetchGrades])
   useEffect(() => { void fetchModelos() }, [fetchModelos])
 
   // Sincronizar search e page com URL
@@ -285,6 +299,7 @@ function ModelosContent() {
         open={modalOpen}
         modelo={modalModelo}
         mode={modalMode}
+        grades={grades}
         onClose={() => setModalOpen(false)}
         onSaved={() => { setModalOpen(false); void fetchModelos() }}
       />

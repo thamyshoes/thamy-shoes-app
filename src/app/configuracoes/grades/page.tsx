@@ -13,18 +13,11 @@ import { API_ROUTES, ROUTES } from '@/lib/constants'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
-interface GradeModelo {
-  id: string
-  gradeId: string
-  modelo: string
-}
-
 interface GradeNumeracao {
   id: string
   nome: string
   tamanhoMin: number
   tamanhoMax: number
-  modelos: GradeModelo[]
   createdAt: string
   updatedAt: string
 }
@@ -36,7 +29,7 @@ function gerarTamanhos(min: number, max: number): number[] {
 
 // ── Inner content ─────────────────────────────────────────────────────────────
 
-function GradesContent({ user }: { user: { id: string; perfil: string; setor: string | null; nome: string; email: string } }) {
+function GradesContent() {
   const [grades, setGrades] = useState<GradeNumeracao[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -48,15 +41,6 @@ function GradesContent({ user }: { user: { id: string; perfil: string; setor: st
   const [formMin, setFormMin] = useState(33)
   const [formMax, setFormMax] = useState(44)
   const [saving, setSaving] = useState(false)
-
-  // Modal gerenciar modelos
-  const [modelosModal, setModelosModal] = useState<GradeNumeracao | null>(null)
-  const [novoModelo, setNovoModelo] = useState('')
-  const [addingModelo, setAddingModelo] = useState(false)
-  const [removingModelo, setRemovingModelo] = useState<string | null>(null)
-
-  // Confirm remover modelo
-  const [confirmRemoverModelo, setConfirmRemoverModelo] = useState<{ gradeId: string; modelo: string } | null>(null)
 
   // Confirm excluir
   const [confirmExcluir, setConfirmExcluir] = useState<GradeNumeracao | null>(null)
@@ -131,55 +115,6 @@ function GradesContent({ user }: { user: { id: string; perfil: string; setor: st
     }
   }
 
-  async function adicionarModelo() {
-    if (!modelosModal || !novoModelo.trim()) return
-    setAddingModelo(true)
-    try {
-      // Checar se modelo já está em outra grade
-      const outraGrade = grades.find(
-        (g) => g.id !== modelosModal.id && g.modelos.some((m) => m.modelo === novoModelo.trim()),
-      )
-      if (outraGrade) {
-        toast.warning(`Modelo "${novoModelo}" já associado à grade "${outraGrade.nome}". Adicionando mesmo assim…`)
-      }
-      await apiClient.post(`${API_ROUTES.GRADES}/${modelosModal.id}/modelos`, { modelo: novoModelo.trim() })
-      toast.success('Modelo adicionado')
-      setNovoModelo('')
-      await fetchGrades()
-      // Atualizar grade local no modal
-      const updated = grades.find((g) => g.id === modelosModal.id)
-      if (updated) {
-        const fresh = await apiClient.get<GradeNumeracao[]>(API_ROUTES.GRADES)
-        const freshGrade = fresh.find((g) => g.id === modelosModal.id)
-        if (freshGrade) setModelosModal(freshGrade)
-        setGrades(fresh)
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao adicionar modelo')
-    } finally {
-      setAddingModelo(false)
-    }
-  }
-
-  async function removerModeloConfirmado() {
-    if (!confirmRemoverModelo) return
-    const { gradeId, modelo } = confirmRemoverModelo
-    setRemovingModelo(modelo)
-    setConfirmRemoverModelo(null)
-    try {
-      await apiClient.delete(`${API_ROUTES.GRADES}/${gradeId}/modelos/${encodeURIComponent(modelo)}`)
-      toast.success('Modelo removido')
-      const fresh = await apiClient.get<GradeNumeracao[]>(API_ROUTES.GRADES)
-      setGrades(fresh)
-      const freshGrade = fresh.find((g) => g.id === gradeId)
-      if (freshGrade) setModelosModal(freshGrade)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao remover modelo')
-    } finally {
-      setRemovingModelo(null)
-    }
-  }
-
   const previewTamanhos = gerarTamanhos(formMin, formMax)
 
   const COLUMNS: Column<GradeNumeracao>[] = [
@@ -196,29 +131,12 @@ function GradesContent({ user }: { user: { id: string; perfil: string; setor: st
       render: (g) => <span className="text-sm">{g.tamanhoMax - g.tamanhoMin + 1}</span>,
     },
     {
-      key: 'modelos',
-      header: 'Modelos',
-      render: (g) => (
-        <div className="flex flex-wrap gap-1">
-          {g.modelos.length === 0
-            ? <span className="text-xs text-secondary">Nenhum</span>
-            : g.modelos.slice(0, 3).map((m) => (
-                <span key={m.id} className="rounded bg-muted px-1.5 py-0.5 text-xs">{m.modelo}</span>
-              ))}
-          {g.modelos.length > 3 && (
-            <span className="text-xs text-secondary">+{g.modelos.length - 3}</span>
-          )}
-        </div>
-      ),
-    },
-    {
       key: 'id',
       header: 'Ações',
       align: 'right',
       render: (g) => (
         <div className="flex items-center justify-end gap-2">
           <button onClick={() => abrirEditar(g)} className="text-xs font-medium text-primary hover:underline focus:outline-none focus:underline">Editar</button>
-          <button onClick={() => { setModelosModal(g); setNovoModelo('') }} className="text-xs font-medium text-primary hover:underline focus:outline-none focus:underline">Modelos</button>
           <button onClick={() => setConfirmExcluir(g)} className="text-xs font-medium text-destructive hover:underline focus:outline-none focus:underline">Excluir</button>
         </div>
       ),
@@ -240,6 +158,9 @@ function GradesContent({ user }: { user: { id: string; perfil: string; setor: st
             <span className="text-foreground">Grades de Numeração</span>
           </nav>
           <h1 className="mt-1 text-xl font-semibold text-foreground">Grades de Numeração</h1>
+          <p className="mt-0.5 text-sm text-secondary">
+            Cadastre as grades aqui. Para vincular modelos, use o campo "Grade de Numeração" no cadastro de cada modelo.
+          </p>
         </div>
         <Button onClick={abrirCriar}>Nova Grade</Button>
       </div>
@@ -267,7 +188,7 @@ function GradesContent({ user }: { user: { id: string; perfil: string; setor: st
               className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               value={formNome}
               onChange={(e) => setFormNome(e.target.value)}
-              placeholder="Ex: Adulto"
+              placeholder="Ex: Adulto Feminino"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -309,73 +230,15 @@ function GradesContent({ user }: { user: { id: string; perfil: string; setor: st
         </div>
       </Modal>
 
-      {/* Modal gerenciar modelos */}
-      <Modal
-        open={!!modelosModal}
-        onClose={() => setModelosModal(null)}
-        title={`Modelos — ${modelosModal?.nome ?? ''}`}
-      >
-        {modelosModal && (
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Ex: REF001"
-                value={novoModelo}
-                onChange={(e) => setNovoModelo(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') void adicionarModelo() }}
-              />
-              <Button onClick={adicionarModelo} disabled={addingModelo || !novoModelo.trim()}>
-                {addingModelo ? '…' : '+ Adicionar'}
-              </Button>
-            </div>
-            <div className="max-h-48 overflow-y-auto space-y-1">
-              {modelosModal.modelos.length === 0 ? (
-                <p className="text-sm text-secondary">Nenhum modelo associado</p>
-              ) : (
-                modelosModal.modelos.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between rounded border border-border px-3 py-1.5">
-                    <span className="text-sm font-mono">{m.modelo}</span>
-                    <button
-                      onClick={() => setConfirmRemoverModelo({ gradeId: modelosModal.id, modelo: m.modelo })}
-                      disabled={removingModelo === m.modelo}
-                      className="text-xs text-destructive hover:underline disabled:opacity-40"
-                      aria-label={`Remover modelo ${m.modelo}`}
-                    >
-                      {removingModelo === m.modelo ? '…' : '×'}
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="flex justify-end pt-2">
-              <Button variant="secondary" onClick={() => setModelosModal(null)}>Fechar</Button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
       {/* Confirm excluir */}
       <ConfirmDialog
         open={!!confirmExcluir}
         title="Excluir grade"
-        description={`Excluir "${confirmExcluir?.nome}"? Os modelos associados também serão removidos.`}
+        description={`Excluir "${confirmExcluir?.nome}"? Os modelos ficam sem grade vinculada.`}
         variant="danger"
         onConfirm={excluir}
         onClose={() => setConfirmExcluir(null)}
         loading={deleting}
-      />
-
-      {/* Confirm remover modelo */}
-      <ConfirmDialog
-        open={!!confirmRemoverModelo}
-        title="Remover modelo"
-        description={`Remover o modelo "${confirmRemoverModelo?.modelo}" desta grade?`}
-        variant="danger"
-        onConfirm={removerModeloConfirmado}
-        onClose={() => setConfirmRemoverModelo(null)}
-        loading={!!removingModelo}
       />
     </div>
   )
@@ -388,7 +251,7 @@ export default function GradesPage() {
   if (authLoading || !user) return null
   return (
     <SidebarLayout user={user}>
-      <GradesContent user={user} />
+      <GradesContent />
     </SidebarLayout>
   )
 }

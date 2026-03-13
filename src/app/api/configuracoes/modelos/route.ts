@@ -52,7 +52,27 @@ export async function GET(request: NextRequest) {
     prisma.modelo.count({ where }),
   ])
 
-  return NextResponse.json({ items: modelos, total, page, pageSize, totalPages: Math.ceil(total / pageSize) })
+  // Enriquecer com grade atual de cada modelo
+  const gradeAtualMap = new Map<string, { id: string; nome: string; tamanhoMin: number; tamanhoMax: number }>()
+  if (modelos.length > 0) {
+    const codigos = modelos.map((m) => m.codigo)
+    const gradeModelos = await prisma.gradeModelo.findMany({
+      where: { modelo: { in: codigos } },
+      include: { grade: true },
+    })
+    for (const gm of gradeModelos) {
+      gradeAtualMap.set(gm.modelo, {
+        id: gm.grade.id,
+        nome: gm.grade.nome,
+        tamanhoMin: gm.grade.tamanhoMin,
+        tamanhoMax: gm.grade.tamanhoMax,
+      })
+    }
+  }
+
+  const items = modelos.map((m) => ({ ...m, gradeAtual: gradeAtualMap.get(m.codigo) ?? null }))
+
+  return NextResponse.json({ items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) })
 }
 
 export async function POST(request: NextRequest) {

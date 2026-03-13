@@ -16,6 +16,7 @@ const updateSchema = z.object({
   materialSola:     z.string().max(200).nullable().optional(),
   materialPalmilha: z.string().max(200).nullable().optional(),
   materialFacheta:  z.string().max(200).nullable().optional(),
+  gradeId:          z.string().uuid().nullable().optional(),
 })
 
 async function handleUpdate(
@@ -41,10 +42,20 @@ async function handleUpdate(
   }
 
   try {
-    const modelo = await prisma.modelo.update({
-      where: { id },
-      data: parsed.data,
-      include: { variantesCor: { orderBy: { corCodigo: 'asc' } } },
+    const { gradeId, ...modeloFields } = parsed.data
+    const modelo = await prisma.$transaction(async (tx) => {
+      const updated = await tx.modelo.update({
+        where: { id },
+        data: modeloFields,
+        include: { variantesCor: { orderBy: { corCodigo: 'asc' } } },
+      })
+      if (gradeId !== undefined) {
+        await tx.gradeModelo.deleteMany({ where: { modelo: updated.codigo } })
+        if (gradeId) {
+          await tx.gradeModelo.create({ data: { gradeId, modelo: updated.codigo } })
+        }
+      }
+      return updated
     })
     return NextResponse.json(modelo)
   } catch (err) {
