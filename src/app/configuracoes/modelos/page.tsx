@@ -129,6 +129,7 @@ function ModelosContent() {
 
   // Sync imagens do Bling
   const [syncing, setSyncing] = useState(false)
+  const [syncProgress, setSyncProgress] = useState<{ atual: number; produto: string } | null>(null)
 
   // Confirm excluir
   const [confirmExcluir, setConfirmExcluir] = useState<ModeloRow | null>(null)
@@ -240,28 +241,66 @@ function ModelosContent() {
 
   async function syncBling() {
     setSyncing(true)
+    setSyncProgress(null)
     try {
-      const result = await apiClient.post<{ criadas: number; atualizadas: number; semModelo: number; semImagem: number; imagensBaixadas: number; erros: string[] }>(
-        API_ROUTES.VARIANTES_SYNC_BLING,
-        {},
-      )
-      const partes: string[] = []
-      if (result.criadas > 0) partes.push(`${result.criadas} criada${result.criadas !== 1 ? 's' : ''}`)
-      if (result.atualizadas > 0) partes.push(`${result.atualizadas} atualizada${result.atualizadas !== 1 ? 's' : ''}`)
-      if (result.imagensBaixadas > 0) partes.push(`${result.imagensBaixadas} imagem(ns) importada(s)`)
-      if (result.semModelo > 0) partes.push(`${result.semModelo} sem modelo cadastrado`)
-      if (result.erros.length > 0) partes.push(`${result.erros.length} erro${result.erros.length !== 1 ? 's' : ''}`)
-      const msg = partes.length > 0 ? partes.join(', ') : 'Nenhuma variante encontrada'
-      if (result.erros.length > 0) {
-        toast.error(`Sincronizado com erros: ${msg}`)
-      } else {
-        toast.success(`Sincronização concluída: ${msg}`)
+      const res = await fetch(API_ROUTES.VARIANTES_SYNC_BLING, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      })
+
+      if (!res.ok || !res.body) {
+        throw new Error(`Erro ${res.status}`)
       }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let result: { criadas: number; atualizadas: number; semModelo: number; semImagem: number; imagensBaixadas: number; erros: string[] } | null = null
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+          const event = JSON.parse(line)
+          if (event.type === 'progress') {
+            setSyncProgress({ atual: event.atual, produto: event.produto })
+          } else if (event.type === 'done') {
+            result = event
+          }
+        }
+      }
+
+      setSyncProgress(null)
+
+      if (result) {
+        const partes: string[] = []
+        if (result.criadas > 0) partes.push(`${result.criadas} criada${result.criadas !== 1 ? 's' : ''}`)
+        if (result.atualizadas > 0) partes.push(`${result.atualizadas} atualizada${result.atualizadas !== 1 ? 's' : ''}`)
+        if (result.imagensBaixadas > 0) partes.push(`${result.imagensBaixadas} imagem(ns) importada(s)`)
+        if (result.semModelo > 0) partes.push(`${result.semModelo} sem modelo cadastrado`)
+        if (result.erros.length > 0) partes.push(`${result.erros.length} erro${result.erros.length !== 1 ? 's' : ''}`)
+        const msg = partes.length > 0 ? partes.join(', ') : 'Nenhuma variante encontrada'
+        if (result.erros.length > 0) {
+          toast.error(`Sincronizado com erros: ${msg}`)
+        } else {
+          toast.success(`Sincronização concluída: ${msg}`)
+        }
+      }
+
       await fetchModelos()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao sincronizar com Bling')
     } finally {
       setSyncing(false)
+      setSyncProgress(null)
     }
   }
 
@@ -288,7 +327,11 @@ function ModelosContent() {
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => void syncBling()} disabled={syncing}>
-            {syncing ? 'Sincronizando…' : 'Sincronizar Bling'}
+            {syncing
+              ? syncProgress
+                ? `Sincronizando… ${syncProgress.atual} produtos`
+                : 'Conectando ao Bling…'
+              : 'Sincronizar Bling'}
           </Button>
           <Button variant="secondary" onClick={() => { setCsvTexto(''); setPreview([]); setImportModalOpen(true) }}>
             Importar Lote

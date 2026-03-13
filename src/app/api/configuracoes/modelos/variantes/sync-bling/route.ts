@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { blingService } from '@/lib/bling/bling-service'
 import { parseSku } from '@/lib/bling/sku-parser'
 import { prisma } from '@/lib/prisma'
@@ -14,12 +14,19 @@ export interface SyncBlingResult {
   erros: string[]
 }
 
+export interface SyncBlingProgress {
+  type: 'progress'
+  atual: number
+  produto: string
+  pagina: number
+}
+
+export type SyncBlingEvent =
+  | SyncBlingProgress
+  | (SyncBlingResult & { type: 'done' })
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-/**
- * Baixa imagem remota do Bling e sobe para Supabase Storage.
- * Retorna URL pública permanente ou null se falhar.
- */
 async function downloadToSupabase(
   remoteUrl: string,
   modeloCodigo: string,
@@ -51,7 +58,6 @@ async function upsertVariante(
     select: { id: true, imagemUrl: true },
   })
 
-  // Se já tem imagem local (Supabase), não sobrescrever
   const jaTemImagemLocal = existente?.imagemUrl?.includes('supabase')
 
   let imagemUrl: string | null = existente?.imagemUrl ?? null
@@ -62,7 +68,6 @@ async function upsertVariante(
       imagemUrl = publicUrl
       counters.imagensBaixadas++
     } else {
-      // Fallback: não conseguiu baixar, não atualiza imagem
       if (!existente?.imagemUrl) {
         counters.semImagem++
       }
@@ -86,85 +91,97 @@ async function upsertVariante(
 
 // ── route ─────────────────────────────────────────────────────────────────────
 
-// POST /api/configuracoes/modelos/variantes/sync-bling
-//
-// Estratégia de dois níveis:
-//
-// Nível 1 — produto flat (SKU completo no próprio produto.codigo, ex: "1611501220"):
-//   parseSku(produto.codigo) → modelo="16115", cor="012"
-//   usa produto.imagemThumbnail → baixa para Supabase Storage.
-//
-// Nível 2 — produto pai (código não parseia completamente, ex: "16115"):
-//   chama getProduto(id) → itera variacao.codigo + variacao.imagens
-//   baixa imagem da variação para Supabase Storage.
-//
-// Variantes sem imagem: são criadas mesmo assim (sem o campo imagemUrl).
-// Imagens já no Supabase: não são sobrescritas.
-// Deduplicação: o primeiro par (modelo, cor) encontrado vence.
-export async function POST(request: NextRequest): Promise<NextResponse> {
+// Passada única: processa produtos conforme percorre as páginas.
+// Envia progresso como NDJSON (produto atual + página corrente).
+export async function POST(request: NextRequest): Promise<Response> {
   const guard = requireAdmin(request)
   if (guard) return guard
 
-  const counters: SyncBlingResult = {
-    criadas: 0,
-    atualizadas: 0,
-    semModelo: 0,
-    semImagem: 0,
-    imagensBaixadas: 0,
-    erros: [],
-  }
+  const encoder = new TextEncoder()
 
-  // Pares "modeloCodigo:corCodigo" já processados — evita sobrescrever
-  // com uma imagem pior quando múltiplos produtos representam a mesma variante.
-  const processados = new Set<string>()
-
-  let pagina = 1
-  let hasMore = true
-
-  while (hasMore) {
-    const { data: produtos, hasMore: more } = await blingService.listProdutos(pagina)
-    hasMore = more
-    pagina++
-
-    for (const produto of produtos) {
-      try {
-        // ── Nível 1: produto flat ──────────────────────────────────────────
-        const parsed = await parseSku(produto.codigo)
-
-        if (parsed.modelo && parsed.cor) {
-          const chave = `${parsed.modelo}:${parsed.cor}`
-          if (processados.has(chave)) continue
-          processados.add(chave)
-
-          const imagemUrl = produto.imagemThumbnail ?? null
-          await upsertVariante(parsed.modelo, parsed.cor, imagemUrl, counters)
-          continue
-        }
-
-        // ── Nível 2: produto pai com variações aninhadas ───────────────────
-        const detalhe = await blingService.getProduto(produto.id)
-        if (!detalhe.variacoes?.length) continue
-
-        for (const variacao of detalhe.variacoes) {
-          if (!variacao.codigo) continue
-
-          const parsedVar = await parseSku(variacao.codigo)
-          if (!parsedVar.modelo || !parsedVar.cor) continue
-
-          const chave = `${parsedVar.modelo}:${parsedVar.cor}`
-          if (processados.has(chave)) continue
-          processados.add(chave)
-
-          const imagemUrl = variacao.imagens?.[0]?.link ?? null
-          await upsertVariante(parsedVar.modelo, parsedVar.cor, imagemUrl, counters)
-        }
-      } catch (err) {
-        counters.erros.push(
-          `Produto ${produto.codigo}: ${err instanceof Error ? err.message : 'erro desconhecido'}`,
-        )
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: SyncBlingEvent) => {
+        controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
       }
-    }
-  }
 
-  return NextResponse.json(counters)
+      const counters: SyncBlingResult = {
+        criadas: 0,
+        atualizadas: 0,
+        semModelo: 0,
+        semImagem: 0,
+        imagensBaixadas: 0,
+        erros: [],
+      }
+
+      const processados = new Set<string>()
+
+      try {
+        let pagina = 1
+        let hasMore = true
+        let produtoAtual = 0
+
+        while (hasMore) {
+          const { data: produtos, hasMore: more } = await blingService.listProdutos(pagina)
+          hasMore = more
+
+          for (const produto of produtos) {
+            produtoAtual++
+            send({ type: 'progress', atual: produtoAtual, produto: produto.codigo, pagina })
+
+            try {
+              const parsed = await parseSku(produto.codigo)
+
+              if (parsed.modelo && parsed.cor) {
+                const chave = `${parsed.modelo}:${parsed.cor}`
+                if (processados.has(chave)) continue
+                processados.add(chave)
+
+                const imagemUrl = produto.imagemThumbnail ?? null
+                await upsertVariante(parsed.modelo, parsed.cor, imagemUrl, counters)
+                continue
+              }
+
+              const detalhe = await blingService.getProduto(produto.id)
+              if (!detalhe.variacoes?.length) continue
+
+              for (const variacao of detalhe.variacoes) {
+                if (!variacao.codigo) continue
+
+                const parsedVar = await parseSku(variacao.codigo)
+                if (!parsedVar.modelo || !parsedVar.cor) continue
+
+                const chave = `${parsedVar.modelo}:${parsedVar.cor}`
+                if (processados.has(chave)) continue
+                processados.add(chave)
+
+                const imagemUrl = variacao.imagens?.[0]?.link ?? null
+                await upsertVariante(parsedVar.modelo, parsedVar.cor, imagemUrl, counters)
+              }
+            } catch (err) {
+              counters.erros.push(
+                `Produto ${produto.codigo}: ${err instanceof Error ? err.message : 'erro desconhecido'}`,
+              )
+            }
+          }
+
+          pagina++
+        }
+
+        send({ type: 'done', ...counters })
+      } catch (err) {
+        counters.erros.push(err instanceof Error ? err.message : 'erro fatal')
+        send({ type: 'done', ...counters })
+      }
+
+      controller.close()
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'application/x-ndjson',
+      'Cache-Control': 'no-cache',
+    },
+  })
 }
