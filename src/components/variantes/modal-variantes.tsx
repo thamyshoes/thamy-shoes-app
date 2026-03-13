@@ -225,6 +225,7 @@ export function ModalVariantes({
       setHasChanges(false)
       toast.success('Variantes salvas com sucesso')
       onSaved()
+      onClose()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao salvar variantes')
     } finally {

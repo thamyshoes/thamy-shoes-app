@@ -33,9 +33,11 @@ export async function POST(request: NextRequest) {
     const publicUrl = StorageService.getPublicUrl(result.path)
     return NextResponse.json({ ...result, publicUrl })
   } catch (e) {
-    if (e instanceof StorageServiceError) {
-      return NextResponse.json({ error: 'Erro ao gerar URL de upload' }, { status: 500 })
-    }
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
+    const message = e instanceof Error ? e.message : String(e)
+    console.error('[signed-url] Erro ao gerar signed URL:', message)
+    return NextResponse.json(
+      { error: e instanceof StorageServiceError ? message : 'Erro interno ao gerar URL de upload' },
+      { status: 500 },
+    )
   }
 }

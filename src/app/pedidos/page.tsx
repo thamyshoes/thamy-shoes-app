@@ -2,11 +2,13 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { ClipboardList } from 'lucide-react'
 import { SidebarLayout } from '@/components/layout/sidebar-layout'
 import { DataTable, type Column } from '@/components/ui/data-table'
 import { FilterBar } from '@/components/ui/filter-bar'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/error-state'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { ImportarPedidoModal } from '@/components/ui/importar-pedido-modal'
 import { useAuth } from '@/hooks/use-auth'
 import { usePedidos } from '@/hooks/use-pedidos'
@@ -26,16 +28,58 @@ const STATUS_OPTIONS = [
   { value: StatusPedido.FICHAS_GERADAS, label: 'Fichas Geradas' },
 ]
 
-const COLUMNS: Column<PedidoRow>[] = [
-  { key: 'numero', header: 'Número', mono: true, sortable: true },
-  {
-    key: 'dataEmissao',
-    header: 'Data Emissão',
-    render: (p) => formatDate(p.dataEmissao),
-    sortable: true,
-  },
-  { key: 'totalItens', header: 'Itens', align: 'right', sortable: true },
-]
+function buildColumns(
+  router: ReturnType<typeof useRouter>,
+  canGerarFichas: boolean,
+): Column<PedidoRow>[] {
+  const cols: Column<PedidoRow>[] = [
+    { key: 'numero', header: 'Número', mono: true, sortable: true },
+    {
+      key: 'dataEmissao',
+      header: 'Data Emissão',
+      render: (p) => formatDate(p.dataEmissao),
+      sortable: true,
+    },
+    { key: 'totalItens', header: 'Itens', align: 'right', sortable: true },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (p) => <StatusBadge status={p.status} size="sm" />,
+    },
+  ]
+
+  if (canGerarFichas) {
+    cols.push({
+      key: 'acoes',
+      header: 'Ações',
+      align: 'center',
+      render: (p) => {
+        const canGerar =
+          p.status !== StatusPedido.FICHAS_GERADAS &&
+          p.totalPendentes === 0 &&
+          p.totalItens > 0
+
+        if (!canGerar) return null
+
+        return (
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<ClipboardList className="h-3.5 w-3.5" />}
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push(ROUTES.PEDIDO_DETALHE(p.id))
+            }}
+          >
+            Gerar Fichas
+          </Button>
+        )
+      },
+    })
+  }
+
+  return cols
+}
 
 export default function PedidosPage() {
   const router = useRouter()
@@ -77,6 +121,7 @@ export default function PedidosPage() {
 
   const isAdmin = user.perfil === Perfil.ADMIN
   const canConsolidar = isAdminOrPCP(user.perfil)
+  const columns = buildColumns(router, canConsolidar)
 
   return (
     <SidebarLayout user={user}>
@@ -165,7 +210,7 @@ export default function PedidosPage() {
 
         <DataTable
           data={pedidos as PedidoRow[]}
-          columns={COLUMNS}
+          columns={columns}
           loading={loading}
           emptyMessage="Nenhum pedido importado"
           emptyAction={
