@@ -82,7 +82,28 @@ export function TabelaModelos({
   return (
     <div className="rounded-lg border border-border bg-background">
       <div className="overflow-x-auto">
-        <table className="w-full text-[13px]" aria-label="Tabela de modelos" aria-busy={loading}>
+        <table className="w-full table-fixed text-[13px]" aria-label="Tabela de modelos" aria-busy={loading}>
+          <colgroup>
+            {/* Base: Código + Nome */}
+            <col className="w-[90px]" />
+            <col className="w-[140px]" />
+            {/* Cabedal: Ref + Material */}
+            <col className="w-[90px]" />
+            <col className="w-[100px]" />
+            {/* Sola: Ref + Material */}
+            <col className="w-[90px]" />
+            <col className="w-[100px]" />
+            {/* Palmilha: Ref + Material */}
+            <col className="w-[90px]" />
+            <col className="w-[100px]" />
+            {/* Facheta: Ref + Material */}
+            <col className="w-[90px]" />
+            <col className="w-[100px]" />
+            {/* Final: Grade + Variantes + Ações */}
+            <col className="w-[70px]" />
+            <col className="w-[70px]" />
+            <col className="w-[80px]" />
+          </colgroup>
           <thead>
             {/* Linha de grupos */}
             <tr className="border-b border-border bg-muted/40">

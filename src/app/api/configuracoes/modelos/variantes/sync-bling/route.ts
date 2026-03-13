@@ -1,11 +1,14 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { blingService } from '@/lib/bling/bling-service'
 import { parseSku } from '@/lib/bling/sku-parser'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
 import { StorageService } from '@/lib/services/storage-service'
 
-export interface SyncBlingResult {
+export interface SyncBlingPageResult {
+  pagina: number
+  hasMore: boolean
+  processados: number
   criadas: number
   atualizadas: number
   semModelo: number
@@ -13,17 +16,6 @@ export interface SyncBlingResult {
   imagensBaixadas: number
   erros: string[]
 }
-
-export interface SyncBlingProgress {
-  type: 'progress'
-  atual: number
-  produto: string
-  pagina: number
-}
-
-export type SyncBlingEvent =
-  | SyncBlingProgress
-  | (SyncBlingResult & { type: 'done' })
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -41,7 +33,7 @@ async function upsertVariante(
   modeloCodigo: string,
   corCodigo: string,
   imagemRemota: string | null,
-  counters: SyncBlingResult,
+  counters: Pick<SyncBlingPageResult, 'criadas' | 'atualizadas' | 'semModelo' | 'semImagem' | 'imagensBaixadas'>,
 ): Promise<void> {
   const modelo = await prisma.modelo.findUnique({
     where: { codigo: modeloCodigo },
@@ -91,97 +83,91 @@ async function upsertVariante(
 
 // ── route ─────────────────────────────────────────────────────────────────────
 
-// Passada única: processa produtos conforme percorre as páginas.
-// Envia progresso como NDJSON (produto atual + página corrente).
-export async function POST(request: NextRequest): Promise<Response> {
+// POST /api/configuracoes/modelos/variantes/sync-bling?pagina=N
+//
+// Processa UMA página do Bling (20 produtos) por request.
+// O frontend chama em loop: pagina=1, pagina=2, ... até hasMore=false.
+// Cada request dura poucos segundos → sem timeout na Vercel.
+//
+// Query param "skip" (opcional): lista de chaves "modelo:cor" já processados
+// em páginas anteriores, enviada como JSON array.
+export async function POST(request: NextRequest): Promise<NextResponse> {
   const guard = requireAdmin(request)
   if (guard) return guard
 
-  const encoder = new TextEncoder()
+  const pagina = parseInt(request.nextUrl.searchParams.get('pagina') ?? '1', 10) || 1
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (event: SyncBlingEvent) => {
-        controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
-      }
+  // Chaves já processadas em lotes anteriores (deduplicação cross-page)
+  let skipKeys: string[] = []
+  try {
+    const body = await request.json().catch(() => ({}))
+    if (Array.isArray(body?.processados)) {
+      skipKeys = body.processados
+    }
+  } catch { /* vazio é ok */ }
 
-      const counters: SyncBlingResult = {
-        criadas: 0,
-        atualizadas: 0,
-        semModelo: 0,
-        semImagem: 0,
-        imagensBaixadas: 0,
-        erros: [],
-      }
+  const processados = new Set<string>(skipKeys)
 
-      const processados = new Set<string>()
+  const counters: SyncBlingPageResult = {
+    pagina,
+    hasMore: false,
+    processados: 0,
+    criadas: 0,
+    atualizadas: 0,
+    semModelo: 0,
+    semImagem: 0,
+    imagensBaixadas: 0,
+    erros: [],
+  }
 
+  try {
+    const { data: produtos, hasMore } = await blingService.listProdutos(pagina)
+    counters.hasMore = hasMore
+    counters.processados = produtos.length
+
+    for (const produto of produtos) {
       try {
-        let pagina = 1
-        let hasMore = true
-        let produtoAtual = 0
+        const parsed = await parseSku(produto.codigo)
 
-        while (hasMore) {
-          const { data: produtos, hasMore: more } = await blingService.listProdutos(pagina)
-          hasMore = more
+        if (parsed.modelo && parsed.cor) {
+          const chave = `${parsed.modelo}:${parsed.cor}`
+          if (processados.has(chave)) continue
+          processados.add(chave)
 
-          for (const produto of produtos) {
-            produtoAtual++
-            send({ type: 'progress', atual: produtoAtual, produto: produto.codigo, pagina })
-
-            try {
-              const parsed = await parseSku(produto.codigo)
-
-              if (parsed.modelo && parsed.cor) {
-                const chave = `${parsed.modelo}:${parsed.cor}`
-                if (processados.has(chave)) continue
-                processados.add(chave)
-
-                const imagemUrl = produto.imagemThumbnail ?? null
-                await upsertVariante(parsed.modelo, parsed.cor, imagemUrl, counters)
-                continue
-              }
-
-              const detalhe = await blingService.getProduto(produto.id)
-              if (!detalhe.variacoes?.length) continue
-
-              for (const variacao of detalhe.variacoes) {
-                if (!variacao.codigo) continue
-
-                const parsedVar = await parseSku(variacao.codigo)
-                if (!parsedVar.modelo || !parsedVar.cor) continue
-
-                const chave = `${parsedVar.modelo}:${parsedVar.cor}`
-                if (processados.has(chave)) continue
-                processados.add(chave)
-
-                const imagemUrl = variacao.imagens?.[0]?.link ?? null
-                await upsertVariante(parsedVar.modelo, parsedVar.cor, imagemUrl, counters)
-              }
-            } catch (err) {
-              counters.erros.push(
-                `Produto ${produto.codigo}: ${err instanceof Error ? err.message : 'erro desconhecido'}`,
-              )
-            }
-          }
-
-          pagina++
+          const imagemUrl = produto.imagemThumbnail ?? null
+          await upsertVariante(parsed.modelo, parsed.cor, imagemUrl, counters)
+          continue
         }
 
-        send({ type: 'done', ...counters })
+        const detalhe = await blingService.getProduto(produto.id)
+        if (!detalhe.variacoes?.length) continue
+
+        for (const variacao of detalhe.variacoes) {
+          if (!variacao.codigo) continue
+
+          const parsedVar = await parseSku(variacao.codigo)
+          if (!parsedVar.modelo || !parsedVar.cor) continue
+
+          const chave = `${parsedVar.modelo}:${parsedVar.cor}`
+          if (processados.has(chave)) continue
+          processados.add(chave)
+
+          const imagemUrl = variacao.imagens?.[0]?.link ?? null
+          await upsertVariante(parsedVar.modelo, parsedVar.cor, imagemUrl, counters)
+        }
       } catch (err) {
-        counters.erros.push(err instanceof Error ? err.message : 'erro fatal')
-        send({ type: 'done', ...counters })
+        counters.erros.push(
+          `Produto ${produto.codigo}: ${err instanceof Error ? err.message : 'erro desconhecido'}`,
+        )
       }
+    }
+  } catch (err) {
+    counters.erros.push(err instanceof Error ? err.message : 'erro fatal')
+  }
 
-      controller.close()
-    },
-  })
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'application/x-ndjson',
-      'Cache-Control': 'no-cache',
-    },
+  return NextResponse.json({
+    ...counters,
+    // Retorna chaves processadas para o frontend enviar no próximo lote
+    processadosKeys: Array.from(processados),
   })
 }

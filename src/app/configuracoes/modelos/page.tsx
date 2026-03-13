@@ -242,57 +242,51 @@ function ModelosContent() {
   async function syncBling() {
     setSyncing(true)
     setSyncProgress(null)
+
+    const totais = { criadas: 0, atualizadas: 0, semModelo: 0, semImagem: 0, imagensBaixadas: 0, erros: [] as string[] }
+    let processadosKeys: string[] = []
+    let pagina = 1
+    let hasMore = true
+
     try {
-      const res = await fetch(API_ROUTES.VARIANTES_SYNC_BLING, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-      })
+      while (hasMore) {
+        setSyncProgress({ atual: (pagina - 1) * 20, produto: `página ${pagina}` })
 
-      if (!res.ok || !res.body) {
-        throw new Error(`Erro ${res.status}`)
+        const res = await fetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=${pagina}`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ processados: processadosKeys }),
+        })
+
+        if (!res.ok) throw new Error(`Erro ${res.status}`)
+
+        const result = await res.json()
+        hasMore = result.hasMore
+        processadosKeys = result.processadosKeys ?? []
+        pagina++
+
+        totais.criadas += result.criadas
+        totais.atualizadas += result.atualizadas
+        totais.semModelo += result.semModelo
+        totais.semImagem += result.semImagem
+        totais.imagensBaixadas += result.imagensBaixadas
+        if (result.erros?.length) totais.erros.push(...result.erros)
+
+        setSyncProgress({ atual: (pagina - 1) * 20, produto: `página ${pagina - 1} concluída` })
       }
 
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let result: { criadas: number; atualizadas: number; semModelo: number; semImagem: number; imagensBaixadas: number; erros: string[] } | null = null
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-
-        for (const line of lines) {
-          if (!line.trim()) continue
-          const event = JSON.parse(line)
-          if (event.type === 'progress') {
-            setSyncProgress({ atual: event.atual, produto: event.produto })
-          } else if (event.type === 'done') {
-            result = event
-          }
-        }
-      }
-
-      setSyncProgress(null)
-
-      if (result) {
-        const partes: string[] = []
-        if (result.criadas > 0) partes.push(`${result.criadas} criada${result.criadas !== 1 ? 's' : ''}`)
-        if (result.atualizadas > 0) partes.push(`${result.atualizadas} atualizada${result.atualizadas !== 1 ? 's' : ''}`)
-        if (result.imagensBaixadas > 0) partes.push(`${result.imagensBaixadas} imagem(ns) importada(s)`)
-        if (result.semModelo > 0) partes.push(`${result.semModelo} sem modelo cadastrado`)
-        if (result.erros.length > 0) partes.push(`${result.erros.length} erro${result.erros.length !== 1 ? 's' : ''}`)
-        const msg = partes.length > 0 ? partes.join(', ') : 'Nenhuma variante encontrada'
-        if (result.erros.length > 0) {
-          toast.error(`Sincronizado com erros: ${msg}`)
-        } else {
-          toast.success(`Sincronização concluída: ${msg}`)
-        }
+      const partes: string[] = []
+      if (totais.criadas > 0) partes.push(`${totais.criadas} criada${totais.criadas !== 1 ? 's' : ''}`)
+      if (totais.atualizadas > 0) partes.push(`${totais.atualizadas} atualizada${totais.atualizadas !== 1 ? 's' : ''}`)
+      if (totais.imagensBaixadas > 0) partes.push(`${totais.imagensBaixadas} imagem(ns) importada(s)`)
+      if (totais.semModelo > 0) partes.push(`${totais.semModelo} sem modelo cadastrado`)
+      if (totais.erros.length > 0) partes.push(`${totais.erros.length} erro${totais.erros.length !== 1 ? 's' : ''}`)
+      const msg = partes.length > 0 ? partes.join(', ') : 'Nenhuma variante encontrada'
+      if (totais.erros.length > 0) {
+        toast.error(`Sincronizado com erros: ${msg}`)
+      } else {
+        toast.success(`Sincronização concluída: ${msg}`)
       }
 
       await fetchModelos()
