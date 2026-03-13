@@ -81,6 +81,68 @@ function gradeRowToCard(
   }
 }
 
+/**
+ * Agrupa cards por cor do componente relevante ao setor.
+ * SOLA: agrupa por modelo + corSola (mesma sola, soma quantidades)
+ * PALMILHA: agrupa por modelo + corPalmilha
+ * FACHETA: agrupa por modelo + corFacheta
+ * CABEDAL: sem agrupamento (cada cor de cabedal é uma ficha distinta)
+ */
+function mergeCardsPorSetor(setor: Setor, cards: ConsolidadoCardData[]): ConsolidadoCardData[] {
+  if (setor === Setor.CABEDAL) return cards
+
+  // Determinar qual cor do componente usar como chave de agrupamento
+  const getCorComponente = (card: ConsolidadoCardData): string | null => {
+    switch (setor) {
+      case Setor.SOLA:     return card.item.variante.corSola ?? null
+      case Setor.PALMILHA: return card.item.variante.corPalmilha ?? null
+      case Setor.FACHETA:  return card.item.variante.corFacheta ?? null
+      default:             return null
+    }
+  }
+
+  const grupos = new Map<string, ConsolidadoCardData>()
+
+  for (const card of cards) {
+    const corComp = getCorComponente(card)
+    // Se cor do componente estiver ausente, não mergear — usar SKU como chave única
+    const key = corComp
+      ? `${card.item.modelo.codigo ?? ''}||${corComp}||${card.pedido.numero}`
+      : `__nomatch__${card.item.sku}||${card.pedido.numero}`
+
+    const existing = grupos.get(key)
+    if (!existing) {
+      // Clonar o card para não mutar o original
+      grupos.set(key, {
+        ...card,
+        item: {
+          ...card.item,
+          quantidades: { ...card.item.quantidades },
+        },
+        tamanhos: [...card.tamanhos],
+      })
+    } else {
+      // Somar quantidades e unir tamanhos
+      for (const [tam, qty] of Object.entries(card.item.quantidades)) {
+        const t = Number(tam)
+        existing.item.quantidades[t] = (existing.item.quantidades[t] ?? 0) + qty
+      }
+      for (const t of card.tamanhos) {
+        if (!existing.tamanhos.includes(t)) {
+          existing.tamanhos.push(t)
+        }
+      }
+    }
+  }
+
+  // Ordenar tamanhos uma vez após todo o merge
+  for (const card of grupos.values()) {
+    card.tamanhos.sort((a, b) => a - b)
+  }
+
+  return [...grupos.values()]
+}
+
 /** Coleta todos os códigos de cor de componentes e busca descrições no MapeamentoCor */
 async function buildCorDescMap(grades: GradeRow[]): Promise<Map<string, string>> {
   const codigos = new Set<string>()
@@ -196,7 +258,8 @@ export class PdfGeneratorService {
           }))
         : grades
 
-      const cards: ConsolidadoCardData[] = gradesComImagem.map((g) => gradeRowToCard(g, pedidoData, corDescMap))
+      const cardsRaw: ConsolidadoCardData[] = gradesComImagem.map((g) => gradeRowToCard(g, pedidoData, corDescMap))
+      const cards = mergeCardsPorSetor(setor, cardsRaw)
 
       const pdfBuffer = await renderConsolidadoPdf(setor, cards)
       console.log(`[gerarFichas] PDF ${setor} renderizado, tamanho: ${pdfBuffer.length}`)
@@ -293,14 +356,14 @@ export class PdfGeneratorService {
     const temFacheta = grades.some((g) => g.modeloFacheta)
     const setores = [Setor.CABEDAL, Setor.PALMILHA, Setor.SOLA, ...(temFacheta ? [Setor.FACHETA] : [])]
 
-    // Render and upload all PDFs in parallel before persisting
-    const pdfUploads = await Promise.all(
-      setores.map(async (setor) => {
-        const cards: ConsolidadoCardData[] = grades.map((g) => gradeRowToCard(g, pedidoData, corDescMap))
-        const pdfBuffer = await renderConsolidadoPdf(setor, cards)
-        return { setor, pdfBuffer, totalCards: cards.length }
-      }),
-    )
+    // Render PDFs sequentially (yoga-layout WASM crashes with parallel renders)
+    const pdfUploads: { setor: Setor; pdfBuffer: Buffer; totalCards: number }[] = []
+    for (const setor of setores) {
+      const cardsRaw: ConsolidadoCardData[] = grades.map((g) => gradeRowToCard(g, pedidoData, corDescMap))
+      const cards = mergeCardsPorSetor(setor, cardsRaw)
+      const pdfBuffer = await renderConsolidadoPdf(setor, cards)
+      pdfUploads.push({ setor, pdfBuffer, totalCards: cards.length })
+    }
 
     await prisma.$transaction(async (tx) => {
       const consolidado = await tx.consolidado.create({ data: {} })
