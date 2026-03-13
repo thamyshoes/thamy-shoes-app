@@ -36,7 +36,7 @@ export async function GET(
 
     // buffer.buffer pode ser maior que o Buffer real (pool compartilhado do Node.js).
     // Usar slice para garantir que só os bytes relevantes sejam enviados.
-    const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+    const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer
 
     return new NextResponse(arrayBuffer, {
       status: 200,
