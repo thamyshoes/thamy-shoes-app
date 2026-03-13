@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Loader2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ClipboardList, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { SidebarLayout } from '@/components/layout/sidebar-layout'
 import { Button } from '@/components/ui/button'
@@ -32,6 +33,7 @@ const SETORES_PADRAO = ['CABEDAL', 'SOLA', 'PALMILHA'] as const
 // ST002: Client Component com estado de seleção
 export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
   const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
   const [selecionados, setSelecionados] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [agruparPorFaixa, setAgruparPorFaixa] = useState(false)
@@ -173,8 +175,23 @@ export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
                     >
                       <span className="font-medium">#{pedido.numero}</span>
                       <span className="text-muted-foreground">{pedido.cliente}</span>
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        {pedido.totalItens} {pedido.totalItens === 1 ? 'item' : 'itens'}
+                      <span className="ml-auto flex items-center gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={<ClipboardList className="h-3.5 w-3.5" />}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                            router.push(ROUTES.PEDIDO_DETALHE(pedido.id))
+                          }}
+                          disabled={isLoading}
+                        >
+                          Gerar Individual
+                        </Button>
+                        <span className="text-xs text-muted-foreground">
+                          {pedido.totalItens} {pedido.totalItens === 1 ? 'item' : 'itens'}
+                        </span>
                       </span>
                     </label>
                   </div>
