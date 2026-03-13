@@ -55,7 +55,6 @@ function buildColumns(
       align: 'center',
       render: (p) => {
         const canGerar =
-          p.status !== StatusPedido.FICHAS_GERADAS &&
           p.totalPendentes === 0 &&
           p.totalItens > 0
 

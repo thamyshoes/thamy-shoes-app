@@ -83,9 +83,6 @@ export class PdfGeneratorService {
     console.log('[gerarFichas] Pedido encontrado:', !!pedido, 'status:', pedido?.status, 'itens:', pedido?.itens?.length)
 
     if (!pedido) throw new Error('Pedido não encontrado')
-    if (pedido.status === StatusPedido.FICHAS_GERADAS) {
-      throw new Error('Fichas já foram geradas para este pedido')
-    }
 
     const itensPendentes = pedido.itens.filter((i) => i.status !== StatusItem.RESOLVIDO)
     console.log('[gerarFichas] Itens pendentes:', itensPendentes.length, 'de', pedido.itens.length)
@@ -187,6 +184,14 @@ export class PdfGeneratorService {
     // Persist all records in a single transaction (rollback on failure)
     const geradoEm = new Date().toISOString()
     await prisma.$transaction(async (tx) => {
+      // Deletar fichas antigas dos setores que serão regerados
+      await tx.fichaProducao.deleteMany({
+        where: {
+          pedidoId,
+          setor: { in: pdfUploads.map((u) => u.setor) },
+        },
+      })
+
       for (const { setor, pdfUrl, totalCards } of pdfUploads) {
         const dadosJson = {
           setor,

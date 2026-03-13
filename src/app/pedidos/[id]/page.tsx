@@ -374,7 +374,7 @@ function handleItemSaved() {
   const isAdmin = user.perfil === Perfil.ADMIN
   const canEditItems = isAdmin || user.perfil === Perfil.PCP
   const canGerarFichas =
-    pedido && pedido.status !== StatusPedido.FICHAS_GERADAS && pedido.totalPendentes === 0 && pedido.totalItens > 0
+    pedido && pedido.totalPendentes === 0 && pedido.totalItens > 0
 
   const itemColumns = buildItemColumns((item) => setEditingItem(item), canEditItems)
 
@@ -496,10 +496,7 @@ function handleItemSaved() {
               onGerado={() => void fetchPedido()}
             />
           )}
-          {(isAdmin || user.perfil === Perfil.PCP) && pedido.status === StatusPedido.FICHAS_GERADAS && (
-            <span className="text-xs text-secondary">Fichas já foram geradas</span>
-          )}
-          {(isAdmin || user.perfil === Perfil.PCP) && !canGerarFichas && pedido.status !== StatusPedido.FICHAS_GERADAS && pedido.totalPendentes > 0 && (
+          {(isAdmin || user.perfil === Perfil.PCP) && !canGerarFichas && pedido.totalPendentes > 0 && (
             <span className="text-xs text-secondary">
               Resolva todos os itens pendentes para gerar fichas
             </span>
