@@ -23,9 +23,9 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   colImagem: {
-    width: 50,
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
   },
   imagem: {
     width: 46,

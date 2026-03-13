@@ -9,10 +9,9 @@ import { PDF_TOKENS } from '@/lib/pdf-tokens'
 
 const styles = StyleSheet.create({
   card: {
-    padding: 6,
+    padding: 5,
     border: `1pt solid ${PDF_TOKENS.colors.border}`,
     flexDirection: 'column',
-    flex: 1,
   },
 })
 

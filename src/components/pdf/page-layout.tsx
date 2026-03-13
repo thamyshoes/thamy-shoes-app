@@ -11,11 +11,8 @@ const styles = StyleSheet.create({
   page: {
     padding: 14,
     flexDirection: 'column',
-    gap: 6,
+    gap: 4,
     fontFamily: PDF_TOKENS.fontFamily.default,
-  },
-  cardWrapper: {
-    flex: 1,
   },
 })
 
@@ -31,16 +28,16 @@ interface PageLayoutProps {
   cards: any[]
 }
 
-// 4 cards por página, 1 por linha (cada card = 1/4 da página, largura total)
+// 6 cards por página, largura total, altura fixa ao conteúdo
 export const PageLayout = ({ cards }: PageLayoutProps) => {
-  const pages = chunk(cards, 4)
+  const pages = chunk(cards, 6)
 
   return (
     <Document>
       {pages.map((pageCards, pi) => (
         <Page key={String(pi)} size="A4" style={styles.page}>
           {pageCards.map((card, ci) => (
-            <View key={String(ci)} style={styles.cardWrapper}>{card}</View>
+            <View key={String(ci)}>{card}</View>
           ))}
         </Page>
       ))}
