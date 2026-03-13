@@ -12,25 +12,69 @@ export interface SyncBlingResult {
   erros: string[]
 }
 
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+async function upsertVariante(
+  modeloCodigo: string,
+  corCodigo: string,
+  imagemUrl: string,
+  counters: { criadas: number; atualizadas: number; semModelo: number },
+): Promise<void> {
+  const modelo = await prisma.modelo.findUnique({
+    where: { codigo: modeloCodigo },
+    select: { id: true },
+  })
+
+  if (!modelo) {
+    counters.semModelo++
+    return
+  }
+
+  const existente = await prisma.modeloVarianteCor.findUnique({
+    where: { modeloId_corCodigo: { modeloId: modelo.id, corCodigo } },
+    select: { id: true },
+  })
+
+  await prisma.modeloVarianteCor.upsert({
+    where: { modeloId_corCodigo: { modeloId: modelo.id, corCodigo } },
+    update: { imagemUrl },
+    create: { modeloId: modelo.id, corCodigo, imagemUrl },
+  })
+
+  if (existente) {
+    counters.atualizadas++
+  } else {
+    counters.criadas++
+  }
+}
+
+// ── route ─────────────────────────────────────────────────────────────────────
+
 // POST /api/configuracoes/modelos/variantes/sync-bling
-// Percorre todos os produtos do Bling, extrai variações com imagem,
-// faz parse do SKU e faz upsert de ModeloVarianteCor.imagemUrl.
+//
+// Estratégia de dois níveis:
+//
+// Nível 1 — produto flat (SKU completo no próprio produto.codigo, ex: "1611501220"):
+//   parseSku(produto.codigo) → modelo="16115", cor="012"
+//   usa produto.imagemThumbnail diretamente — sem chamada extra ao Bling.
+//
+// Nível 2 — produto pai (código não parseia completamente, ex: "16115"):
+//   chama getProduto(id) → itera variacao.codigo + variacao.imagens
+//   útil se o catálogo Bling tiver produtos agrupados com variações aninhadas.
+//
+// Deduplicação: o primeiro par (modelo, cor) com imagem encontrado vence.
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const guard = requireAdmin(request)
   if (guard) return guard
 
-  let criadas = 0
-  let atualizadas = 0
-  let semModelo = 0
+  const counters = { criadas: 0, atualizadas: 0, semModelo: 0 }
   let semImagem = 0
   const erros: string[] = []
 
-  // Conjunto de pares "modeloCodigo:corCodigo" já processados.
-  // Garante que a primeira variação com imagem para cada par seja usada
-  // (variações de tamanhos diferentes compartilham o mesmo par).
+  // Pares "modeloCodigo:corCodigo" já processados — evita sobrescrever
+  // com uma imagem pior quando múltiplos produtos representam a mesma variante.
   const processados = new Set<string>()
 
-  // Percorre todas as páginas de produtos do Bling
   let pagina = 1
   let hasMore = true
 
@@ -41,8 +85,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     for (const produto of produtos) {
       try {
-        const detalhe = await blingService.getProduto(produto.id)
+        // ── Nível 1: produto flat ──────────────────────────────────────────
+        const parsed = await parseSku(produto.codigo)
 
+        if (parsed.modelo && parsed.cor) {
+          // SKU completo no código do produto — usa thumbnail da listagem.
+          const imagemUrl = produto.imagemThumbnail ?? null
+          if (!imagemUrl) {
+            semImagem++
+            continue
+          }
+
+          const chave = `${parsed.modelo}:${parsed.cor}`
+          if (processados.has(chave)) continue
+          processados.add(chave)
+
+          await upsertVariante(parsed.modelo, parsed.cor, imagemUrl, counters)
+          continue
+        }
+
+        // ── Nível 2: produto pai com variações aninhadas ───────────────────
+        const detalhe = await blingService.getProduto(produto.id)
         if (!detalhe.variacoes?.length) continue
 
         for (const variacao of detalhe.variacoes) {
@@ -54,42 +117,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             continue
           }
 
-          const parsed = await parseSku(variacao.codigo)
-          if (!parsed.modelo || !parsed.cor) continue
+          const parsedVar = await parseSku(variacao.codigo)
+          if (!parsedVar.modelo || !parsedVar.cor) continue
 
-          // Evitar processar o mesmo (modelo, cor) mais de uma vez
-          const chave = `${parsed.modelo}:${parsed.cor}`
+          const chave = `${parsedVar.modelo}:${parsedVar.cor}`
           if (processados.has(chave)) continue
           processados.add(chave)
 
-          // Buscar Modelo pelo código
-          const modelo = await prisma.modelo.findUnique({
-            where: { codigo: parsed.modelo },
-            select: { id: true },
-          })
-
-          if (!modelo) {
-            semModelo++
-            continue
-          }
-
-          // Verificar se já existe para contabilizar criadas vs atualizadas
-          const existente = await prisma.modeloVarianteCor.findUnique({
-            where: { modeloId_corCodigo: { modeloId: modelo.id, corCodigo: parsed.cor } },
-            select: { id: true },
-          })
-
-          await prisma.modeloVarianteCor.upsert({
-            where: { modeloId_corCodigo: { modeloId: modelo.id, corCodigo: parsed.cor } },
-            update: { imagemUrl },
-            create: { modeloId: modelo.id, corCodigo: parsed.cor, imagemUrl },
-          })
-
-          if (existente) {
-            atualizadas++
-          } else {
-            criadas++
-          }
+          await upsertVariante(parsedVar.modelo, parsedVar.cor, imagemUrl, counters)
         }
       } catch (err) {
         erros.push(
@@ -99,6 +134,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  const result: SyncBlingResult = { criadas, atualizadas, semModelo, semImagem, erros }
+  const result: SyncBlingResult = { ...counters, semImagem, erros }
   return NextResponse.json(result)
 }
