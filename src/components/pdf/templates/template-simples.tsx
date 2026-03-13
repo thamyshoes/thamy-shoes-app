@@ -79,7 +79,6 @@ export const TemplateSimples = ({
     <View style={styles.row2col}>
       <View style={styles.col}>
         <Field label="Pedido" value={String(pedido.numero)} />
-        <Field label="Setor" value={titulo} />
       </View>
       <View style={styles.col}>
         <Field label="Data" value={formatDate(pedido.data)} />

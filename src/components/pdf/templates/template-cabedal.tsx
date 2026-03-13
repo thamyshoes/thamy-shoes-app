@@ -86,7 +86,6 @@ export const TemplateCabedal = ({ pedido, item, base64Imagem, tamanhos }: Templa
       </View>
       <View style={styles.col}>
         <Field label="SKU" value={item.sku} />
-        <Field label="Setor" value="CABEDAL" />
       </View>
       <View style={styles.colImagem}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
