@@ -108,7 +108,7 @@ export default function PedidosPage() {
         <FilterBar>
           <label className="text-sm text-secondary">Status:</label>
           <select
-            className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             value={status ?? ''}
             onChange={(e) => {
               setStatus((e.target.value as StatusPedido) || undefined)
@@ -125,7 +125,7 @@ export default function PedidosPage() {
           <label className="text-sm text-secondary">Fornecedor:</label>
           <input
             type="text"
-            className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="Buscar fornecedor"
             value={fornecedor}
             onChange={(e) => {
@@ -137,7 +137,7 @@ export default function PedidosPage() {
           <label className="text-sm text-secondary">De:</label>
           <input
             type="text"
-            className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="dd/mm/aaaa"
             inputMode="numeric"
             pattern="\\d{2}/\\d{2}/\\d{4}"
@@ -151,7 +151,7 @@ export default function PedidosPage() {
           <label className="text-sm text-secondary">Até:</label>
           <input
             type="text"
-            className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="dd/mm/aaaa"
             inputMode="numeric"
             pattern="\\d{2}/\\d{2}/\\d{4}"

@@ -366,7 +366,7 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
               placeholder="Digite um código SKU para testar"
               value={skuInput}
               onChange={(e) => setSkuInput(e.target.value)}
-              className="w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
             {skuResult && skuResult.length > 0 && (
               <div className="mt-3 overflow-x-auto">
@@ -413,7 +413,7 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
             <input
               id="sku-nome"
               type="text"
-              className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               value={formNome}
               onChange={(e) => setFormNome(e.target.value)}
               placeholder="Ex: Padrão Thamy Shoes"
@@ -432,7 +432,7 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
                   className={`flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
                     formModo === m
                       ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-white text-secondary hover:text-foreground'
+                      : 'border-border bg-background text-secondary hover:text-foreground'
                   }`}
                 >
                   {m === 'SUFIXO' ? '← Por sufixo' : 'Por separador'}
@@ -456,12 +456,12 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
                 </p>
                 <div className="space-y-2">
                   {formDigitosSufixo.map((seg, i) => (
-                    <div key={i} className="flex items-center gap-2 rounded border border-border bg-white p-2">
+                    <div key={i} className="flex items-center gap-2 rounded border border-border bg-background p-2">
                       <span className="w-6 text-xs text-secondary font-mono">{i + 1}°</span>
                       <select
                         value={seg.campo}
                         onChange={(e) => updateSufixo(i, 'campo', e.target.value)}
-                        className="flex-1 rounded border border-border bg-white px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="flex-1 rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                       >
                         <option value="tamanho">Tamanho</option>
                         <option value="cor">Cor</option>
@@ -472,7 +472,7 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
                         max={10}
                         value={seg.digitos}
                         onChange={(e) => updateSufixo(i, 'digitos', parseInt(e.target.value) || 1)}
-                        className="w-16 rounded border border-border bg-white px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="w-16 rounded border border-border bg-background px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                       <span className="text-xs text-secondary w-12">dígitos</span>
                       <button type="button" onClick={() => moverSufixo(i, -1)} disabled={i === 0} className="text-secondary hover:text-foreground disabled:opacity-30" aria-label="Mover para cima">↑</button>
@@ -518,7 +518,7 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
                 <label className="block text-sm font-medium text-foreground" htmlFor="sku-sep">Separador</label>
                 <select
                   id="sku-sep"
-                  className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   value={formSeparador}
                   onChange={(e) => setFormSeparador(e.target.value)}
                 >
@@ -531,7 +531,7 @@ function SkuContent({ user }: { user: { id: string; perfil: string; setor: strin
                 <p className="mb-1 text-xs text-secondary">Use as setas para reordenar</p>
                 <div className="space-y-1">
                   {formOrdem.map((seg, i) => (
-                    <div key={seg} className="flex items-center gap-2 rounded border border-border bg-white p-2">
+                    <div key={seg} className="flex items-center gap-2 rounded border border-border bg-background p-2">
                       <span className="w-4 text-xs text-secondary">{i + 1}º</span>
                       <span className="flex-1 text-sm">{SEGMENTO_LABELS[seg]}</span>
                       <button type="button" onClick={() => moverSegmento(i, -1)} disabled={i === 0} className="text-secondary hover:text-foreground disabled:opacity-30" aria-label="Mover para cima">↑</button>

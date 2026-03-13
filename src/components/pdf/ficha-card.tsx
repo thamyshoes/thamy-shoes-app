@@ -1,0 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * @jsxRuntime classic
+ * @jsx h
+ */
+import { View, StyleSheet } from '@react-pdf/renderer'
+import { h } from '@/lib/pdf/h-factory'
+import { PDF_TOKENS } from '@/lib/pdf-tokens'
+
+const styles = StyleSheet.create({
+  card: {
+    height: PDF_TOKENS.card.height,
+    padding: 3,
+    border: `1pt solid ${PDF_TOKENS.colors.border}`,
+    flexDirection: 'column',
+    flex: 1,
+  },
+})
+
+export const FichaCard = ({ children }: { children: any }) => (
+  <View style={styles.card}>{children}</View>
+)

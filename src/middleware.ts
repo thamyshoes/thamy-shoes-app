@@ -13,6 +13,8 @@ const ACTIVITY_COOKIE = 'last-activity'
 const PUBLIC_ROUTES = [
   '/login',
   '/api/auth/login',
+  '/api/auth/forgot',
+  '/api/auth/reset',
   '/api/health',
   '/api/cron/',
   '/api/bling/callback',
@@ -43,7 +45,8 @@ function requiresAdminOrPCP(pathname: string): boolean {
     pathname.startsWith('/pedidos') ||
     pathname.startsWith('/api/pedidos') ||
     pathname.startsWith('/api/fichas/gerar') ||
-    pathname.startsWith('/api/fichas/consolidar')
+    pathname.startsWith('/api/fichas/consolidar') ||
+    pathname.startsWith('/api/consolidar')
   )
 }
 

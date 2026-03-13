@@ -9,6 +9,7 @@ const mockPrisma = {
   itemPedido: { findMany: vi.fn(), update: vi.fn() },
   gradeModelo: { findMany: vi.fn() },
   produto: { findMany: vi.fn() },
+  modelo: { findMany: vi.fn() },
 }
 
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
@@ -144,6 +145,7 @@ describe('montarGrades', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPrisma.gradeModelo.findMany.mockResolvedValue([])
+    mockPrisma.modelo.findMany.mockResolvedValue([])
   })
 
   it('retorna lista vazia se sem itens RESOLVIDOS', async () => {
@@ -205,6 +207,7 @@ describe('montarGradesConsolidadas', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPrisma.gradeModelo.findMany.mockResolvedValue([])
+    mockPrisma.modelo.findMany.mockResolvedValue([])
   })
 
   it('retorna [] para lista vazia de pedidoIds', async () => {

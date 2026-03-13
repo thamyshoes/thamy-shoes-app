@@ -185,7 +185,7 @@ function EquivalenciasContent({ user }: { user: { id: string; perfil: string; se
             <label className="block text-sm font-medium text-foreground" htmlFor="eq-escopo">Escopo</label>
             <select
               id="eq-escopo"
-              className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               value={formEscopo}
               onChange={(e) => setFormEscopo(e.target.value as Escopo)}
             >
@@ -200,7 +200,7 @@ function EquivalenciasContent({ user }: { user: { id: string; perfil: string; se
               <input
                 id="eq-valor"
                 type="text"
-                className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 value={formValor}
                 onChange={(e) => setFormValor(e.target.value)}
                 placeholder="Ex: REF001"

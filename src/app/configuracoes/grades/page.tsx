@@ -264,7 +264,7 @@ function GradesContent({ user }: { user: { id: string; perfil: string; setor: st
             <input
               id="grade-nome"
               type="text"
-              className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               value={formNome}
               onChange={(e) => setFormNome(e.target.value)}
               placeholder="Ex: Adulto"
@@ -277,7 +277,7 @@ function GradesContent({ user }: { user: { id: string; perfil: string; setor: st
                 id="grade-min"
                 type="number"
                 min={1}
-                className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 value={formMin}
                 onChange={(e) => setFormMin(Number(e.target.value))}
               />
@@ -288,7 +288,7 @@ function GradesContent({ user }: { user: { id: string; perfil: string; setor: st
                 id="grade-max"
                 type="number"
                 min={1}
-                className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 value={formMax}
                 onChange={(e) => setFormMax(Number(e.target.value))}
               />
@@ -320,7 +320,7 @@ function GradesContent({ user }: { user: { id: string; perfil: string; setor: st
             <div className="flex gap-2">
               <input
                 type="text"
-                className="flex-1 rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 placeholder="Ex: REF001"
                 value={novoModelo}
                 onChange={(e) => setNovoModelo(e.target.value)}

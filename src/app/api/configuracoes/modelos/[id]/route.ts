@@ -1,26 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
 
 const updateSchema = z.object({
-  codigo: z.string().min(1).max(30).optional(),
-  nome: z.string().min(1).optional(),
-  cabedal: z.string().nullable().optional(),
-  sola: z.string().nullable().optional(),
-  palmilha: z.string().nullable().optional(),
-  temFacheta: z.boolean().optional(),
-  materialBasePalmilha: z.string().nullable().optional(),
-  linha: z.string().nullable().optional(),
-  observacoes: z.string().nullable().optional(),
-  ativo: z.boolean().optional(),
+  // codigo é imutável: não aceitar alteração via API (consistente com a UI)
+  nome:             z.string().min(1).max(100).optional(),
+  materialCabedal:  z.string().max(200).nullable().optional(),
+  materialSola:     z.string().max(200).nullable().optional(),
+  materialPalmilha: z.string().max(200).nullable().optional(),
+  materialFacheta:  z.string().max(200).nullable().optional(),
+  facheta:          z.string().max(200).nullable().optional(),
 })
 
-export async function PATCH(
+async function handleUpdate(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params
+  id: string,
+): Promise<NextResponse> {
   const guard = requireAdmin(request)
   if (guard) return guard
 
@@ -33,7 +30,10 @@ export async function PATCH(
 
   const parsed = updateSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Dados inválidos' }, { status: 400 })
+    return NextResponse.json(
+      { error: parsed.error.errors[0]?.message ?? 'Dados inválidos' },
+      { status: 400 },
+    )
   }
 
   try {
@@ -43,9 +43,28 @@ export async function PATCH(
       include: { variantesCor: { orderBy: { corCodigo: 'asc' } } },
     })
     return NextResponse.json(modelo)
-  } catch {
-    return NextResponse.json({ error: 'Modelo não encontrado' }, { status: 404 })
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+      return NextResponse.json({ error: 'Modelo não encontrado' }, { status: 404 })
+    }
+    return NextResponse.json({ error: 'Erro ao atualizar modelo' }, { status: 500 })
   }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
+  return handleUpdate(request, id)
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
+  return handleUpdate(request, id)
 }
 
 export async function DELETE(
@@ -59,7 +78,15 @@ export async function DELETE(
   try {
     await prisma.modelo.delete({ where: { id } })
     return NextResponse.json({ ok: true })
-  } catch {
-    return NextResponse.json({ error: 'Modelo não encontrado' }, { status: 404 })
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err.code === 'P2025') {
+        return NextResponse.json({ error: 'Modelo não encontrado' }, { status: 404 })
+      }
+      if (err.code === 'P2003' || err.code === 'P2014') {
+        return NextResponse.json({ error: 'Modelo possui registros vinculados e não pode ser excluído' }, { status: 409 })
+      }
+    }
+    return NextResponse.json({ error: 'Erro ao excluir modelo' }, { status: 500 })
   }
 }

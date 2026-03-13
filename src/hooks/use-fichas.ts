@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { API_ROUTES, LIMITS } from '@/lib/constants'
 import type { FichaProducao } from '@/types'
@@ -46,6 +46,7 @@ export function useFichas(filters?: UseFichasFilters): UseFichasReturn {
   const [totalPages, setTotalPages] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const hasDataRef = useRef(false)
 
   const page = filters?.page ?? 1
   const setor = filters?.setor
@@ -55,7 +56,8 @@ export function useFichas(filters?: UseFichasFilters): UseFichasReturn {
   const search = filters?.search
 
   const fetchData = useCallback(async () => {
-    setLoading(true)
+    // keepPreviousData: só mostra skeleton se não tem dados anteriores
+    if (!hasDataRef.current) setLoading(true)
     setError(null)
     try {
       const params = new URLSearchParams({
@@ -74,6 +76,7 @@ export function useFichas(filters?: UseFichasFilters): UseFichasReturn {
       setFichas(res.items)
       setTotal(res.total)
       setTotalPages(res.totalPages)
+      hasDataRef.current = true
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar fichas')
     } finally {

@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Download, FileText, Pencil, RotateCcw, Trash2 } from 'lucide-react'
+import { BotaoGerarFichas } from '@/components/pedidos/botao-gerar-fichas'
 import { toast } from 'sonner'
 import { SidebarLayout } from '@/components/layout/sidebar-layout'
 import { DataTable, type Column } from '@/components/ui/data-table'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { SwatchCor } from '@/components/ui/swatch-cor'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -22,6 +24,11 @@ import type { ItemPedido, FichaProducao, GradeRow } from '@/types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface ItemPedidoEnriquecido extends ItemPedido {
+  corMapeada: boolean | null
+  hex: string | null
+}
+
 interface PedidoDetalhe {
   id: string
   numero: string
@@ -30,19 +37,20 @@ interface PedidoDetalhe {
   fornecedorNome: string
   observacoes: string | null
   status: StatusPedido
-  itens: ItemPedido[]
+  itens: ItemPedidoEnriquecido[]
   fichas: FichaProducao[]
   grades: GradeRow[]
   totalItens: number
   totalPendentes: number
+  temFacheta: boolean
 }
 
 // ── Colunas de Itens ─────────────────────────────────────────────────────────
 
 function buildItemColumns(
-  onEdit: (item: ItemPedido) => void,
+  onEdit: (item: ItemPedidoEnriquecido) => void,
   canEditItems: boolean,
-): Column<ItemPedido>[] {
+): Column<ItemPedidoEnriquecido>[] {
   return [
     { key: 'skuBruto', header: 'SKU Bruto', mono: true },
     {
@@ -53,7 +61,17 @@ function buildItemColumns(
     {
       key: 'cor',
       header: 'Cor',
-      render: (i) => i.corDescricao ?? i.cor ?? <span className="text-secondary">—</span>,
+      render: (i) => (
+        <span className="flex items-center gap-1.5 flex-wrap">
+          {i.corMapeada && i.hex && <SwatchCor hex={i.hex} nome={i.corDescricao ?? i.cor ?? undefined} size="sm" />}
+          <span>{i.corDescricao ?? i.cor ?? <span className="text-secondary">—</span>}</span>
+          {i.corMapeada === false && i.cor && (
+            <span className="inline-flex items-center rounded-full bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">
+              cor não mapeada
+            </span>
+          )}
+        </span>
+      ),
     },
     {
       key: 'tamanho',
@@ -73,7 +91,7 @@ function buildItemColumns(
           {
             key: 'acoes',
             header: '',
-            render: (i: ItemPedido) =>
+            render: (i: ItemPedidoEnriquecido) =>
               i.status === StatusItem.PENDENTE ? (
                 <button
                   onClick={(e) => {
@@ -97,13 +115,13 @@ function buildItemColumns(
 
 interface EditModalProps {
   pedidoId: string
-  item: ItemPedido | null
+  item: ItemPedidoEnriquecido | null
   onClose: () => void
   onSaved: () => void
 }
 
 function EditItemModal({ pedidoId, item, onClose, onSaved }: EditModalProps) {
-  const [modelo, setModelo] = useState('')
+  const [modelo, setModelo] = useState<string>('')
   const [cor, setCor] = useState('')
   const [corDescricao, setCorDescricao] = useState('')
   const [tamanho, setTamanho] = useState('')
@@ -225,13 +243,11 @@ export default function PedidoDetalhePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [editingItem, setEditingItem] = useState<ItemPedido | null>(null)
+  const [editingItem, setEditingItem] = useState<ItemPedidoEnriquecido | null>(null)
   const [reimportando, setReimportando] = useState(false)
   const [showReimportConfirm, setShowReimportConfirm] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [showGerarFichasConfirm, setShowGerarFichasConfirm] = useState(false)
-  const [gerandoFichas, setGerandoFichas] = useState(false)
   const [allResolved, setAllResolved] = useState(false)
 
   const fetchPedido = useCallback(async () => {
@@ -278,21 +294,7 @@ export default function PedidoDetalhePage() {
     }
   }
 
-  async function handleGerarFichas() {
-    setGerandoFichas(true)
-    try {
-      await apiClient.post(API_ROUTES.FICHAS_GERAR, { pedidoId: id })
-      toast.success(MESSAGES.SUCCESS.FICHAS_GENERATED)
-      void fetchPedido()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : MESSAGES.ERROR.GENERIC)
-    } finally {
-      setGerandoFichas(false)
-      setShowGerarFichasConfirm(false)
-    }
-  }
-
-  function handleItemSaved() {
+function handleItemSaved() {
     setEditingItem(null)
     void fetchPedido()
   }
@@ -334,7 +336,7 @@ export default function PedidoDetalhePage() {
       {!loading && !error && pedido && (
         <div className="space-y-6">
           {/* Info Card */}
-          <div className="rounded-lg border border-border bg-white p-5">
+          <div className="rounded-lg border border-border bg-background p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
                 <div>
@@ -417,33 +419,20 @@ export default function PedidoDetalhePage() {
           </section>
 
           {/* Botão Gerar Fichas */}
-          {(isAdmin || user.perfil === Perfil.PCP) && (
-            <div className="flex items-center gap-3">
-              <Button
-                variant="primary"
-                disabled={!canGerarFichas}
-                loading={gerandoFichas}
-                icon={<FileText className="h-4 w-4" />}
-                onClick={() => setShowGerarFichasConfirm(true)}
-                title={
-                  !canGerarFichas
-                    ? pedido?.status === StatusPedido.FICHAS_GERADAS
-                      ? 'Fichas já foram geradas para este pedido'
-                      : 'Resolva todos os itens pendentes para gerar fichas'
-                    : undefined
-                }
-              >
-                Gerar Fichas
-              </Button>
-              {!canGerarFichas && pedido.totalPendentes > 0 && (
-                <span className="text-xs text-secondary">
-                  Resolva todos os itens pendentes para gerar fichas
-                </span>
-              )}
-              {pedido.status === StatusPedido.FICHAS_GERADAS && (
-                <span className="text-xs text-secondary">Fichas já foram geradas</span>
-              )}
-            </div>
+          {(isAdmin || user.perfil === Perfil.PCP) && canGerarFichas && (
+            <BotaoGerarFichas
+              pedidoId={pedido.id}
+              temFacheta={pedido.temFacheta}
+              onGerado={() => void fetchPedido()}
+            />
+          )}
+          {(isAdmin || user.perfil === Perfil.PCP) && pedido.status === StatusPedido.FICHAS_GERADAS && (
+            <span className="text-xs text-secondary">Fichas já foram geradas</span>
+          )}
+          {(isAdmin || user.perfil === Perfil.PCP) && !canGerarFichas && pedido.status !== StatusPedido.FICHAS_GERADAS && pedido.totalPendentes > 0 && (
+            <span className="text-xs text-secondary">
+              Resolva todos os itens pendentes para gerar fichas
+            </span>
           )}
 
           {/* Itens */}
@@ -468,7 +457,7 @@ export default function PedidoDetalhePage() {
                 {pedido.fichas.map((ficha) => (
                   <div
                     key={ficha.id}
-                    className="rounded-lg border border-border bg-white p-4"
+                    className="rounded-lg border border-border bg-background p-4"
                   >
                     <div className="mb-3">
                       <p className="text-sm font-semibold capitalize text-foreground">
@@ -481,9 +470,9 @@ export default function PedidoDetalhePage() {
                     </div>
                     <div className="flex gap-2">
                       <a
-                        href={`/api/fichas/${ficha.id}/download`}
+                        href={API_ROUTES.FICHA_DOWNLOAD_V2(ficha.id)}
                         download
-                        className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary/90 transition-colors"
+                        className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover transition-colors"
                       >
                         <Download className="h-3 w-3" />
                         Download
@@ -540,17 +529,6 @@ export default function PedidoDetalhePage() {
         onConfirm={() => void handleExcluir()}
       />
 
-      {/* Confirm gerar fichas */}
-      <ConfirmDialog
-        open={showGerarFichasConfirm}
-        onClose={() => setShowGerarFichasConfirm(false)}
-        title="Gerar fichas de produção?"
-        description={MESSAGES.CONFIRM.GERAR_FICHAS}
-        confirmLabel="Gerar Fichas"
-        variant="default"
-        loading={gerandoFichas}
-        onConfirm={() => void handleGerarFichas()}
-      />
     </SidebarLayout>
   )
 }

@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-type:
+    name: Lint e TypeCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar Prisma Client
+        run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: TypeCheck
+        run: npx tsc --noEmit
+
+  test:
+    name: Testes Unitários
+    runs-on: ubuntu-latest
+    needs: lint-and-type
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar Prisma Client
+        run: npx prisma generate
+
+      - name: Executar testes
+        run: npm test
+
+      # Descomentar se Codecov configurado:
+      # - uses: codecov/codecov-action@v4
+      #   if: always()
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+
+  security:
+    name: Auditoria de Segurança
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auditoria de dependências
+        run: npm audit --audit-level=high || true
+
+  build:
+    name: Build de Verificação
+    runs-on: ubuntu-latest
+    needs: [lint-and-type, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar Prisma Client
+        run: npx prisma generate
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_APP_URL: ${{ vars.STAGING_URL || 'http://localhost:3000' }}
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL || 'postgresql://placeholder' }}
+          DIRECT_URL: ${{ secrets.STAGING_DATABASE_URL || 'postgresql://placeholder' }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'build-placeholder-secret-32chars-min' }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY || 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2' }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY || 're_placeholder' }}
+          ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL || 'admin@thamyshoes.com.br' }}
+          NOTIFICATION_EMAIL_TO: ${{ vars.NOTIFICATION_EMAIL_TO || 'admin@thamyshoes.com.br' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET || 'cron-placeholder' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY || 'placeholder' }}
+          BLING_CLIENT_ID: ${{ secrets.BLING_CLIENT_ID || 'placeholder' }}
+          BLING_CLIENT_SECRET: ${{ secrets.BLING_CLIENT_SECRET || 'placeholder' }}
+          BLING_REDIRECT_URI: ${{ secrets.BLING_REDIRECT_URI || 'http://localhost:3000/api/bling/callback' }}

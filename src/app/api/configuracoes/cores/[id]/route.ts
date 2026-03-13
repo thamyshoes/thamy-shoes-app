@@ -4,8 +4,12 @@ import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
 
 const updateSchema = z.object({
-  codigo: z.string().min(1).regex(/^[A-Z0-9]+$/).optional(),
+  codigo:   z.string().min(1).regex(/^[A-Z0-9]+$/).optional(),
   descricao: z.string().min(1).optional(),
+  hex:      z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Formato inválido. Use #RRGGBB')
+             .optional()
+             .nullable()
+             .transform((v) => v ?? null),
 })
 
 export async function PATCH(

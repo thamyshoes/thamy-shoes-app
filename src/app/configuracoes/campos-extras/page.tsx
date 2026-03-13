@@ -293,7 +293,7 @@ function CamposExtrasContent({ user }: { user: { id: string; perfil: string; set
             <input
               id="campo-nome"
               type="text"
-              className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               value={formNome}
               onChange={(e) => setFormNome(e.target.value)}
               placeholder="Ex: Acabamento"
@@ -303,7 +303,7 @@ function CamposExtrasContent({ user }: { user: { id: string; perfil: string; set
             <label className="block text-sm font-medium text-foreground" htmlFor="campo-tipo">Tipo</label>
             <select
               id="campo-tipo"
-              className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               value={formTipo}
               onChange={(e) => setFormTipo(e.target.value as TipoCampo)}
             >
@@ -318,7 +318,7 @@ function CamposExtrasContent({ user }: { user: { id: string; perfil: string; set
               id="campo-ordem"
               type="number"
               min={0}
-              className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               value={formOrdem}
               onChange={(e) => setFormOrdem(Number(e.target.value))}
             />

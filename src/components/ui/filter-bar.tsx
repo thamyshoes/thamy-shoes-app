@@ -9,7 +9,7 @@ export function FilterBar({ children, className }: FilterBarProps) {
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center gap-3 rounded-lg border border-border bg-white px-4 py-3',
+        'flex flex-wrap items-center gap-3 rounded-lg border border-border bg-background px-4 py-3',
         className,
       )}
     >

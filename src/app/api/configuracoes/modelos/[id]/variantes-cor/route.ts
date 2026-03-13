@@ -4,13 +4,12 @@ import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
 
 const createSchema = z.object({
-  corCodigo: z.string().min(1, 'Código da cor é obrigatório'),
-  cabedalOverride: z.string().nullable().optional(),
-  corSola: z.string().nullable().optional(),
-  corFacheta: z.string().nullable().optional(),
-  corForroPalmilha: z.string().nullable().optional(),
-  codigoFichaPalmilha: z.string().nullable().optional(),
-  descricaoPalmilha: z.string().nullable().optional(),
+  corCodigo:   z.string().min(1, 'Código da cor é obrigatório'),
+  imagemUrl:   z.string().url().nullable().optional(),
+  corCabedal:  z.string().nullable().optional(),
+  corSola:     z.string().nullable().optional(),
+  corPalmilha: z.string().nullable().optional(),
+  corFacheta:  z.string().nullable().optional(),
 })
 
 // GET /api/configuracoes/modelos/[id]/variantes-cor
@@ -65,14 +64,13 @@ export async function POST(
 
   const variante = await prisma.modeloVarianteCor.create({
     data: {
-      modeloId: id,
-      corCodigo: parsed.data.corCodigo,
-      cabedalOverride: parsed.data.cabedalOverride ?? null,
-      corSola: parsed.data.corSola ?? null,
-      corFacheta: parsed.data.corFacheta ?? null,
-      corForroPalmilha: parsed.data.corForroPalmilha ?? null,
-      codigoFichaPalmilha: parsed.data.codigoFichaPalmilha ?? null,
-      descricaoPalmilha: parsed.data.descricaoPalmilha ?? null,
+      modeloId:    id,
+      corCodigo:   parsed.data.corCodigo,
+      imagemUrl:   parsed.data.imagemUrl   ?? null,
+      corCabedal:  parsed.data.corCabedal  ?? null,
+      corSola:     parsed.data.corSola     ?? null,
+      corPalmilha: parsed.data.corPalmilha ?? null,
+      corFacheta:  parsed.data.corFacheta  ?? null,
     },
   })
 

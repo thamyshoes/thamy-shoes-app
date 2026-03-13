@@ -158,7 +158,7 @@ describe('BlingIntegrationService', () => {
       } as unknown as Response)
 
       const result = await service.listPedidosCompra(7)
-      expect(result).toEqual(pedidos)
+      expect(result).toEqual({ data: pedidos, hasMore: false })
     })
 
     it('retenta em 429 e usa Retry-After', async () => {
@@ -182,7 +182,7 @@ describe('BlingIntegrationService', () => {
       })
 
       const result = await service.listPedidosCompra(7)
-      expect(result).toEqual([])
+      expect(result).toEqual({ data: [], hasMore: false })
       expect(sleepSpy).toHaveBeenCalledWith(1000) // Retry-After: 1 → 1000ms
       expect(callCount).toBe(2)
     })

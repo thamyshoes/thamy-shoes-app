@@ -39,7 +39,10 @@ export const API_ROUTES = {
   FICHAS_GERAR: '/api/fichas/gerar',
   FICHAS_CONSOLIDAR: '/api/fichas/consolidar',
   FICHAS: '/api/fichas',
-  FICHA_DOWNLOAD: (id: string) => `/api/fichas/${id}/download`,
+  FICHA_DOWNLOAD_V2: (id: string) => `/api/fichas/download/${id}`,
+  VARIANTES_BATCH: '/api/variantes/batch',
+  STORAGE_SIGNED_URL: '/api/variantes/signed-url',
+  MODELOS_VERIFICAR_VARIANTES: '/api/modelos/verificar-variantes',
   REGRAS_SKU: '/api/configuracoes/regras-sku',
   MAPEAMENTO_CORES: '/api/configuracoes/cores',
   GRADES: '/api/configuracoes/grades',
@@ -83,6 +86,13 @@ export const MESSAGES = {
 export const NOTIFICATION_TYPES = {
   TOKEN_EXPIRING_SOON: 'TOKEN_EXPIRING_SOON',
   TOKEN_EXPIRED: 'TOKEN_EXPIRED',
+} as const
+
+export const SETOR_LABELS: Record<string, string> = {
+  CABEDAL: 'Cabedal',
+  PALMILHA: 'Palmilha',
+  SOLA: 'Sola',
+  FACHETA: 'Facheta',
 } as const
 
 export const LIMITS = {

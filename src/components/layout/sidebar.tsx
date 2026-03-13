@@ -53,6 +53,11 @@ const NAV_ITEMS: NavItem[] = [
     children: SKU_CHILDREN,
   },
   {
+    // Sub-navigation for /configuracoes is handled inside the page itself.
+    // The following routes are accessible via tabs/links on /configuracoes:
+    //   /configuracoes/bling        — integração com Bling ERP
+    //   /configuracoes/campos-extras — campos extras de pedidos
+    //   /configuracoes/sku           — regras de parser de SKU
     label: 'Configurações',
     href: ROUTES.CONFIGURACOES,
     icon: <Settings className="h-4 w-4" />,

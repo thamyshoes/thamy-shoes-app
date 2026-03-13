@@ -38,7 +38,7 @@ export function ConfirmDialog({
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="relative z-10 w-full max-w-md rounded-lg border border-border bg-white p-6 shadow-lg">
+      <div className="relative z-10 w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg">
         <h2 id="confirm-dialog-title" className="text-base font-semibold text-foreground">
           {title}
         </h2>

@@ -11,14 +11,14 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Token inválido'),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+  password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
 })
 
 export const resetPasswordFormSchema = z
   .object({
     token: z.string().min(1, 'Token inválido'),
-    password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
-    confirmPassword: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+    password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
+    confirmPassword: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'As senhas não coincidem',
@@ -28,7 +28,7 @@ export const resetPasswordFormSchema = z
 export const createUserSchema = z.object({
   email: z.string().email('Email inválido'),
   nome: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+  password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
   perfil: z.enum(['ADMIN', 'PCP', 'PRODUCAO']),
   setor: z.enum(['CABEDAL', 'PALMILHA', 'SOLA']).nullable(),
 })
@@ -36,7 +36,7 @@ export const createUserSchema = z.object({
 export const updateUserSchema = z.object({
   nome: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres').optional(),
   email: z.string().email('Email inválido').optional(),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres').optional(),
+  password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres').optional(),
   perfil: z.enum(['ADMIN', 'PCP', 'PRODUCAO']).optional(),
   setor: z.enum(['CABEDAL', 'PALMILHA', 'SOLA']).nullable().optional(),
   ativo: z.boolean().optional(),
@@ -45,7 +45,7 @@ export const updateUserSchema = z.object({
 export const editUserSchema = z.object({
   nome: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
   email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres').optional().or(z.literal('')),
+  password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres').optional().or(z.literal('')),
   perfil: z.enum(['ADMIN', 'PCP', 'PRODUCAO']),
   setor: z.enum(['CABEDAL', 'PALMILHA', 'SOLA']).nullable(),
 })
@@ -61,6 +61,7 @@ export const importPedidoSchema = z.object({
 
 export const gerarFichasSchema = z.object({
   pedidoId: z.string().uuid(),
+  setores: z.array(z.enum(['CABEDAL', 'SOLA', 'PALMILHA', 'FACHETA'])).min(1).optional(),
 })
 
 export const consolidarSchema = z.object({

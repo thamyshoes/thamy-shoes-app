@@ -12,13 +12,8 @@ import { apiClient } from '@/lib/api-client'
 import { API_ROUTES, ROUTES } from '@/lib/constants'
 import { toast } from 'sonner'
 import Link from 'next/link'
-
-interface MapeamentoCor {
-  id: string
-  codigo: string
-  descricao: string
-  createdAt: string
-}
+import { SwatchCor } from '@/components/ui/swatch-cor'
+import type { MapeamentoCor } from '@/hooks/use-cores'
 
 interface PreviewLinha {
   codigo: string
@@ -40,6 +35,8 @@ function CoresContent({ user }: { user: { id: string; perfil: string; setor: str
   const [editando, setEditando] = useState<MapeamentoCor | null>(null)
   const [formCodigo, setFormCodigo] = useState('')
   const [formDescricao, setFormDescricao] = useState('')
+  const [formHex, setFormHex] = useState('')
+  const [hexError, setHexError] = useState('')
   const [saving, setSaving] = useState(false)
 
   // Modal importação em lote
@@ -72,6 +69,8 @@ function CoresContent({ user }: { user: { id: string; perfil: string; setor: str
     setEditando(null)
     setFormCodigo('')
     setFormDescricao('')
+    setFormHex('')
+    setHexError('')
     setModalOpen(true)
   }
 
@@ -79,6 +78,8 @@ function CoresContent({ user }: { user: { id: string; perfil: string; setor: str
     setEditando(cor)
     setFormCodigo(cor.codigo)
     setFormDescricao(cor.descricao)
+    setFormHex(cor.hex ?? '')
+    setHexError('')
     setModalOpen(true)
   }
 
@@ -90,7 +91,12 @@ function CoresContent({ user }: { user: { id: string; perfil: string; setor: str
 
     setSaving(true)
     try {
-      const body = { codigo: codigoLimpo, descricao: formDescricao.trim() }
+      const hexLimpo = formHex.trim()
+    if (hexLimpo && !/^#[0-9A-Fa-f]{6}$/.test(hexLimpo)) {
+      toast.error('Hex deve estar no formato #RRGGBB')
+      return
+    }
+    const body = { codigo: codigoLimpo, descricao: formDescricao.trim(), hex: hexLimpo || null }
       if (editando) {
         await apiClient.patch(`${API_ROUTES.MAPEAMENTO_CORES}/${editando.id}`, body)
         toast.success('Cor atualizada')
@@ -170,7 +176,12 @@ function CoresContent({ user }: { user: { id: string; perfil: string; setor: str
       header: 'Código',
       mono: true,
       sortable: true,
-      render: (c) => <span className="font-mono text-sm font-medium">{c.codigo}</span>,
+      render: (c) => (
+        <div className="flex items-center gap-2">
+          <SwatchCor hex={c.hex ?? null} size="sm" />
+          <span className="font-mono text-sm font-medium">{c.codigo}</span>
+        </div>
+      ),
     },
     {
       key: 'descricao',
@@ -228,7 +239,7 @@ function CoresContent({ user }: { user: { id: string; perfil: string; setor: str
         placeholder="Buscar por código ou descrição"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full max-w-xs rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        className="w-full max-w-xs rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         aria-label="Buscar mapeamentos de cor"
       />
 
@@ -252,7 +263,7 @@ function CoresContent({ user }: { user: { id: string; perfil: string; setor: str
             <input
               id="cor-codigo"
               type="text"
-              className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               value={formCodigo}
               onChange={(e) => setFormCodigo(e.target.value.toUpperCase())}
               placeholder="Ex: PT"
@@ -264,11 +275,35 @@ function CoresContent({ user }: { user: { id: string; perfil: string; setor: str
             <input
               id="cor-descricao"
               type="text"
-              className="mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               value={formDescricao}
               onChange={(e) => setFormDescricao(e.target.value)}
               placeholder="Ex: Preto"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground" htmlFor="cor-hex">Cor (hex) <span className="text-secondary font-normal">— opcional</span></label>
+            <div className="mt-1 flex items-center gap-2">
+              <SwatchCor hex={/^#[0-9A-Fa-f]{6}$/.test(formHex) ? formHex : null} size="md" />
+              <input
+                id="cor-hex"
+                type="text"
+                className={`w-full rounded-md border bg-background px-3 py-1.5 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary ${hexError ? 'border-destructive' : 'border-border'}`}
+                value={formHex}
+                onChange={(e) => { setFormHex(e.target.value); setHexError('') }}
+                onBlur={() => {
+                  const v = formHex.trim()
+                  if (v && !/^#[0-9A-Fa-f]{6}$/.test(v)) setHexError('Formato inválido. Use #RRGGBB')
+                }}
+                placeholder="#RRGGBB"
+                maxLength={7}
+                aria-describedby={hexError ? 'cor-hex-error' : 'cor-hex-help'}
+              />
+            </div>
+            {hexError
+              ? <p id="cor-hex-error" className="mt-1 text-xs text-destructive">{hexError}</p>
+              : <p id="cor-hex-help" className="mt-1 text-xs text-secondary">Formato: #RRGGBB (ex: #FF5733)</p>
+            }
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancelar</Button>
@@ -284,9 +319,9 @@ function CoresContent({ user }: { user: { id: string; perfil: string; setor: str
         title="Importar Cores em Lote"
       >
         <div className="space-y-4">
-          <p className="text-sm text-secondary">Cole o CSV no formato <span className="font-mono">CODIGO;Descricao</span> (uma por linha)</p>
+          <p className="text-sm text-secondary">Cole o CSV no formato <span className="font-mono">Código;Descrição</span> (uma por linha)</p>
           <textarea
-            className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             rows={6}
             placeholder={'PT;Preto\nBR;Branco\n318;Dourado'}
             value={csvTexto}

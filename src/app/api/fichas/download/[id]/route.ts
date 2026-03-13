@@ -9,7 +9,6 @@ export async function GET(
 ) {
   const { id } = await params
 
-  // RBAC: PRODUCAO can only download fichas for their own sector
   const userPerfil = request.headers.get('x-user-perfil') as Perfil | null
   const userSetor = request.headers.get('x-user-setor') as Setor | null
 
@@ -17,7 +16,7 @@ export async function GET(
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
-  // PRODUCAO: check sector match
+  // PRODUCAO: verificar se a ficha pertence ao setor do usuario
   if (userPerfil === Perfil.PRODUCAO) {
     const ficha = await prisma.fichaProducao.findUnique({ where: { id } })
     if (!ficha) {
@@ -31,17 +30,23 @@ export async function GET(
   try {
     const { buffer, filename } = await pdfGeneratorService.downloadFicha(id)
 
+    // ?inline=1 → exibir no browser (Visualizar); padrão → download (Baixar)
+    const inline = request.nextUrl.searchParams.get('inline') === '1'
+    const disposition = inline ? `inline; filename="${filename}"` : `attachment; filename="${filename}"`
+
     return new NextResponse(buffer.buffer as ArrayBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': disposition,
         'Content-Length': String(buffer.length),
       },
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erro ao baixar ficha'
+    console.error('[fichas/download] ERRO:', message, err instanceof Error ? err.stack : '')
     const status = message.includes('não encontrada') ? 404 : 500
-    return NextResponse.json({ error: message }, { status })
+    const clientMessage = status === 500 ? 'Algo deu errado. Tente novamente.' : message
+    return NextResponse.json({ error: clientMessage }, { status })
   }
 }

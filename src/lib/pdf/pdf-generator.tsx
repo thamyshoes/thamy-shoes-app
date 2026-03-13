@@ -1,21 +1,24 @@
 import { prisma } from '@/lib/prisma'
 import { createServerSupabaseClient, FICHAS_BUCKET } from '@/lib/supabase-server'
 import { montarGrades, montarGradesConsolidadas } from '@/lib/bling/sku-parser'
+import { imageUrlToBase64 } from '@/lib/services/image-to-base64-converter'
 import type { FichaTemplateProps } from '@/lib/pdf/templates/ficha-template'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Setor, StatusPedido, StatusItem } from '@/types'
 
 export interface FichaGerada {
   id: string
+  fichaProducaoId: string
   setor: Setor
   pdfUrl: string
   totalPares: number
+  totalCards: number
 }
 
 export class PdfGeneratorService {
   // ── Gerar fichas individuais ────────────────────────────────────────────────
 
-  async gerarFichas(pedidoId: string): Promise<FichaGerada[]> {
+  async gerarFichas(pedidoId: string, setoresSolicitados?: Setor[]): Promise<{ fichas: FichaGerada[]; avisos: string[] }> {
     console.log('[gerarFichas] Iniciando para pedidoId:', pedidoId)
 
     const pedido = await prisma.pedidoCompra.findUnique({
@@ -46,15 +49,62 @@ export class PdfGeneratorService {
     console.log('[gerarFichas] Total pares:', totalPares)
 
     const fichasGeradas: FichaGerada[] = []
-    const setores = [Setor.CABEDAL, Setor.PALMILHA, Setor.SOLA]
+    const avisos: string[] = []
 
-    // Render and upload all 3 PDFs in parallel (Promise.all)
+    // Usar setores solicitados ou fallback para os 3 padrão
+    const setores = setoresSolicitados ?? [Setor.CABEDAL, Setor.PALMILHA, Setor.SOLA]
+
+    // Verificar se FACHETA foi solicitado: apenas incluir se algum modelo tem facheta preenchida
+    const codigosModelo = [...new Set(pedido.itens.map((i) => i.modelo).filter((m): m is string => !!m))]
+    let setoresFiltrados = setores
+    if (setores.includes(Setor.FACHETA) && codigosModelo.length > 0) {
+      const modelosComFacheta = await prisma.modelo.count({
+        where: { codigo: { in: codigosModelo }, facheta: { not: null } },
+      })
+      if (modelosComFacheta === 0) {
+        console.log('[gerarFichas] FACHETA solicitado mas nenhum modelo tem facheta — removendo setor')
+        setoresFiltrados = setores.filter((s) => s !== Setor.FACHETA)
+      }
+    }
+
+    // Pre-convert images to base64 for CABEDAL setor (runs once, shared across renders)
+    let imagensBase64: Map<string, string> | undefined
+    if (setoresFiltrados.includes(Setor.CABEDAL)) {
+      const urlsUnicas = [...new Set(grades.map((g) => g.imagemUrl).filter((u): u is string => !!u))]
+      if (urlsUnicas.length > 0) {
+        const conversoes = await Promise.all(urlsUnicas.map(async (url) => {
+          const b64 = await imageUrlToBase64(url)
+          return [url, b64] as const
+        }))
+        imagensBase64 = new Map(conversoes.filter(([, b64]) => b64 !== null) as [string, string][])
+        console.log(`[gerarFichas] Imagens convertidas para CABEDAL: ${imagensBase64.size}/${urlsUnicas.length}`)
+      }
+
+      // Detectar grades sem imagem de variante e gerar aviso
+      const gradesSemImagem = grades.filter((g) => !g.imagemUrl)
+      if (gradesSemImagem.length > 0) {
+        const nomes = gradesSemImagem.map((g) => `${g.modelo} cor ${g.cor ?? '?'}`).join(', ')
+        const aviso = `CABEDAL: ${gradesSemImagem.length} grade(s) sem imagem de variante — ${nomes}. Cadastre a variante de cor em Configurações > Modelos.`
+        console.warn('[gerarFichas]', aviso)
+        avisos.push(aviso)
+      }
+    }
+
+    // Render and upload all PDFs in parallel (Promise.all)
     const pdfUploads = await Promise.all(
-      setores.map(async (setor) => {
+      setoresFiltrados.map(async (setor) => {
         console.log(`[gerarFichas] Renderizando PDF setor: ${setor}`)
         const gradesSetor = grades
         const camposExtras = await this.buscarCamposExtras(setor)
         console.log(`[gerarFichas] Campos extras ${setor}:`, camposExtras.length)
+
+        // Attach base64 images for CABEDAL grades
+        const gradesComImagem = setor === Setor.CABEDAL && imagensBase64 && imagensBase64.size > 0
+          ? gradesSetor.map((g) => ({
+              ...g,
+              imagemBase64: g.imagemUrl ? imagensBase64!.get(g.imagemUrl) ?? undefined : undefined,
+            }))
+          : gradesSetor
 
         try {
           const pdfBuffer = await this.renderPdf({
@@ -62,7 +112,7 @@ export class PdfGeneratorService {
             dataEmissao: pedido.dataEmissao,
             fornecedor: pedido.fornecedorNome,
             setor,
-            grades: gradesSetor,
+            grades: gradesComImagem,
             totalPares,
             camposExtras,
             geradoEm: new Date(),
@@ -85,19 +135,32 @@ export class PdfGeneratorService {
     console.log('[gerarFichas] Todos PDFs prontos, persistindo no banco...')
 
     // Persist all records in a single transaction (rollback on failure)
+    const geradoEm = new Date().toISOString()
     await prisma.$transaction(async (tx) => {
       for (const { setor, pdfUrl, gradesSetor } of pdfUploads) {
+        const dadosJson = {
+          setor,
+          pedidoId,
+          totalCards: gradesSetor.length,
+          geradoEm,
+          itens: pedido.itens.map((i) => ({
+            sku: i.skuBruto,
+            modelo: i.modelo,
+            cor: i.cor,
+          })),
+        }
+
         const ficha = await tx.fichaProducao.create({
           data: {
             pedidoId,
             setor,
             pdfUrl,
             totalPares,
-            dadosJson: gradesSetor as unknown as import('@prisma/client').Prisma.InputJsonValue,
+            dadosJson: dadosJson as unknown as import('@prisma/client').Prisma.InputJsonValue,
           },
         })
 
-        fichasGeradas.push({ id: ficha.id, setor, pdfUrl, totalPares })
+        fichasGeradas.push({ id: ficha.id, fichaProducaoId: ficha.id, setor, pdfUrl, totalPares, totalCards: gradesSetor.length })
       }
 
       await tx.pedidoCompra.update({
@@ -107,7 +170,7 @@ export class PdfGeneratorService {
     })
 
     console.log('[gerarFichas] Transação OK, fichas criadas:', fichasGeradas.length)
-    return fichasGeradas
+    return { fichas: fichasGeradas, avisos }
   }
 
   // ── Gerar fichas consolidadas ───────────────────────────────────────────────
@@ -168,9 +231,24 @@ export class PdfGeneratorService {
         })),
       })
 
+      const geradoEmConsolidado = new Date().toISOString()
+      const allItens = pedidos.flatMap((p) => p.itens.map((i) => ({
+        sku: i.skuBruto,
+        modelo: i.modelo,
+        cor: i.cor,
+      })))
+
       for (const { setor, pdfBuffer, gradesSetor } of pdfUploads) {
         const storagePath = `consolidados/${consolidado.id}/${setor.toLowerCase()}.pdf`
         const pdfUrl = await this.uploadToStorage(pdfBuffer, storagePath)
+
+        const dadosJson = {
+          setor,
+          pedidoIds,
+          totalCards: gradesSetor.length,
+          geradoEm: geradoEmConsolidado,
+          itens: allItens,
+        }
 
         const ficha = await tx.fichaProducao.create({
           data: {
@@ -178,11 +256,11 @@ export class PdfGeneratorService {
             setor,
             pdfUrl,
             totalPares,
-            dadosJson: gradesSetor as unknown as import('@prisma/client').Prisma.InputJsonValue,
+            dadosJson: dadosJson as unknown as import('@prisma/client').Prisma.InputJsonValue,
           },
         })
 
-        fichasGeradas.push({ id: ficha.id, setor, pdfUrl, totalPares })
+        fichasGeradas.push({ id: ficha.id, fichaProducaoId: ficha.id, setor, pdfUrl, totalPares, totalCards: gradesSetor.length })
       }
     })
 

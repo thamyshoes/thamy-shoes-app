@@ -186,7 +186,7 @@ export default function ProdutosCatalogoPage() {
             placeholder="Buscar por código ou nome..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full max-w-sm rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full max-w-sm rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 

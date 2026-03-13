@@ -164,3 +164,47 @@
 **Veredicto: APROVADO ✅**
 
 Zero gaps detectados na integração cross-module. O sistema está pronto para deploy.
+
+---
+
+## Auditoria fichas-producao-v2 — Cross-Rock (module-9-integration/TASK-2)
+
+**Data:** 2026-03-10
+
+### Checklist Cross-Rock — 10 Pontos de Integração
+
+| # | Ponto | Status | Observação |
+|---|-------|--------|------------|
+| 1 | `Modelo.materialCabedal/Sola/Palmilha` — cadastrado R1, usado templates R2 | ✅ | `ModalEdicaoModelo` salva via PUT `/api/configuracoes/modelos/[id]`. Templates exibem material nos cards PDF. |
+| 2 | `Modelo.facheta` — condicional em `DialogSetores` (R2) e `TemplateFacheta` (R2) | ✅ | `verificar-variantes` consulta `Modelo.facheta` para incluir/excluir FACHETA. `TemplateFacheta` só é gerado se facheta != null. |
+| 3 | `ModeloVarianteCor.imagemUrl` — upload R1 → base64 R2 → PDF | ✅ | Upload via `/api/variantes/signed-url` + PUT batch. `imageUrlToBase64` com AbortController/fallback. `TemplateCabedal` usa base64. |
+| 4 | Cores — cadastradas R1, exibidas em `SwatchCor` R2, filtros R3 | ✅ | `MapeamentoCor` CRUD em `/configuracoes/cores`. `SwatchCor` renderiza nome + hex. Filtro setor funcional em `/fichas`. |
+| 5 | `MapeamentoCor.hex` — cadastrado R1, usado em `SwatchCor` R2 | ✅ | Campo `hex` no schema, exposto via GET/PATCH `/api/cores/[id]`. `SwatchCor` exibe swatch colorido via `backgroundColor`. |
+| 6 | Enum `Setor` + FACHETA — schema → API → templates → filtros | ✅ | `Setor` enum CABEDAL/PALMILHA/SOLA/FACHETA. API `/fichas/gerar` aceita `setores[]`. Central `/fichas` filtra por setor. |
+| 7 | API signed URL — expiração upload | ⚠️ | `createSignedUploadUrl(path)` usa default Supabase (~120s). `getPublicUrl` para visualização/PDF (sem expiração). Aceitável. |
+| 8 | `FichaProducao.dadosJson` — persistido R2, listado em `/fichas` R3 | ✅ | `gerarFichas` persiste `dadosJson`. Hook `useFichas` busca via `/api/fichas`. `FichaCardWeb` exibe `totalCards`. |
+| 9 | Card PDF + grade numeração — R2 → `FichaCardWeb` R3 | ✅ | `FichaCard` + `GradeNumeracao` nos templates. `FichaCardWeb` exibe setor, pedido, data, totalCards. Download blob funcional. |
+| 10 | `/configuracoes/modelos?search={codigo}` — `PopoverAcao` R2 → `TabelaModelos` R1 | ✅ | `PopoverAcao` usa `ROUTES.CONFIGURACOES_MODELOS` + `?search=`. `TabelaModelos` lê `searchParams.get('search')`. |
+
+**Score: 9/10 ✅, 1/10 ⚠️ (aceitável — comportamento Supabase SDK)**
+
+### Navegação — Equivalências Desativada (module-8/TASK-3)
+
+- `/configuracoes` hub: sem card para equivalências ✅
+- `SidebarLayout`: sem link para `/configuracoes/equivalencias` ✅
+- Página e API `/api/configuracoes/equivalencias` preservadas ✅
+
+### Novos Endpoints fichas-producao-v2
+
+| Rota | Perfil | Middleware | Status |
+|------|--------|-----------|--------|
+| `GET /api/fichas/download/[id]` | ALL (RBAC setor PRODUCAO) | JWT + RBAC manual | ✅ |
+| `POST /api/fichas/gerar` | ADMIN, PCP | requiresAdminOrPCP | ✅ |
+| `POST /api/consolidar` | ADMIN, PCP | requiresAdminOrPCP | ✅ |
+| `PUT /api/variantes/batch` | ADMIN | requiresAdmin | ✅ |
+| `GET /api/variantes/signed-url` | ADMIN | requiresAdmin | ✅ |
+| `PUT /api/configuracoes/modelos/[id]` | ADMIN | requiresAdmin | ✅ |
+| `PATCH /api/cores/[id]` | ADMIN | requiresAdmin | ✅ |
+| `POST /api/fichas/verificar-variantes` | ADMIN, PCP | requiresAdminOrPCP | ✅ |
+
+**Veredicto fichas-producao-v2: APROVADO ✅**

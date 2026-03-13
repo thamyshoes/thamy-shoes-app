@@ -19,7 +19,6 @@ test.describe('Configurações', () => {
       /sku/i,
       /cor/i,
       /grade/i,
-      /equivalência|equivalencia/i,
       /campo/i,
     ]
 

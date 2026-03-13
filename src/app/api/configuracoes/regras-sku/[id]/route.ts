@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
+import { invalidarCacheRegra } from '@/lib/bling/sku-parser'
 
 const digitosSegmentoSchema = z.object({
   campo: z.string(),
@@ -52,6 +53,7 @@ export async function PATCH(
           : {}),
       },
     })
+    invalidarCacheRegra()
     return NextResponse.json(regra)
   } catch {
     return NextResponse.json({ error: 'Regra não encontrada' }, { status: 404 })

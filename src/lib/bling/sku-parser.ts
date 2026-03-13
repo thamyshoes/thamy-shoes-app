@@ -143,19 +143,25 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
       const corDescricao = r.cor ? (mapaDescricao.get(r.cor) ?? r.cor) : ''
       const produtoId = r.modelo ? (mapaProduto.get(r.modelo) ?? null) : null
 
+      const tamanhoNumerico = r.tamanho ? parseInt(r.tamanho, 10) : null
+      const tamanhoValido = tamanhoNumerico !== null && !isNaN(tamanhoNumerico)
+      const statusFinal = r.status === StatusItem.RESOLVIDO && !tamanhoValido
+        ? StatusItem.PENDENTE
+        : r.status
+
       await prisma.itemPedido.update({
         where: { id: item.id },
         data: {
           modelo: r.modelo,
           cor: r.cor,
           corDescricao: corDescricao || null,
-          tamanho: r.tamanho ? parseInt(r.tamanho, 10) || null : null,
-          status: r.status,
+          tamanho: tamanhoValido ? tamanhoNumerico : null,
+          status: statusFinal,
           produtoId,
         },
       })
 
-      if (r.status === StatusItem.RESOLVIDO && r.modelo && r.cor && r.tamanho) {
+      if (statusFinal === StatusItem.RESOLVIDO && r.modelo && r.cor && r.tamanho) {
         interpretados.push({
           modelo: r.modelo,
           cor: r.cor,
@@ -254,9 +260,12 @@ export async function montarGradesConsolidadas(
     cabedal: string | null
     sola: string | null
     palmilha: string | null
-    temFacheta?: boolean
-    materialBasePalmilha?: string | null
-    variantesCor?: { corCodigo: string; cabedalOverride: string | null; corSola: string | null; corFacheta: string | null; corForroPalmilha: string | null; codigoFichaPalmilha: string | null; descricaoPalmilha: string | null }[]
+    facheta?: string | null
+    materialCabedal?: string | null
+    materialSola?: string | null
+    materialPalmilha?: string | null
+    materialFacheta?: string | null
+    variantesCor?: { corCodigo: string; imagemUrl: string | null; corCabedal: string | null; corSola: string | null; corPalmilha: string | null; corFacheta: string | null }[]
   }[] = []
 
   if (modeloCodes.length > 0) {
@@ -265,14 +274,17 @@ export async function montarGradesConsolidadas(
       modelosCadastrados = await prisma.modelo.findMany({
         where: { codigo: { in: modeloCodes } },
         select: {
-          codigo: true,
-          nome: true,
-          cabedal: true,
-          sola: true,
-          palmilha: true,
-          temFacheta: true,
-          materialBasePalmilha: true,
-          variantesCor: true,
+          codigo:           true,
+          nome:             true,
+          cabedal:          true,
+          sola:             true,
+          palmilha:         true,
+          facheta:          true,
+          materialCabedal:  true,
+          materialSola:     true,
+          materialPalmilha: true,
+          materialFacheta:  true,
+          variantesCor:     true,
         },
       })
       console.log('[montarGradesConsolidadas] Modelos encontrados (com variantes):', modelosCadastrados.length)
@@ -315,20 +327,24 @@ export async function montarGradesConsolidadas(
 
     rows.push({
       modelo: grupo.faixa ? `${grupo.modelo} (${grupo.faixa})` : grupo.modelo,
-      modeloNome: modeloInfo?.nome ?? undefined,
-      // Cabedal: se há override por cor, usa o override; senão usa o padrão
-      modeloCabedal: variante?.cabedalOverride ?? modeloInfo?.cabedal ?? undefined,
-      modeloSola: modeloInfo?.sola ?? undefined,
-      modeloPalmilha: modeloInfo?.palmilha ?? undefined,
+      modeloNome:       modeloInfo?.nome      ?? undefined,
+      modeloCabedal:    modeloInfo?.cabedal   ?? undefined,
+      modeloSola:       modeloInfo?.sola      ?? undefined,
+      modeloPalmilha:   modeloInfo?.palmilha  ?? undefined,
+      modeloFacheta:    modeloInfo?.facheta   ?? undefined,
+      // Materiais do modelo
+      materialCabedal:  modeloInfo?.materialCabedal  ?? undefined,
+      materialSola:     modeloInfo?.materialSola      ?? undefined,
+      materialPalmilha: modeloInfo?.materialPalmilha  ?? undefined,
+      materialFacheta:  modeloInfo?.materialFacheta   ?? undefined,
       // Dados de variante por cor
-      modeloTemFacheta: modeloInfo?.temFacheta ?? false,
-      corFacheta: variante?.corFacheta ?? undefined,
-      corSola: variante?.corSola ?? undefined,
-      corForroPalmilha: variante?.corForroPalmilha ?? undefined,
-      codigoFichaPalmilha: variante?.codigoFichaPalmilha ?? undefined,
-      descricaoPalmilha: variante?.descricaoPalmilha ?? undefined,
-      cor: grupo.cor,
-      corDescricao: grupo.corDescricao,
+      imagemUrl:        variante?.imagemUrl   ?? undefined,
+      corCabedal:       variante?.corCabedal  ?? undefined,
+      corSola:          variante?.corSola     ?? undefined,
+      corPalmilha:      variante?.corPalmilha ?? undefined,
+      corFacheta:       variante?.corFacheta  ?? undefined,
+      cor:              grupo.cor,
+      corDescricao:     grupo.corDescricao,
       tamanhos,
       totalPares: total,
     })

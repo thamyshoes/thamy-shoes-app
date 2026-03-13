@@ -6,6 +6,10 @@ import { requireAdmin } from '@/lib/api-guard'
 const createSchema = z.object({
   codigo: z.string().min(1).regex(/^[A-Z0-9]+$/, 'Código deve ser alfanumérico maiúsculo'),
   descricao: z.string().min(1, 'Descrição é obrigatória'),
+  hex: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Formato inválido. Use #RRGGBB')
+    .optional()
+    .nullable()
+    .transform((v) => v ?? null),
 })
 
 export async function GET(request: NextRequest) {
@@ -50,13 +54,13 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { codigo, descricao } = parsed.data
+  const { codigo, descricao, hex } = parsed.data
 
   const existing = await prisma.mapeamentoCor.findUnique({ where: { codigo } })
   if (existing) {
     return NextResponse.json({ error: 'Código de cor já cadastrado' }, { status: 409 })
   }
 
-  const cor = await prisma.mapeamentoCor.create({ data: { codigo, descricao } })
+  const cor = await prisma.mapeamentoCor.create({ data: { codigo, descricao, hex } })
   return NextResponse.json(cor, { status: 201 })
 }

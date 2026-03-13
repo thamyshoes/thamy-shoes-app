@@ -64,15 +64,23 @@ export interface PaginatedResponse<T> {
 export interface GradeRow {
   modelo: string
   modeloNome?: string
+  // Campos base do Modelo
   modeloCabedal?: string
   modeloSola?: string
   modeloPalmilha?: string
-  modeloTemFacheta?: boolean
-  corFacheta?: string
+  modeloFacheta?: string
+  // Materiais do Modelo (fichas-v2)
+  materialCabedal?: string
+  materialSola?: string
+  materialPalmilha?: string
+  materialFacheta?: string
+  // Campos de variante por cor
+  imagemUrl?: string
+  corCabedal?: string
   corSola?: string
-  corForroPalmilha?: string
-  codigoFichaPalmilha?: string
-  descricaoPalmilha?: string
+  corPalmilha?: string
+  corFacheta?: string
+  // Identificação
   cor: string
   corDescricao: string
   tamanhos: Record<string, number>

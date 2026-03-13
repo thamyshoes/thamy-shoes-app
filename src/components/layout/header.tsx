@@ -31,14 +31,14 @@ export function Header({ user, onMenuClick, className }: HeaderProps) {
   return (
     <header
       className={cn(
-        'flex h-14 items-center justify-between border-b border-border bg-white px-4 gap-4',
+        'flex h-14 items-center justify-between border-b border-border bg-background px-4 gap-4',
         className,
       )}
     >
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuClick}
-          className="flex items-center justify-center rounded-md p-1.5 text-secondary hover:bg-muted hover:text-foreground transition-colors md:hidden"
+          className="flex items-center justify-center rounded-md p-1.5 text-secondary hover:bg-muted hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hidden"
           aria-label="Abrir menu"
         >
           <Menu className="h-5 w-5" />
@@ -52,7 +52,7 @@ export function Header({ user, onMenuClick, className }: HeaderProps) {
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-secondary hover:bg-muted hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-secondary hover:bg-muted hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label="Sair"
         >
           <LogOut className="h-4 w-4" />

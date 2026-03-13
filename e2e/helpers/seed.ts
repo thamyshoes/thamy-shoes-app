@@ -1,5 +1,5 @@
 /**
- * seed.ts — Script de seed para testes E2E
+ * seed.ts — Script de seed para testes E2E (base)
  *
  * Garante dados mínimos no banco de teste:
  *   - 3 usuários (ADMIN, PCP, PRODUCAO)
@@ -10,6 +10,8 @@
  *
  * Uso: npx ts-node --esm e2e/helpers/seed.ts
  *      ou via: npm run seed:test
+ *
+ * ATUALIZADO para schema V2 (model User, PedidoCompra, RegraSkU)
  */
 
 import { PrismaClient, Perfil, StatusConexao, StatusPedido, StatusItem } from '@prisma/client'
@@ -26,39 +28,39 @@ async function main() {
   const senhaPcp = await bcrypt.hash('pcp123', 10)
   const senhaProducao = await bcrypt.hash('producao123', 10)
 
-  const admin = await prisma.usuario.upsert({
+  const admin = await prisma.user.upsert({
     where: { email: 'admin@thamyshoes.com.br' },
-    update: { senha: senhaAdmin, ativo: true },
+    update: { passwordHash: senhaAdmin, ativo: true },
     create: {
       email: 'admin@thamyshoes.com.br',
       nome: 'Admin Teste',
-      senha: senhaAdmin,
+      passwordHash: senhaAdmin,
       perfil: Perfil.ADMIN,
       ativo: true,
     },
   })
 
-  const pcp = await prisma.usuario.upsert({
+  const pcp = await prisma.user.upsert({
     where: { email: 'pcp@thamyshoes.com.br' },
-    update: { senha: senhaPcp, ativo: true },
+    update: { passwordHash: senhaPcp, ativo: true },
     create: {
       email: 'pcp@thamyshoes.com.br',
       nome: 'PCP Teste',
-      senha: senhaPcp,
+      passwordHash: senhaPcp,
       perfil: Perfil.PCP,
       ativo: true,
     },
   })
 
-  const producao = await prisma.usuario.upsert({
+  const producao = await prisma.user.upsert({
     where: { email: 'producao@thamyshoes.com.br' },
-    update: { senha: senhaProducao, ativo: true },
+    update: { passwordHash: senhaProducao, ativo: true },
     create: {
       email: 'producao@thamyshoes.com.br',
       nome: 'Produção Teste',
-      senha: senhaProducao,
+      passwordHash: senhaProducao,
       perfil: Perfil.PRODUCAO,
-      setor: 'Cabedal',
+      setor: 'CABEDAL',
       ativo: true,
     },
   })
@@ -77,6 +79,7 @@ async function main() {
       accessToken: 'enc:e2e-mock-access-token',
       refreshToken: 'enc:e2e-mock-refresh-token',
       expiresAt,
+      connectedAt: new Date(),
       status: StatusConexao.CONECTADO,
     },
   })
@@ -85,105 +88,104 @@ async function main() {
 
   // ── Regra SKU ─────────────────────────────────────────────────────────────
 
-  const regraSku = await prisma.regraSku.upsert({
+  const regraSku = await prisma.regraSkU.upsert({
     where: { id: 'regra-e2e-test' },
-    update: { ativo: true },
+    update: { ativa: true },
     create: {
       id: 'regra-e2e-test',
       nome: 'Regra Teste E2E',
-      padrao: '^([A-Z]+)-(\\d+)-([A-Z]+)$',
-      camposExtraidos: JSON.stringify({ modelo: 1, numeracao: 2, cor: 3 }),
-      ativo: true,
+      modo: 'SEPARADOR',
+      separador: '-',
+      ordem: JSON.parse('["modelo","cor","tamanho"]'),
+      segmentos: JSON.parse('{"modelo":{"posicao":0},"cor":{"posicao":1},"tamanho":{"posicao":2}}'),
+      ativa: true,
     },
   })
 
-  console.log(`  ✓ RegraSKU: ${regraSku.nome}`)
+  console.log(`  ✓ RegraSkU: ${regraSku.nome}`)
 
   // ── Mapeamentos de Cor ────────────────────────────────────────────────────
 
   const cores = [
-    { codigo: 'PT', nome: 'Preto' },
-    { codigo: 'BR', nome: 'Branco' },
-    { codigo: 'VM', nome: 'Vermelho' },
-    { codigo: 'AZ', nome: 'Azul' },
-    { codigo: 'MR', nome: 'Marrom' },
+    { codigo: 'PT', descricao: 'Preto' },
+    { codigo: 'BR', descricao: 'Branco' },
+    { codigo: 'VM', descricao: 'Vermelho' },
+    { codigo: 'AZ', descricao: 'Azul' },
+    { codigo: 'MR', descricao: 'Marrom' },
   ]
 
   for (const cor of cores) {
     await prisma.mapeamentoCor.upsert({
       where: { codigo: cor.codigo },
-      update: { nome: cor.nome },
-      create: { codigo: cor.codigo, nome: cor.nome },
+      update: { descricao: cor.descricao },
+      create: { codigo: cor.codigo, descricao: cor.descricao },
     })
   }
 
   console.log(`  ✓ Mapeamentos de cor: ${cores.map((c) => c.codigo).join(', ')}`)
 
-  // ── Pedidos com itens resolvidos ──────────────────────────────────────────
+  // ── Pedidos com itens ─────────────────────────────────────────────────────
 
-  const pedido1 = await prisma.pedido.upsert({
-    where: { numeroPedido: 'E2E-001' },
-    update: { status: StatusPedido.RESOLVIDO },
+  const pedido1 = await prisma.pedidoCompra.upsert({
+    where: { idBling: BigInt('8880001') },
+    update: { status: StatusPedido.IMPORTADO },
     create: {
-      numeroPedido: 'E2E-001',
-      cliente: 'Cliente Teste E2E 1',
-      status: StatusPedido.RESOLVIDO,
-      blingId: 'bling-e2e-001',
+      idBling: BigInt('8880001'),
+      numero: 'E2E-001',
       dataEmissao: new Date('2024-01-15'),
+      fornecedorNome: 'Cliente Teste E2E 1',
+      status: StatusPedido.IMPORTADO,
       itens: {
         create: [
           {
-            sku: 'BOOT-38-PT',
-            descricao: 'Bota Feminina 38 Preto',
+            descricaoBruta: 'Bota Feminina 38 Preto',
+            skuBruto: 'BOOT-38-PT',
             quantidade: 2,
-            status: StatusItem.RESOLVIDO,
             modelo: 'Bota Feminina',
-            cor: 'Preto',
-            gradeTamanhos: JSON.stringify({ '38': 2 }),
-            setor: 'Cabedal',
+            cor: 'PT',
+            tamanho: 38,
+            status: StatusItem.PENDENTE,
           },
           {
-            sku: 'BOOT-39-PT',
-            descricao: 'Bota Feminina 39 Preto',
+            descricaoBruta: 'Bota Feminina 39 Preto',
+            skuBruto: 'BOOT-39-PT',
             quantidade: 3,
-            status: StatusItem.RESOLVIDO,
             modelo: 'Bota Feminina',
-            cor: 'Preto',
-            gradeTamanhos: JSON.stringify({ '39': 3 }),
-            setor: 'Palmilha',
+            cor: 'PT',
+            tamanho: 39,
+            status: StatusItem.PENDENTE,
           },
         ],
       },
     },
   })
 
-  const pedido2 = await prisma.pedido.upsert({
-    where: { numeroPedido: 'E2E-002' },
-    update: { status: StatusPedido.RESOLVIDO },
+  const pedido2 = await prisma.pedidoCompra.upsert({
+    where: { idBling: BigInt('8880002') },
+    update: { status: StatusPedido.IMPORTADO },
     create: {
-      numeroPedido: 'E2E-002',
-      cliente: 'Cliente Teste E2E 2',
-      status: StatusPedido.RESOLVIDO,
-      blingId: 'bling-e2e-002',
+      idBling: BigInt('8880002'),
+      numero: 'E2E-002',
       dataEmissao: new Date('2024-01-20'),
+      fornecedorNome: 'Cliente Teste E2E 2',
+      status: StatusPedido.IMPORTADO,
       itens: {
         create: [
           {
-            sku: 'SAND-36-BR',
-            descricao: 'Sandália 36 Branco',
+            descricaoBruta: 'Sandália 36 Branco',
+            skuBruto: 'SAND-36-BR',
             quantidade: 4,
-            status: StatusItem.RESOLVIDO,
             modelo: 'Sandália',
-            cor: 'Branco',
-            gradeTamanhos: JSON.stringify({ '36': 4 }),
-            setor: 'Sola',
+            cor: 'BR',
+            tamanho: 36,
+            status: StatusItem.PENDENTE,
           },
         ],
       },
     },
   })
 
-  console.log(`  ✓ Pedidos: ${pedido1.numeroPedido}, ${pedido2.numeroPedido}`)
+  console.log(`  ✓ Pedidos: ${pedido1.numero}, ${pedido2.numero}`)
 
   console.log('\n✅ Seed de testes E2E concluído!')
 }

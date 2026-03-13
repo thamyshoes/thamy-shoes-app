@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, WifiOff, Search, ArrowUpDown } from 'lucide-react'
+import { ChevronLeft, ChevronRight, WifiOff, Search, ArrowUpDown, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type Column } from '@/components/ui/data-table'
@@ -87,6 +87,10 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
   const [ordenacao, setOrdenacao] = useState<Ordenacao>('recente')
   const [pagina, setPagina] = useState(1)
 
+  const [numeroBusca, setNumeroBusca] = useState('')
+  const [buscandoManual, setBuscandoManual] = useState(false)
+  const [pedidoBuscado, setPedidoBuscado] = useState<PedidoBling | null>(null)
+
   const [conflito, setConflito] = useState<DuplicataInfo | null>(null)
   const [pedidoConflito, setPedidoConflito] = useState<PedidoBling | null>(null)
   const [confirmandoConflito, setConfirmandoConflito] = useState(false)
@@ -138,6 +142,9 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
       setError(null)
       setBusca('')
       setOrdenacao('recente')
+      setNumeroBusca('')
+      setBuscandoManual(false)
+      setPedidoBuscado(null)
       setConflito(null)
       setPedidoConflito(null)
     }
@@ -180,6 +187,32 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
     setDias(novosDias)
     setPagina(1)
     setBusca('')
+  }
+
+  async function handleBuscaManual() {
+    if (!numeroBusca.trim()) return
+    setBuscandoManual(true)
+    setPedidoBuscado(null)
+    try {
+      const raw = await fetch(
+        `${API_ROUTES.BLING_PEDIDOS}?numero=${encodeURIComponent(numeroBusca.trim())}`,
+        { credentials: 'include' },
+      )
+      if (!raw.ok) {
+        const body = (await raw.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error ?? MESSAGES.ERROR.GENERIC)
+      }
+      const res = (await raw.json()) as { data: PedidoBling[] }
+      if (res.data.length > 0) {
+        setPedidoBuscado(res.data[0])
+      } else {
+        toast.error(`Pedido "${numeroBusca.trim()}" não encontrado no Bling`)
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : MESSAGES.ERROR.GENERIC)
+    } finally {
+      setBuscandoManual(false)
+    }
   }
 
   async function handleImportar(pedido: PedidoBling) {
@@ -286,6 +319,57 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
         }
       >
         <div className="space-y-4">
+          {/* Busca manual por número — sempre visível independente do status do Bling */}
+          <div className="rounded-lg border border-border bg-card p-3 space-y-3">
+            <p className="text-sm font-medium text-foreground">Buscar pedido por número</p>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary" />
+                <input
+                  type="text"
+                  placeholder="Ex: 1234"
+                  value={numeroBusca}
+                  onChange={(e) => setNumeroBusca(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void handleBuscaManual() }}
+                  className="w-full rounded-md border border-border bg-background pl-8 pr-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-label="Número do pedido para busca manual"
+                />
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void handleBuscaManual()}
+                disabled={!numeroBusca.trim() || buscandoManual}
+              >
+                {buscandoManual ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  'Buscar'
+                )}
+              </Button>
+            </div>
+            {pedidoBuscado && (
+              <div className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+                <div>
+                  <span className="font-mono text-sm font-medium text-foreground">
+                    #{pedidoBuscado.numero}
+                  </span>
+                  <span className="ml-2 text-xs text-secondary">
+                    {formatDate(pedidoBuscado.dataEmissao)}
+                  </span>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={pedidoBuscado.importado}
+                  onClick={() => void handleImportar(pedidoBuscado!)}
+                >
+                  {pedidoBuscado.importado ? 'Importado' : 'Importar'}
+                </Button>
+              </div>
+            )}
+          </div>
+
           {isDesconectado ? (
             <div className="space-y-4">
               <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-4">
@@ -328,7 +412,7 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
                     id="dias-select-modal"
                     value={dias}
                     onChange={(e) => handleDiasChange(Number(e.target.value))}
-                    className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value={3}>3 dias</option>
                     <option value={7}>7 dias</option>
@@ -344,14 +428,14 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
                     placeholder="Buscar nº pedido"
                     value={busca}
                     onChange={(e) => setBusca(e.target.value)}
-                    className="w-full rounded-md border border-border bg-white pl-8 pr-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full rounded-md border border-border bg-background pl-8 pr-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     aria-label="Buscar por número do pedido"
                   />
                 </div>
 
                 <button
                   onClick={() => setOrdenacao((o) => o === 'recente' ? 'antigo' : 'recente')}
-                  className="flex items-center gap-1.5 rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground hover:bg-muted transition-colors"
+                  className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:bg-muted transition-colors"
                   title={ordenacao === 'recente' ? 'Mais recente primeiro' : 'Mais antigo primeiro'}
                 >
                   <ArrowUpDown className="h-3.5 w-3.5 text-secondary" />

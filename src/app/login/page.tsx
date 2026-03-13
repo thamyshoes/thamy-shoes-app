@@ -123,11 +123,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white p-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-[420px] rounded-xl bg-card p-8 shadow-md">
         {/* Logo / título */}
         <div className="text-center">
-          <div className="mx-auto mb-0 flex h-40 w-auto items-center justify-center rounded-full bg-white">
+          <div className="mx-auto mb-0 flex h-40 w-auto items-center justify-center rounded-full bg-background">
             <Image
               src={logo}
               alt="Thamy Shoes"

@@ -76,6 +76,9 @@ export const RATE_LIMIT_CONFIGS = {
 
   /** Proxy Bling: 3 req / s por sistema */
   bling: { interval: 1000, maxRequests: 3 },
+
+  /** Consolidado (geração de PDF): 10 req / min por IP */
+  consolidar: { interval: 60 * 1000, maxRequests: 10 },
 } satisfies Record<string, RateLimitConfig>
 
 export type RateLimitConfigKey = keyof typeof RATE_LIMIT_CONFIGS

@@ -154,14 +154,14 @@ export function DataTable<T extends { id?: string }>({
             <button
               onClick={() => onPageChange(pagination.page - 1)}
               disabled={pagination.page <= 1}
-              className="rounded px-3 py-1 text-xs text-secondary hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+              className="rounded px-3 py-1 text-xs text-secondary hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Anterior
             </button>
             <button
               onClick={() => onPageChange(pagination.page + 1)}
               disabled={pagination.page >= totalPages}
-              className="rounded px-3 py-1 text-xs text-secondary hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+              className="rounded px-3 py-1 text-xs text-secondary hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Próximo
             </button>

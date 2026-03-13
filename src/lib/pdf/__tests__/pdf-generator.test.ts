@@ -99,7 +99,7 @@ const pedidoResolvido = {
   dataEmissao: new Date('2024-01-01'),
   fornecedorNome: 'Fornecedor X',
   status: StatusPedido.IMPORTADO,
-  itens: [{ id: 'i1', status: 'RESOLVIDO' }],
+  itens: [{ id: 'i1', status: 'RESOLVIDO', modelo: 'BASICO' }],
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ describe('PdfGeneratorService', () => {
 
   // Teste 1
   it('deve gerar 3 fichas para um pedido com itens resolvidos', async () => {
-    const fichas = await service.gerarFichas('p1')
+    const { fichas } = await service.gerarFichas('p1')
 
     expect(fichas).toHaveLength(3)
     const setores = fichas.map((f) => f.setor)
@@ -205,7 +205,27 @@ describe('PdfGeneratorService', () => {
     )
   })
 
-  // Teste 9
+  // Teste 9 - Facheta condicional
+  it('deve excluir FACHETA quando nenhum modelo tem facheta preenchido', async () => {
+    // Mock modelo.count retornando 0 (nenhum modelo com facheta)
+    ;(mockPrisma as Record<string, unknown>).modelo = {
+      count: vi.fn().mockResolvedValue(0),
+    }
+
+    const { fichas } = await service.gerarFichas('p1', [
+      Setor.CABEDAL, Setor.PALMILHA, Setor.SOLA, Setor.FACHETA,
+    ])
+
+    // Facheta é omitida porque nenhum modelo tem facheta preenchida
+    const setores = fichas.map((f) => f.setor)
+    expect(setores).not.toContain(Setor.FACHETA)
+    expect(fichas).toHaveLength(3)
+    expect(setores).toContain(Setor.CABEDAL)
+    expect(setores).toContain(Setor.PALMILHA)
+    expect(setores).toContain(Setor.SOLA)
+  })
+
+  // Teste 10
   it('deve retornar buffer e filename no download de ficha', async () => {
     mockPrisma.fichaProducao.findUnique.mockResolvedValueOnce({
       id: 'ficha-1',

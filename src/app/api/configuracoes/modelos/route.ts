@@ -4,15 +4,18 @@ import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
 
 const createSchema = z.object({
-  codigo: z.string().min(1).max(30),
-  nome: z.string().min(1, 'Nome é obrigatório'),
-  cabedal: z.string().optional(),
-  sola: z.string().optional(),
-  palmilha: z.string().optional(),
-  temFacheta: z.boolean().optional(),
-  materialBasePalmilha: z.string().optional(),
-  linha: z.string().optional(),
-  observacoes: z.string().optional(),
+  codigo:           z.string().min(1).max(30),
+  nome:             z.string().min(1, 'Nome é obrigatório'),
+  cabedal:          z.string().optional(),
+  sola:             z.string().optional(),
+  palmilha:         z.string().optional(),
+  materialCabedal:  z.string().max(200).optional(),
+  materialSola:     z.string().max(200).optional(),
+  materialPalmilha: z.string().max(200).optional(),
+  materialFacheta:  z.string().max(200).optional(),
+  facheta:          z.string().max(200).optional(),
+  linha:            z.string().optional(),
+  observacoes:      z.string().optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -39,7 +42,9 @@ export async function GET(request: NextRequest) {
   const [modelos, total] = await Promise.all([
     prisma.modelo.findMany({
       where,
-      include: { variantesCor: { orderBy: { corCodigo: 'asc' } } },
+      include: {
+        variantesCor: { orderBy: { corCodigo: 'asc' } },
+      },
       orderBy: { codigo: 'asc' },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -66,7 +71,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
-  const { codigo, nome, cabedal, sola, palmilha, temFacheta, materialBasePalmilha, linha, observacoes } = parsed.data
+  const { codigo, nome, cabedal, sola, palmilha, materialCabedal, materialSola, materialPalmilha, materialFacheta, facheta, linha, observacoes } = parsed.data
 
   const existing = await prisma.modelo.findUnique({ where: { codigo } })
   if (existing) {
@@ -77,13 +82,16 @@ export async function POST(request: NextRequest) {
     data: {
       codigo,
       nome,
-      cabedal: cabedal ?? null,
-      sola: sola ?? null,
-      palmilha: palmilha ?? null,
-      temFacheta: temFacheta ?? false,
-      materialBasePalmilha: materialBasePalmilha ?? null,
-      linha: linha ?? null,
-      observacoes: observacoes ?? null,
+      cabedal:          cabedal          ?? null,
+      sola:             sola             ?? null,
+      palmilha:         palmilha         ?? null,
+      materialCabedal:  materialCabedal  ?? null,
+      materialSola:     materialSola     ?? null,
+      materialPalmilha: materialPalmilha ?? null,
+      materialFacheta:  materialFacheta  ?? null,
+      facheta:          facheta          ?? null,
+      linha:            linha            ?? null,
+      observacoes:      observacoes      ?? null,
     },
     include: { variantesCor: true },
   })

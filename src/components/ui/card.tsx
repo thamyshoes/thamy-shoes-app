@@ -10,7 +10,7 @@ export function Card({ children, variant = 'default', className }: CardProps) {
   return (
     <div
       className={cn(
-        'rounded-lg border border-border bg-white p-4',
+        'rounded-lg border border-border bg-background p-4',
         variant === 'elevated' && 'shadow-md',
         variant === 'default' && 'shadow-sm',
         className,

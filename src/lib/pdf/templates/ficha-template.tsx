@@ -3,7 +3,7 @@
  * @jsxRuntime classic
  * @jsx h
  */
-import { Document, Page, View, Text } from '@react-pdf/renderer'
+import { Document, Page, View, Text, Image } from '@react-pdf/renderer'
 import { pdfStyles } from './shared-styles'
 import type { GradeRow } from '@/types'
 import { Setor } from '@/types'
@@ -37,43 +37,61 @@ export interface CampoExtraValor {
   obrigatorio: boolean
 }
 
+export interface GradeRowComImagem extends GradeRow {
+  imagemBase64?: string
+}
+
 export interface FichaTemplateProps {
   numeroPedido: string
   dataEmissao: Date
   fornecedor: string
   setor: Setor
-  grades: GradeRow[]
+  grades: (GradeRow | GradeRowComImagem)[]
   totalPares: number
   camposExtras?: CampoExtraValor[]
   geradoEm: Date
 }
 
 const SETOR_LABEL: Record<Setor, string> = {
-  CABEDAL: 'Cabedal',
+  CABEDAL:  'Cabedal',
   PALMILHA: 'Palmilha',
-  SOLA: 'Sola',
+  SOLA:     'Sola',
+  FACHETA:  'Facheta',
 }
 
 function getEspecificacao(grade: GradeRow, setor: Setor): string | undefined {
-  if (setor === Setor.CABEDAL) return grade.modeloCabedal ?? undefined
-  if (setor === Setor.SOLA) return grade.modeloSola ?? undefined
+  if (setor === Setor.CABEDAL)  return grade.modeloCabedal  ?? undefined
+  if (setor === Setor.SOLA)     return grade.modeloSola     ?? undefined
   if (setor === Setor.PALMILHA) return grade.modeloPalmilha ?? undefined
+  if (setor === Setor.FACHETA)  return grade.modeloFacheta  ?? undefined
   return undefined
 }
 
 /** Retorna info extra por cor para exibir na ficha de produção */
 function getInfoExtra(grade: GradeRow, setor: Setor): string | undefined {
+  if (setor === Setor.CABEDAL) {
+    const partes: string[] = []
+    if (grade.materialCabedal) partes.push(`Material: ${grade.materialCabedal}`)
+    if (grade.corCabedal) partes.push(`Cor: ${grade.corCabedal}`)
+    return partes.length > 0 ? partes.join(' | ') : undefined
+  }
   if (setor === Setor.SOLA) {
     const partes: string[] = []
+    if (grade.materialSola) partes.push(`Material: ${grade.materialSola}`)
     if (grade.corSola) partes.push(`Cor: ${grade.corSola}`)
-    if (grade.modeloTemFacheta && grade.corFacheta) partes.push(`Facheta: ${grade.corFacheta}`)
+    if (grade.corFacheta) partes.push(`Facheta: ${grade.corFacheta}`)
     return partes.length > 0 ? partes.join(' | ') : undefined
   }
   if (setor === Setor.PALMILHA) {
     const partes: string[] = []
-    if (grade.corForroPalmilha) partes.push(`Forro: ${grade.corForroPalmilha}`)
-    if (grade.descricaoPalmilha) partes.push(grade.descricaoPalmilha)
-    if (grade.codigoFichaPalmilha) partes.push(`Ficha: ${grade.codigoFichaPalmilha}`)
+    if (grade.materialPalmilha) partes.push(`Material: ${grade.materialPalmilha}`)
+    if (grade.corPalmilha) partes.push(`Cor: ${grade.corPalmilha}`)
+    return partes.length > 0 ? partes.join(' | ') : undefined
+  }
+  if (setor === Setor.FACHETA) {
+    const partes: string[] = []
+    if (grade.materialFacheta) partes.push(`Material: ${grade.materialFacheta}`)
+    if (grade.corFacheta) partes.push(`Cor: ${grade.corFacheta}`)
     return partes.length > 0 ? partes.join(' | ') : undefined
   }
   return undefined
@@ -105,6 +123,7 @@ export function FichaTemplate({
   const tamanhoWidth = tamanhos.length > 0 ? Math.max(25, Math.floor(160 / tamanhos.length)) : 25
   const hasEspec = grades.some((g) => !!getEspecificacao(g, setor))
   const hasExtra = grades.some((g) => !!getInfoExtra(g, setor))
+  const hasImagem = setor === Setor.CABEDAL && grades.some((g) => 'imagemBase64' in g && !!(g as GradeRowComImagem).imagemBase64)
 
   return (
     <Document>
@@ -139,6 +158,9 @@ export function FichaTemplate({
         <View style={pdfStyles.tableContainer}>
           {/* Table header */}
           <View style={pdfStyles.tableHeader}>
+            {hasImagem && (
+              <Text style={[pdfStyles.tableHeaderCell, { width: 45 }]}>Img</Text>
+            )}
             <Text style={[pdfStyles.tableHeaderCell, { width: 110 }]}>Modelo</Text>
             {hasEspec && (
               <Text style={[pdfStyles.tableHeaderCell, { width: 90 }]}>{SETOR_LABEL[setor]}</Text>
@@ -159,8 +181,18 @@ export function FichaTemplate({
           {grades.map((grade, idx) => {
             const espec = getEspecificacao(grade, setor)
             const extra = getInfoExtra(grade, setor)
+            const imgBase64 = 'imagemBase64' in grade ? (grade as GradeRowComImagem).imagemBase64 : undefined
             return (
               <View key={idx} style={idx % 2 === 0 ? pdfStyles.tableRow : pdfStyles.tableRowAlt}>
+                {hasImagem && (
+                  <View style={{ width: 45, paddingHorizontal: 2, justifyContent: 'center', alignItems: 'center' }}>
+                    {imgBase64 ? (
+                      <Image src={imgBase64} style={{ width: 36, height: 36, objectFit: 'contain' }} />
+                    ) : (
+                      <Text style={{ fontSize: 6, color: '#9CA3AF' }}>—</Text>
+                    )}
+                  </View>
+                )}
                 <View style={{ width: 110, paddingHorizontal: 4, justifyContent: 'center' }}>
                   <Text style={{ fontSize: 8, color: '#111827' }}>
                     {grade.modeloNome ? `${grade.modelo} — ${grade.modeloNome}` : grade.modelo}
@@ -186,7 +218,7 @@ export function FichaTemplate({
           {/* Total row */}
           <View style={pdfStyles.totalRow}>
             <Text style={{
-              width: (hasEspec ? 280 : 190) + (hasExtra ? 100 : 0),
+              width: (hasEspec ? 280 : 190) + (hasExtra ? 100 : 0) + (hasImagem ? 45 : 0),
               fontSize: 9,
               fontFamily: 'Helvetica-Bold',
               color: '#ffffff',

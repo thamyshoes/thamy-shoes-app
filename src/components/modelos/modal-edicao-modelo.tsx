@@ -1,0 +1,269 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
+import { Modal } from '@/components/ui/modal'
+import { Button } from '@/components/ui/button'
+import { apiClient } from '@/lib/api-client'
+import { API_ROUTES } from '@/lib/constants'
+import type { ModeloRow } from './tabela-modelos'
+
+interface ModalEdicaoModeloProps {
+  open: boolean
+  modelo: ModeloRow | null
+  mode: 'create' | 'edit'
+  onClose: () => void
+  onSaved: () => void
+}
+
+interface FormData {
+  codigo: string
+  nome: string
+  materialCabedal: string
+  materialSola: string
+  materialPalmilha: string
+  materialFacheta: string
+  facheta: string
+}
+
+const EMPTY: FormData = {
+  codigo: '',
+  nome: '',
+  materialCabedal: '',
+  materialSola: '',
+  materialPalmilha: '',
+  materialFacheta: '',
+  facheta: '',
+}
+
+export function ModalEdicaoModelo({ open, modelo, mode, onClose, onSaved }: ModalEdicaoModeloProps) {
+  const [form, setForm] = useState<FormData>(EMPTY)
+  const [saving, setSaving] = useState(false)
+  const [errors, setErrors] = useState<Partial<FormData>>({})
+
+  useEffect(() => {
+    if (modelo && mode === 'edit') {
+      setForm({
+        codigo: modelo.codigo,
+        nome: modelo.nome,
+        materialCabedal:  modelo.materialCabedal  ?? '',
+        materialSola:     modelo.materialSola      ?? '',
+        materialPalmilha: modelo.materialPalmilha  ?? '',
+        materialFacheta:  modelo.materialFacheta   ?? '',
+        facheta:          modelo.facheta           ?? '',
+      })
+    } else {
+      setForm(EMPTY)
+    }
+    setErrors({})
+  }, [modelo, mode])
+
+  function validate(): boolean {
+    const errs: Partial<FormData> = {}
+    if (!form.codigo.trim()) errs.codigo = 'Código é obrigatório'
+    if (!form.nome.trim()) errs.nome = 'Nome é obrigatório'
+    if (form.codigo.trim().length > 20) errs.codigo = 'Máximo 20 caracteres'
+    if (form.nome.trim().length > 100) errs.nome = 'Máximo 100 caracteres'
+    if (form.materialCabedal.length > 200) errs.materialCabedal = 'Máximo 200 caracteres'
+    if (form.materialSola.length > 200) errs.materialSola = 'Máximo 200 caracteres'
+    if (form.materialPalmilha.length > 200) errs.materialPalmilha = 'Máximo 200 caracteres'
+    if (form.materialFacheta.length > 200) errs.materialFacheta = 'Máximo 200 caracteres'
+    if (form.facheta.length > 200) errs.facheta = 'Máximo 200 caracteres'
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
+  function nullIfEmpty(v: string): string | null {
+    return v.trim() || null
+  }
+
+  async function handleSave() {
+    if (!validate()) return
+    setSaving(true)
+    try {
+      const payload = {
+        codigo:           form.codigo.trim(),
+        nome:             form.nome.trim(),
+        materialCabedal:  nullIfEmpty(form.materialCabedal),
+        materialSola:     nullIfEmpty(form.materialSola),
+        materialPalmilha: nullIfEmpty(form.materialPalmilha),
+        materialFacheta:  nullIfEmpty(form.materialFacheta),
+        facheta:          nullIfEmpty(form.facheta),
+      }
+
+      if (mode === 'edit' && modelo) {
+        await apiClient.put(`${API_ROUTES.MODELOS}/${modelo.id}`, payload)
+        toast.success('Modelo atualizado com sucesso')
+      } else {
+        await apiClient.post(API_ROUTES.MODELOS, payload)
+        toast.success('Modelo criado com sucesso')
+      }
+
+      onSaved()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao salvar modelo')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={mode === 'edit' ? `Editar — ${modelo?.codigo ?? ''}` : 'Novo Modelo'}
+      size="lg"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button variant="primary" loading={saving} onClick={() => void handleSave()}>
+            {saving ? 'Salvando...' : 'Salvar'}
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-5">
+        {/* IDENTIFICAÇÃO */}
+        <div>
+          <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-secondary">
+            Identificação
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="modelo-codigo" className="mb-1 block text-xs font-medium text-secondary">
+                Código <span className="text-danger">*</span>
+              </label>
+              <input
+                id="modelo-codigo"
+                data-autofocus
+                className={`w-full rounded-md border px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary ${errors.codigo ? 'border-danger' : 'border-border'}`}
+                value={form.codigo}
+                onChange={(e) => setForm((f) => ({ ...f, codigo: e.target.value }))}
+                disabled={mode === 'edit' || saving}
+                placeholder="Ex: ABC001"
+                maxLength={20}
+                aria-describedby={errors.codigo ? 'err-codigo' : undefined}
+              />
+              {errors.codigo && (
+                <p id="err-codigo" className="mt-1 text-xs text-danger">{errors.codigo}</p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="modelo-nome" className="mb-1 block text-xs font-medium text-secondary">
+                Nome <span className="text-danger">*</span>
+              </label>
+              <input
+                id="modelo-nome"
+                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.nome ? 'border-danger' : 'border-border'}`}
+                value={form.nome}
+                onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
+                disabled={saving}
+                placeholder="Ex: Bota Social"
+                maxLength={100}
+                aria-describedby={errors.nome ? 'err-nome' : undefined}
+              />
+              {errors.nome && (
+                <p id="err-nome" className="mt-1 text-xs text-danger">{errors.nome}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* MATERIAIS POR COMPONENTE */}
+        <div>
+          <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-secondary">
+            Materiais por Componente
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="modelo-materialCabedal" className="mb-1 block text-xs font-medium text-secondary">Cabedal</label>
+              <input
+                id="modelo-materialCabedal"
+                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.materialCabedal ? 'border-danger' : 'border-border'}`}
+                value={form.materialCabedal}
+                onChange={(e) => setForm((f) => ({ ...f, materialCabedal: e.target.value }))}
+                disabled={saving}
+                placeholder="Ex: Couro Natural"
+                maxLength={200}
+                aria-describedby={errors.materialCabedal ? 'err-materialCabedal' : undefined}
+              />
+              {errors.materialCabedal && (
+                <p id="err-materialCabedal" className="mt-1 text-xs text-danger">{errors.materialCabedal}</p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="modelo-materialSola" className="mb-1 block text-xs font-medium text-secondary">Sola</label>
+              <input
+                id="modelo-materialSola"
+                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.materialSola ? 'border-danger' : 'border-border'}`}
+                value={form.materialSola}
+                onChange={(e) => setForm((f) => ({ ...f, materialSola: e.target.value }))}
+                disabled={saving}
+                placeholder="Ex: EVA Injetado"
+                maxLength={200}
+                aria-describedby={errors.materialSola ? 'err-materialSola' : undefined}
+              />
+              {errors.materialSola && (
+                <p id="err-materialSola" className="mt-1 text-xs text-danger">{errors.materialSola}</p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="modelo-materialPalmilha" className="mb-1 block text-xs font-medium text-secondary">Palmilha</label>
+              <input
+                id="modelo-materialPalmilha"
+                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.materialPalmilha ? 'border-danger' : 'border-border'}`}
+                value={form.materialPalmilha}
+                onChange={(e) => setForm((f) => ({ ...f, materialPalmilha: e.target.value }))}
+                disabled={saving}
+                placeholder="Ex: Espuma Ortopédica"
+                maxLength={200}
+                aria-describedby={errors.materialPalmilha ? 'err-materialPalmilha' : undefined}
+              />
+              {errors.materialPalmilha && (
+                <p id="err-materialPalmilha" className="mt-1 text-xs text-danger">{errors.materialPalmilha}</p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="modelo-materialFacheta" className="mb-1 block text-xs font-medium text-secondary">
+                Facheta — Material
+              </label>
+              <input
+                id="modelo-materialFacheta"
+                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.materialFacheta ? 'border-danger' : 'border-border'}`}
+                value={form.materialFacheta}
+                onChange={(e) => setForm((f) => ({ ...f, materialFacheta: e.target.value }))}
+                disabled={saving}
+                placeholder="Ex: Borracha"
+                maxLength={200}
+                aria-describedby={errors.materialFacheta ? 'err-materialFacheta' : undefined}
+              />
+              {errors.materialFacheta && (
+                <p id="err-materialFacheta" className="mt-1 text-xs text-danger">{errors.materialFacheta}</p>
+              )}
+            </div>
+            <div className="col-span-2">
+              <label htmlFor="modelo-facheta" className="mb-1 block text-xs font-medium text-secondary">
+                Facheta — Descrição
+              </label>
+              <input
+                id="modelo-facheta"
+                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.facheta ? 'border-danger' : 'border-border'}`}
+                value={form.facheta}
+                onChange={(e) => setForm((f) => ({ ...f, facheta: e.target.value }))}
+                disabled={saving}
+                placeholder="Ex: Facheta injetada com acabamento fosco"
+                maxLength={200}
+                aria-describedby={errors.facheta ? 'err-facheta' : undefined}
+              />
+              {errors.facheta && (
+                <p id="err-facheta" className="mt-1 text-xs text-danger">{errors.facheta}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  )
+}

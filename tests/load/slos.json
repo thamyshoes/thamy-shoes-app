@@ -1,0 +1,24 @@
+{
+  "_comment": "SLOs para thamy-shoes. Defaults por tipo de operacao (sem RNF no PRD).",
+  "global": {
+    "error_rate_max": 0.01
+  },
+  "scenarios": {
+    "health": { "p95_ms": 200, "p99_ms": 500 },
+    "login": { "p95_ms": 800, "p99_ms": 2000 },
+    "pedidos_list": { "p95_ms": 400, "p99_ms": 800 },
+    "pedido_detail": { "p95_ms": 400, "p99_ms": 800 },
+    "fichas_list": { "p95_ms": 400, "p99_ms": 800 },
+    "fichas_gerar": { "p95_ms": 5000, "p99_ms": 10000 },
+    "fichas_consolidar": { "p95_ms": 5000, "p99_ms": 10000 },
+    "fichas_download": { "p95_ms": 2000, "p99_ms": 5000 },
+    "modelos_list": { "p95_ms": 400, "p99_ms": 800 },
+    "variantes_upload": { "p95_ms": 5000, "p99_ms": 15000 }
+  },
+  "rate_limits": {
+    "_comment": "Rate limits aplicados pelo servidor (ref: src/lib/rate-limit.ts)",
+    "login": { "max_requests": 5, "interval_seconds": 900 },
+    "fichas": { "max_requests": 30, "interval_seconds": 60 },
+    "bling": { "max_requests": 3, "interval_seconds": 1 }
+  }
+}

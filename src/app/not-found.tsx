@@ -20,7 +20,7 @@ export default function NotFound() {
 
       <Link
         href={ROUTES.PEDIDOS}
-        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
       >
         Voltar para pedidos
       </Link>

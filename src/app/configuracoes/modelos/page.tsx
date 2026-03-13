@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { SidebarLayout } from '@/components/layout/sidebar-layout'
-import { DataTable, type Column } from '@/components/ui/data-table'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -12,38 +12,39 @@ import { useAuth } from '@/hooks/use-auth'
 import { apiClient } from '@/lib/api-client'
 import { API_ROUTES, ROUTES } from '@/lib/constants'
 import { toast } from 'sonner'
+import { TabelaModelos, type ModeloRow } from '@/components/modelos/tabela-modelos'
+import { ModalEdicaoModelo } from '@/components/modelos/modal-edicao-modelo'
+import { ModalVariantes, type VarianteRow } from '@/components/variantes/modal-variantes'
 
-// ── Tipos ─────────────────────────────────────────────────────────────────────
+// ── Tipos da API ───────────────────────────────────────────────────────────────
 
 interface VarianteCor {
   id: string
   corCodigo: string
-  cabedalOverride: string | null
+  imagemUrl?: string | null
+  corCabedal: string | null
   corSola: string | null
+  corPalmilha: string | null
   corFacheta: string | null
-  corForroPalmilha: string | null
-  codigoFichaPalmilha: string | null
-  descricaoPalmilha: string | null
 }
 
-interface Modelo {
+interface ModeloApi {
   id: string
   codigo: string
   nome: string
   cabedal: string | null
   sola: string | null
   palmilha: string | null
-  temFacheta: boolean
-  materialBasePalmilha: string | null
-  linha: string | null
-  observacoes: string | null
-  ativo: boolean
-  createdAt: string
+  materialCabedal: string | null
+  materialSola: string | null
+  materialPalmilha: string | null
+  materialFacheta: string | null
+  facheta: string | null
   variantesCor: VarianteCor[]
 }
 
 interface ListResponse {
-  items: Modelo[]
+  items: ModeloApi[]
   total: number
   page: number
   pageSize: number
@@ -60,44 +61,58 @@ interface PreviewLinha {
   erro?: string
 }
 
+function toModeloRow(m: ModeloApi): ModeloRow {
+  return {
+    id: m.id,
+    codigo: m.codigo,
+    nome: m.nome,
+    materialCabedal:  m.materialCabedal,
+    materialSola:     m.materialSola,
+    materialPalmilha: m.materialPalmilha,
+    materialFacheta:  m.materialFacheta,
+    facheta:          m.facheta,
+    totalVariantes:   m.variantesCor.length,
+  }
+}
+
+function toVarianteRow(v: VarianteCor): VarianteRow {
+  return {
+    id:         v.id,
+    corCodigo:  v.corCodigo,
+    imagemUrl:  v.imagemUrl ?? null,
+    corCabedal: v.corCabedal,
+    corSola:    v.corSola,
+    corPalmilha: v.corPalmilha,
+    corFacheta: v.corFacheta,
+  }
+}
+
 // ── Content ───────────────────────────────────────────────────────────────────
 
 function ModelosContent() {
-  const [modelos, setModelos] = useState<Modelo[]>([])
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const [modelos, setModelos] = useState<ModeloApi[]>([])
   const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [page, setPage] = useState(() => {
+    const p = parseInt(searchParams.get('page') ?? '1', 10)
+    return isNaN(p) || p < 1 ? 1 : p
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(searchParams.get('search') ?? '')
 
   // Modal criar/editar
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
+  const [modalModelo, setModalModelo] = useState<ModeloRow | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
-  const [editando, setEditando] = useState<Modelo | null>(null)
-  const [formCodigo, setFormCodigo] = useState('')
-  const [formNome, setFormNome] = useState('')
-  const [formCabedal, setFormCabedal] = useState('')
-  const [formSola, setFormSola] = useState('')
-  const [formPalmilha, setFormPalmilha] = useState('')
-  const [formTemFacheta, setFormTemFacheta] = useState(false)
-  const [formMaterialBasePalmilha, setFormMaterialBasePalmilha] = useState('')
-  const [formLinha, setFormLinha] = useState('')
-  const [formObs, setFormObs] = useState('')
-  const [saving, setSaving] = useState(false)
 
-  // Modal variantes por cor
-  const [variantesModalOpen, setVariantesModalOpen] = useState(false)
-  const [variantesModelo, setVariantesModelo] = useState<Modelo | null>(null)
-  const [varianteForm, setVarianteForm] = useState({
-    corCodigo: '',
-    cabedalOverride: '',
-    corSola: '',
-    corFacheta: '',
-    corForroPalmilha: '',
-    codigoFichaPalmilha: '',
-    descricaoPalmilha: '',
-  })
-  const [editandoVariante, setEditandoVariante] = useState<VarianteCor | null>(null)
-  const [savingVariante, setSavingVariante] = useState(false)
+  // Modal variantes
+  const [variantesOpen, setVariantesOpen] = useState(false)
+  const [variantesModelo, setVariantesModelo] = useState<ModeloApi | null>(null)
 
   // Modal importação em lote
   const [importModalOpen, setImportModalOpen] = useState(false)
@@ -106,7 +121,7 @@ function ModelosContent() {
   const [importing, setImporting] = useState(false)
 
   // Confirm excluir
-  const [confirmExcluir, setConfirmExcluir] = useState<Modelo | null>(null)
+  const [confirmExcluir, setConfirmExcluir] = useState<ModeloRow | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   const fetchModelos = useCallback(async () => {
@@ -118,6 +133,7 @@ function ModelosContent() {
       const data = await apiClient.get<ListResponse>(`${API_ROUTES.MODELOS}?${params.toString()}`)
       setModelos(data.items)
       setTotal(data.total)
+      setTotalPages(data.totalPages)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar modelos')
     } finally {
@@ -127,70 +143,25 @@ function ModelosContent() {
 
   useEffect(() => { void fetchModelos() }, [fetchModelos])
 
-  // ── CRUD ────────────────────────────────────────────────────────────────────
+  // Sincronizar search e page com URL
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (search) params.set('search', search)
+    if (page > 1) params.set('page', String(page))
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname
+    router.replace(newUrl, { scroll: false })
+  // router e pathname são estáveis — incluir apenas os valores reativos necessários
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, page])
 
-  function abrirCriar() {
-    setEditando(null)
-    setFormCodigo('')
-    setFormNome('')
-    setFormCabedal('')
-    setFormSola('')
-    setFormPalmilha('')
-    setFormTemFacheta(false)
-    setFormMaterialBasePalmilha('')
-    setFormLinha('')
-    setFormObs('')
-    setModalOpen(true)
-  }
-
-  function abrirEditar(m: Modelo) {
-    setEditando(m)
-    setFormCodigo(m.codigo)
-    setFormNome(m.nome)
-    setFormCabedal(m.cabedal ?? '')
-    setFormSola(m.sola ?? '')
-    setFormPalmilha(m.palmilha ?? '')
-    setFormTemFacheta(m.temFacheta)
-    setFormMaterialBasePalmilha(m.materialBasePalmilha ?? '')
-    setFormLinha(m.linha ?? '')
-    setFormObs(m.observacoes ?? '')
-    setModalOpen(true)
-  }
-
-  async function salvar() {
-    const codigo = formCodigo.trim()
-    const nome = formNome.trim()
-    if (!codigo) { toast.error('Código é obrigatório'); return }
-    if (!nome) { toast.error('Nome é obrigatório'); return }
-
-    setSaving(true)
-    try {
-      const body = {
-        codigo,
-        nome,
-        cabedal: formCabedal.trim() || null,
-        sola: formSola.trim() || null,
-        palmilha: formPalmilha.trim() || null,
-        temFacheta: formTemFacheta,
-        materialBasePalmilha: formMaterialBasePalmilha.trim() || null,
-        linha: formLinha.trim() || null,
-        observacoes: formObs.trim() || null,
-      }
-      if (editando) {
-        await apiClient.patch(`${API_ROUTES.MODELOS}/${editando.id}`, body)
-        toast.success('Modelo atualizado')
-      } else {
-        await apiClient.post(API_ROUTES.MODELOS, body)
-        toast.success('Modelo criado')
-      }
-      setModalOpen(false)
-      await fetchModelos()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao salvar')
-    } finally {
-      setSaving(false)
+  // Sincronizar variantesModelo após refresh
+  useEffect(() => {
+    if (variantesModelo) {
+      const updated = modelos.find((m) => m.id === variantesModelo.id)
+      if (updated) setVariantesModelo(updated)
     }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelos])
 
   async function excluir() {
     if (!confirmExcluir) return
@@ -206,102 +177,6 @@ function ModelosContent() {
       setDeleting(false)
     }
   }
-
-  // ── Variantes por cor ─────────────────────────────────────────────────────
-
-  function abrirVariantes(m: Modelo) {
-    setVariantesModelo(m)
-    setEditandoVariante(null)
-    resetVarianteForm()
-    setVariantesModalOpen(true)
-  }
-
-  function resetVarianteForm() {
-    setVarianteForm({
-      corCodigo: '',
-      cabedalOverride: '',
-      corSola: '',
-      corFacheta: '',
-      corForroPalmilha: '',
-      codigoFichaPalmilha: '',
-      descricaoPalmilha: '',
-    })
-  }
-
-  function editarVariante(v: VarianteCor) {
-    setEditandoVariante(v)
-    setVarianteForm({
-      corCodigo: v.corCodigo,
-      cabedalOverride: v.cabedalOverride ?? '',
-      corSola: v.corSola ?? '',
-      corFacheta: v.corFacheta ?? '',
-      corForroPalmilha: v.corForroPalmilha ?? '',
-      codigoFichaPalmilha: v.codigoFichaPalmilha ?? '',
-      descricaoPalmilha: v.descricaoPalmilha ?? '',
-    })
-  }
-
-  async function salvarVariante() {
-    if (!variantesModelo) return
-    if (!varianteForm.corCodigo.trim()) { toast.error('Código da cor é obrigatório'); return }
-
-    setSavingVariante(true)
-    try {
-      const body = {
-        corCodigo: varianteForm.corCodigo.trim(),
-        cabedalOverride: varianteForm.cabedalOverride.trim() || null,
-        corSola: varianteForm.corSola.trim() || null,
-        corFacheta: varianteForm.corFacheta.trim() || null,
-        corForroPalmilha: varianteForm.corForroPalmilha.trim() || null,
-        codigoFichaPalmilha: varianteForm.codigoFichaPalmilha.trim() || null,
-        descricaoPalmilha: varianteForm.descricaoPalmilha.trim() || null,
-      }
-
-      if (editandoVariante) {
-        await apiClient.patch(
-          `${API_ROUTES.MODELOS}/${variantesModelo.id}/variantes-cor/${editandoVariante.id}`,
-          body,
-        )
-        toast.success('Variante atualizada')
-      } else {
-        await apiClient.post(
-          `${API_ROUTES.MODELOS}/${variantesModelo.id}/variantes-cor`,
-          body,
-        )
-        toast.success('Variante criada')
-      }
-      setEditandoVariante(null)
-      resetVarianteForm()
-      await fetchModelos()
-      // Atualizar o modelo local
-      const updated = modelos.find((m) => m.id === variantesModelo.id)
-      if (updated) setVariantesModelo(updated)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao salvar variante')
-    } finally {
-      setSavingVariante(false)
-    }
-  }
-
-  async function excluirVariante(v: VarianteCor) {
-    if (!variantesModelo) return
-    try {
-      await apiClient.delete(`${API_ROUTES.MODELOS}/${variantesModelo.id}/variantes-cor/${v.id}`)
-      toast.success('Variante excluída')
-      await fetchModelos()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao excluir variante')
-    }
-  }
-
-  // Sincronizar variantesModelo com modelos atualizados
-  useEffect(() => {
-    if (variantesModelo) {
-      const updated = modelos.find((m) => m.id === variantesModelo.id)
-      if (updated) setVariantesModelo(updated)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modelos])
 
   // ── Bulk import ─────────────────────────────────────────────────────────────
 
@@ -343,73 +218,11 @@ function ModelosContent() {
     }
   }
 
-  // ── Colunas ─────────────────────────────────────────────────────────────────
-
-  const empty = <span className="text-sm text-secondary">—</span>
-
-  const COLUMNS: Column<Modelo>[] = [
-    { key: 'codigo', header: 'Código', mono: true, sortable: true },
-    { key: 'nome', header: 'Nome', sortable: true },
-    {
-      key: 'cabedal',
-      header: 'Cabedal',
-      render: (m) => m.cabedal ? <span className="text-sm text-foreground">{m.cabedal}</span> : empty,
-    },
-    {
-      key: 'sola',
-      header: 'Sola',
-      render: (m) => m.sola ? <span className="text-sm text-foreground">{m.sola}</span> : empty,
-    },
-    {
-      key: 'palmilha',
-      header: 'Palmilha',
-      render: (m) => m.palmilha ? <span className="text-sm text-foreground">{m.palmilha}</span> : empty,
-    },
-    {
-      key: 'linha',
-      header: 'Linha',
-      render: (m) => m.linha ? <span className="text-sm text-secondary">{m.linha}</span> : empty,
-    },
-    {
-      key: 'variantesCor',
-      header: 'Variantes',
-      render: (m) => (
-        <button
-          onClick={() => abrirVariantes(m)}
-          className="text-xs font-medium text-primary hover:underline focus:outline-none focus:underline"
-        >
-          {m.variantesCor.length > 0 ? `${m.variantesCor.length} cor${m.variantesCor.length > 1 ? 'es' : ''}` : 'Adicionar'}
-        </button>
-      ),
-    },
-    {
-      key: 'id',
-      header: 'Ações',
-      align: 'right' as const,
-      render: (m) => (
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={() => abrirEditar(m)}
-            className="text-xs font-medium text-primary hover:underline focus:outline-none focus:underline"
-          >
-            Editar
-          </button>
-          <button
-            onClick={() => setConfirmExcluir(m)}
-            className="text-xs font-medium text-destructive hover:underline focus:outline-none focus:underline"
-          >
-            Excluir
-          </button>
-        </div>
-      ),
-    },
-  ]
-
   if (error) {
     return <ErrorState title="Erro ao carregar modelos" description={error} onRetry={fetchModelos} />
   }
 
-  const inputClass = 'mt-1 w-full rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary'
+  const rows = modelos.map(toModeloRow)
 
   return (
     <div className="space-y-6">
@@ -430,7 +243,9 @@ function ModelosContent() {
           <Button variant="secondary" onClick={() => { setCsvTexto(''); setPreview([]); setImportModalOpen(true) }}>
             Importar Lote
           </Button>
-          <Button onClick={abrirCriar}>Novo Modelo</Button>
+          <Button onClick={() => { setModalMode('create'); setModalModelo(null); setModalOpen(true) }}>
+            Novo Modelo
+          </Button>
         </div>
       </div>
 
@@ -440,311 +255,49 @@ function ModelosContent() {
         placeholder="Buscar por código, nome, cabedal, sola, palmilha ou linha"
         value={search}
         onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-        className="w-full max-w-sm rounded-md border border-border bg-white px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        className="w-full max-w-sm rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         aria-label="Buscar modelos"
       />
 
       {/* Tabela */}
-      <DataTable
-        data={modelos}
-        columns={COLUMNS}
+      <TabelaModelos
+        modelos={rows}
         loading={loading}
-        emptyMessage="Nenhum modelo cadastrado"
-        pagination={{ page, pageSize: 50, total }}
+        page={page}
+        totalPages={totalPages}
         onPageChange={setPage}
+        onEdit={(m) => { setModalMode('edit'); setModalModelo(m); setModalOpen(true) }}
+        onDelete={(m) => setConfirmExcluir(m)}
+        onAddFirst={() => { setModalMode('create'); setModalModelo(null); setModalOpen(true) }}
+        onVerVariantes={(m) => {
+          const api = modelos.find((x) => x.id === m.id)
+          if (api) { setVariantesModelo(api); setVariantesOpen(true) }
+        }}
       />
 
-      {/* ── Modal criar/editar ─────────────────────────────────────────────── */}
-      <Modal
+      {/* Modal criar/editar */}
+      <ModalEdicaoModelo
         open={modalOpen}
+        modelo={modalModelo}
+        mode={modalMode}
         onClose={() => setModalOpen(false)}
-        title={editando ? 'Editar Modelo' : 'Novo Modelo'}
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground" htmlFor="m-codigo">Código (referência)</label>
-              <input
-                id="m-codigo"
-                type="text"
-                className={`${inputClass} font-mono`}
-                value={formCodigo}
-                onChange={(e) => setFormCodigo(e.target.value)}
-                placeholder="Ex: 607"
-                maxLength={30}
-                disabled={!!editando}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground" htmlFor="m-nome">Nome</label>
-              <input
-                id="m-nome"
-                type="text"
-                className={inputClass}
-                value={formNome}
-                onChange={(e) => setFormNome(e.target.value)}
-                placeholder="Ex: Modelo 607"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground" htmlFor="m-cabedal">Cabedal</label>
-              <input
-                id="m-cabedal"
-                type="text"
-                className={inputClass}
-                value={formCabedal}
-                onChange={(e) => setFormCabedal(e.target.value)}
-                placeholder="Ex: SANTORINE"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground" htmlFor="m-sola">Sola</label>
-              <input
-                id="m-sola"
-                type="text"
-                className={inputClass}
-                value={formSola}
-                onChange={(e) => setFormSola(e.target.value)}
-                placeholder="Ex: 100"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground" htmlFor="m-palmilha">Palmilha</label>
-              <input
-                id="m-palmilha"
-                type="text"
-                className={inputClass}
-                value={formPalmilha}
-                onChange={(e) => setFormPalmilha(e.target.value)}
-                placeholder="Ex: 100"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground" htmlFor="m-linha">Linha</label>
-              <input
-                id="m-linha"
-                type="text"
-                className={inputClass}
-                value={formLinha}
-                onChange={(e) => setFormLinha(e.target.value)}
-                placeholder="Ex: 607-611"
-              />
-              <p className="mt-0.5 text-xs text-secondary">Agrupa modelos da mesma linha</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground" htmlFor="m-mat-palmilha">Material Base Palmilha</label>
-              <input
-                id="m-mat-palmilha"
-                type="text"
-                className={inputClass}
-                value={formMaterialBasePalmilha}
-                onChange={(e) => setFormMaterialBasePalmilha(e.target.value)}
-                placeholder="Ex: PLANTEX 1.4"
-              />
-            </div>
-            <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formTemFacheta}
-                  onChange={(e) => setFormTemFacheta(e.target.checked)}
-                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                />
-                Possui facheta do salto
-              </label>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground" htmlFor="m-obs">Observações</label>
-            <textarea
-              id="m-obs"
-              rows={2}
-              className={inputClass}
-              value={formObs}
-              onChange={(e) => setFormObs(e.target.value)}
-              placeholder="Instruções especiais, materiais, etc."
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button onClick={salvar} disabled={saving}>{saving ? 'Salvando…' : 'Salvar'}</Button>
-          </div>
-        </div>
-      </Modal>
+        onSaved={() => { setModalOpen(false); void fetchModelos() }}
+      />
 
-      {/* ── Modal variantes por cor ────────────────────────────────────────── */}
-      <Modal
-        open={variantesModalOpen}
-        onClose={() => setVariantesModalOpen(false)}
-        title={`Variantes por Cor — ${variantesModelo?.codigo ?? ''}`}
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-secondary">
-            Defina materiais e detalhes que variam conforme a cor do produto.
-            {variantesModelo?.cabedal && <> Cabedal padrão: <strong>{variantesModelo.cabedal}</strong>.</>}
-          </p>
+      {/* Modal variantes */}
+      {variantesModelo && (
+        <ModalVariantes
+          open={variantesOpen}
+          modeloCodigo={variantesModelo.codigo}
+          modeloNome={variantesModelo.nome}
+          modeloId={variantesModelo.id}
+          initialVariantes={variantesModelo.variantesCor.map(toVarianteRow)}
+          onClose={() => setVariantesOpen(false)}
+          onSaved={() => { void fetchModelos() }}
+        />
+      )}
 
-          {/* Lista de variantes existentes */}
-          {variantesModelo && variantesModelo.variantesCor.length > 0 && (
-            <div className="max-h-48 overflow-y-auto rounded border border-border">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-muted">
-                  <tr>
-                    <th className="px-2 py-1 text-left">Cor</th>
-                    <th className="px-2 py-1 text-left">Cabedal</th>
-                    <th className="px-2 py-1 text-left">Cor Sola</th>
-                    <th className="px-2 py-1 text-left">Facheta</th>
-                    <th className="px-2 py-1 text-left">Forro Palm.</th>
-                    <th className="px-2 py-1 text-left">Ficha Palm.</th>
-                    <th className="px-2 py-1 text-left">Desc. Palm.</th>
-                    <th className="px-2 py-1 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {variantesModelo.variantesCor.map((v) => (
-                    <tr key={v.id} className="border-t border-border">
-                      <td className="px-2 py-1 font-mono">{v.corCodigo}</td>
-                      <td className="px-2 py-1 text-secondary">{v.cabedalOverride ?? '—'}</td>
-                      <td className="px-2 py-1 text-secondary">{v.corSola ?? '—'}</td>
-                      <td className="px-2 py-1 text-secondary">{v.corFacheta ?? '—'}</td>
-                      <td className="px-2 py-1 text-secondary">{v.corForroPalmilha ?? '—'}</td>
-                      <td className="px-2 py-1 text-secondary font-mono">{v.codigoFichaPalmilha ?? '—'}</td>
-                      <td className="px-2 py-1 text-secondary">{v.descricaoPalmilha ?? '—'}</td>
-                      <td className="px-2 py-1 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => editarVariante(v)}
-                            className="text-primary hover:underline"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => excluirVariante(v)}
-                            className="text-destructive hover:underline"
-                          >
-                            Excluir
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Formulário de variante */}
-          <div className="rounded-md border border-border p-3 space-y-3">
-            <p className="text-xs font-medium text-foreground">
-              {editandoVariante ? `Editando variante: ${editandoVariante.corCodigo}` : 'Nova variante'}
-            </p>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs text-secondary" htmlFor="v-cor">Código da Cor *</label>
-                <input
-                  id="v-cor"
-                  type="text"
-                  className={`${inputClass} text-xs font-mono`}
-                  value={varianteForm.corCodigo}
-                  onChange={(e) => setVarianteForm({ ...varianteForm, corCodigo: e.target.value })}
-                  placeholder="Ex: 444"
-                  disabled={!!editandoVariante}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-secondary" htmlFor="v-cabedal">Cabedal (override)</label>
-                <input
-                  id="v-cabedal"
-                  type="text"
-                  className={`${inputClass} text-xs`}
-                  value={varianteForm.cabedalOverride}
-                  onChange={(e) => setVarianteForm({ ...varianteForm, cabedalOverride: e.target.value })}
-                  placeholder="Só se diferente do padrão"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-secondary" htmlFor="v-cor-sola">Cor da Sola</label>
-                <input
-                  id="v-cor-sola"
-                  type="text"
-                  className={`${inputClass} text-xs`}
-                  value={varianteForm.corSola}
-                  onChange={(e) => setVarianteForm({ ...varianteForm, corSola: e.target.value })}
-                  placeholder="Ex: BEGE"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-secondary" htmlFor="v-facheta">Cor da Facheta</label>
-                <input
-                  id="v-facheta"
-                  type="text"
-                  className={`${inputClass} text-xs`}
-                  value={varianteForm.corFacheta}
-                  onChange={(e) => setVarianteForm({ ...varianteForm, corFacheta: e.target.value })}
-                  placeholder="Ex: BALÉ"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-secondary" htmlFor="v-forro">Cor Forro Palmilha</label>
-                <input
-                  id="v-forro"
-                  type="text"
-                  className={`${inputClass} text-xs`}
-                  value={varianteForm.corForroPalmilha}
-                  onChange={(e) => setVarianteForm({ ...varianteForm, corForroPalmilha: e.target.value })}
-                  placeholder="Ex: OURO LIGHT"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-secondary" htmlFor="v-cod-palm">Código Ficha Palmilha</label>
-                <input
-                  id="v-cod-palm"
-                  type="text"
-                  className={`${inputClass} text-xs font-mono`}
-                  value={varianteForm.codigoFichaPalmilha}
-                  onChange={(e) => setVarianteForm({ ...varianteForm, codigoFichaPalmilha: e.target.value })}
-                  placeholder="Ex: 607444"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-secondary" htmlFor="v-desc-palm">Descrição Palmilha</label>
-                <input
-                  id="v-desc-palm"
-                  type="text"
-                  className={`${inputClass} text-xs`}
-                  value={varianteForm.descricaoPalmilha}
-                  onChange={(e) => setVarianteForm({ ...varianteForm, descricaoPalmilha: e.target.value })}
-                  placeholder="Ex: PALMILHA BALÉ"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              {editandoVariante && (
-                <Button variant="secondary" onClick={() => { setEditandoVariante(null); resetVarianteForm() }}>
-                  Cancelar
-                </Button>
-              )}
-              <Button onClick={salvarVariante} disabled={savingVariante}>
-                {savingVariante ? 'Salvando…' : editandoVariante ? 'Atualizar' : 'Adicionar'}
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <Button variant="secondary" onClick={() => setVariantesModalOpen(false)}>Fechar</Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* ── Modal importação em lote ───────────────────────────────────────── */}
+      {/* Modal importação em lote */}
       <Modal
         open={importModalOpen}
         onClose={() => setImportModalOpen(false)}
@@ -753,13 +306,13 @@ function ModelosContent() {
         <div className="space-y-4">
           <p className="text-sm text-secondary">
             Cole os dados no formato:<br />
-            <span className="font-mono text-xs">CODIGO;Nome;Cabedal;Sola;Palmilha;Linha;Observacoes</span><br />
-            Cabedal, Sola, Palmilha, Linha e Observacoes são opcionais. Separador: <span className="font-mono">;</span> ou <span className="font-mono">,</span>
+            <span className="font-mono text-xs">Código;Nome;Cabedal;Sola;Palmilha</span><br />
+            Cabedal, Sola e Palmilha são opcionais. Separador: <span className="font-mono">;</span> ou <span className="font-mono">,</span>
           </p>
           <textarea
-            className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             rows={8}
-            placeholder={'607;Modelo 607;SANTORINE;100;100;607-611\n608;Modelo 608;SANTORINE;100;100;607-611'}
+            placeholder={'607;Modelo 607;SANTORINE;100;100\n608;Modelo 608;SANTORINE;100;100'}
             value={csvTexto}
             onChange={(e) => { setCsvTexto(e.target.value); setPreview([]) }}
             aria-label="Dados dos modelos"
