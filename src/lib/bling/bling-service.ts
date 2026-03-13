@@ -52,6 +52,24 @@ export interface BlingProduto {
   imagemThumbnail?: string
 }
 
+export interface BlingVariacaoImagem {
+  id: number
+  link: string
+  validade?: string
+}
+
+export interface BlingVariacao {
+  id: number
+  nome: string
+  codigo: string
+  preco?: number
+  imagens?: BlingVariacaoImagem[]
+}
+
+export interface BlingProdutoDetalhe extends BlingProduto {
+  variacoes?: BlingVariacao[]
+}
+
 export type BlingPedidoDetalhe = BlingPedido
 
 // ── Erros ─────────────────────────────────────────────────────────────────────
@@ -287,6 +305,14 @@ class BlingIntegrationService {
     return new Map([
       [2, 'Em aberto'],
     ])
+  }
+
+  async getProduto(id: number): Promise<BlingProdutoDetalhe> {
+    const response = await this.blingRequest<{ data: BlingProdutoDetalhe }>(
+      'GET',
+      `/produtos/${id}`,
+    )
+    return response.data
   }
 
   async listProdutos(pagina = 1): Promise<{ data: BlingProduto[]; hasMore: boolean }> {

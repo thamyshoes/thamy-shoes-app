@@ -127,6 +127,9 @@ function ModelosContent() {
   const [preview, setPreview] = useState<PreviewLinha[]>([])
   const [importing, setImporting] = useState(false)
 
+  // Sync imagens do Bling
+  const [syncing, setSyncing] = useState(false)
+
   // Confirm excluir
   const [confirmExcluir, setConfirmExcluir] = useState<ModeloRow | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -235,6 +238,32 @@ function ModelosContent() {
     }
   }
 
+  async function syncBling() {
+    setSyncing(true)
+    try {
+      const result = await apiClient.post<{ criadas: number; atualizadas: number; semModelo: number; semImagem: number; erros: string[] }>(
+        API_ROUTES.VARIANTES_SYNC_BLING,
+        {},
+      )
+      const partes: string[] = []
+      if (result.criadas > 0) partes.push(`${result.criadas} criada${result.criadas !== 1 ? 's' : ''}`)
+      if (result.atualizadas > 0) partes.push(`${result.atualizadas} atualizada${result.atualizadas !== 1 ? 's' : ''}`)
+      if (result.semModelo > 0) partes.push(`${result.semModelo} sem modelo cadastrado`)
+      if (result.erros.length > 0) partes.push(`${result.erros.length} erro${result.erros.length !== 1 ? 's' : ''}`)
+      const msg = partes.length > 0 ? partes.join(', ') : 'Nenhuma variante encontrada'
+      if (result.erros.length > 0) {
+        toast.error(`Sincronizado com erros: ${msg}`)
+      } else {
+        toast.success(`Sincronização concluída: ${msg}`)
+      }
+      await fetchModelos()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao sincronizar com Bling')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   if (error) {
     return <ErrorState title="Erro ao carregar modelos" description={error} onRetry={fetchModelos} />
   }
@@ -257,6 +286,9 @@ function ModelosContent() {
           </h1>
         </div>
         <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => void syncBling()} disabled={syncing}>
+            {syncing ? 'Sincronizando…' : 'Sincronizar Bling'}
+          </Button>
           <Button variant="secondary" onClick={() => { setCsvTexto(''); setPreview([]); setImportModalOpen(true) }}>
             Importar Lote
           </Button>
