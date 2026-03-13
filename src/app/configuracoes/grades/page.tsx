@@ -159,7 +159,7 @@ function GradesContent() {
           </nav>
           <h1 className="mt-1 text-xl font-semibold text-foreground">Grades de Numeração</h1>
           <p className="mt-0.5 text-sm text-secondary">
-            Cadastre as grades aqui. Para vincular modelos, use o campo "Grade de Numeração" no cadastro de cada modelo.
+            Cadastre as grades aqui. Para vincular modelos, use o campo &quot;Grade de Numeração&quot; no cadastro de cada modelo.
           </p>
         </div>
         <Button onClick={abrirCriar}>Nova Grade</Button>
