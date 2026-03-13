@@ -294,8 +294,8 @@ class BlingIntegrationService {
         `/contatos/${idContato}`,
       )
       return response.data.fantasia || response.data.nome || ''
-    } catch {
-      console.warn(`[bling] Falha ao buscar contato ${idContato}`)
+    } catch (err) {
+      console.warn(`[bling] Falha ao buscar contato ${idContato}:`, err instanceof Error ? err.message : err)
       return ''
     }
   }
