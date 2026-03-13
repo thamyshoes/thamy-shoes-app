@@ -27,6 +27,8 @@ export const TemplateFacheta = ({ pedido, item, tamanhos }: TemplateFachetaProps
         { label: 'REF Facheta', valor: item.modelo.facheta },
         { label: 'Cor Facheta', valor: formatCor(item.variante.corFacheta, item.variante.corFachetaDesc ?? item.variante.corPrincipal) },
         { label: 'Material Facheta', valor: item.modelo.materialFacheta },
+        { label: 'REF Sola', valor: item.modelo.sola },
+        { label: 'Cor Sola', valor: formatCor(item.variante.corSola, item.variante.corSolaDesc ?? item.variante.corPrincipal) },
       ]}
       tamanhos={tamanhos}
     />
