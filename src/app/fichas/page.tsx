@@ -126,11 +126,10 @@ function SetorActions({ ficha }: { ficha: FichaRow | undefined }) {
 
 // ── Skeleton Row ─────────────────────────────────────────────────────────────
 
-function SkeletonRow({ showFacheta }: { showFacheta: boolean }) {
-  const cols = showFacheta ? 7 : 6
+function SkeletonRow() {
   return (
     <tr>
-      {Array.from({ length: cols }).map((_, i) => (
+      {Array.from({ length: 7 }).map((_, i) => (
         <td key={i} className="px-3 py-3">
           <div className="h-4 animate-pulse rounded bg-muted" />
         </td>
@@ -187,9 +186,6 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
     setDataAplicada('')
     setPage(1)
   }
-
-  // Determinar se algum grupo na página tem facheta
-  const anyFacheta = groups.some((g) => groupHasFacheta(g))
 
   if (error) {
     return <ErrorState title="Erro ao carregar fichas" description={error} onRetry={refetch} />
@@ -277,18 +273,16 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
                 <th className="border-l-2 border-border px-3 py-2 text-center font-medium text-secondary">Cabedal</th>
                 <th className="border-l-2 border-border px-3 py-2 text-center font-medium text-secondary">Palmilha</th>
                 <th className="border-l-2 border-border px-3 py-2 text-center font-medium text-secondary">Sola</th>
-                {anyFacheta && (
-                  <th className="border-l-2 border-border px-3 py-2 text-center font-medium text-secondary">Facheta</th>
-                )}
+                <th className="border-l-2 border-border px-3 py-2 text-center font-medium text-secondary">Facheta</th>
               </tr>
             </thead>
             <tbody>
               {loading &&
-                Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} showFacheta={anyFacheta} />)}
+                Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
 
               {!loading && groups.length === 0 && (
                 <tr>
-                  <td colSpan={anyFacheta ? 7 : 6} className="px-4 py-12 text-center text-secondary">
+                  <td colSpan={7} className="px-4 py-12 text-center text-secondary">
                     <div className="flex flex-col items-center">
                       <ClipboardList className="mb-3 h-10 w-10 text-muted-foreground/40" />
                       <p className="text-sm font-medium text-foreground">Nenhuma ficha encontrada.</p>
@@ -328,16 +322,14 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
                         <SetorActions ficha={findBySetor(group, 'SOLA')} />
                       </div>
                     </td>
-                    {anyFacheta && (
-                      <td className="border-l-2 border-border px-3 py-3">
-                        <div className="flex justify-center">
-                          {hasFacheta
-                            ? <SetorActions ficha={findBySetor(group, 'FACHETA')} />
-                            : <span className="text-muted-foreground">—</span>
-                          }
-                        </div>
-                      </td>
-                    )}
+                    <td className="border-l-2 border-border px-3 py-3">
+                      <div className="flex justify-center">
+                        {hasFacheta
+                          ? <SetorActions ficha={findBySetor(group, 'FACHETA')} />
+                          : <span className="text-muted-foreground">—</span>
+                        }
+                      </div>
+                    </td>
                   </tr>
                 )
               })}
