@@ -344,6 +344,7 @@ export default function PedidoDetalhePage() {
     try {
       await apiClient.post(`${API_ROUTES.PEDIDO_DETALHE(id)}/reimportar`, {})
       toast.success('Pedido reimportado com sucesso')
+      setShowReimportConfirm(false)
       void fetchPedido()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : MESSAGES.ERROR.GENERIC)
