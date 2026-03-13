@@ -12,45 +12,58 @@ import { formatDate } from '@/lib/format'
 import type { PedidoData, ItemData } from '../pdf-types'
 
 const styles = StyleSheet.create({
-  identificacao: {
+  // Row com 3 colunas: col1 | col2 | col3(imagem)
+  row3col: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
+    gap: 4,
+    marginBottom: 2,
   },
-  col1: {
-    flex: 2,
-    gap: 3,
+  col: {
+    flex: 1,
+    gap: 1,
   },
-  col2: {
-    flex: 2,
-    gap: 3,
-  },
-  col3: {
-    width: 70,
+  colImagem: {
+    width: 50,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   imagem: {
-    width: 65,
-    height: 65,
+    width: 46,
+    height: 46,
     objectFit: 'contain',
   },
   imagemVazia: {
-    width: 65,
-    height: 65,
+    width: 46,
+    height: 46,
     border: `0.5pt dashed ${PDF_TOKENS.colors.border}`,
     backgroundColor: '#F8FAFC',
   },
-  especificacoes: {
+  // Inline field: "Label: Valor" na mesma linha
+  fieldRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
+    gap: 2,
   },
-  specCol: {
-    flex: 1,
-    gap: 3,
+  fieldLabel: {
+    fontSize: PDF_TOKENS.fontSize.xs,
+    fontFamily: PDF_TOKENS.fontFamily.default,
+    color: PDF_TOKENS.colors.muted,
+  },
+  fieldValue: {
+    fontSize: PDF_TOKENS.fontSize.xs,
+    fontFamily: PDF_TOKENS.fontFamily.default,
+    color: PDF_TOKENS.colors.text,
+    fontWeight: 'bold',
   },
 })
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.fieldRow}>
+      <Text style={styles.fieldLabel}>{label}:</Text>
+      <Text style={styles.fieldValue}>{value}</Text>
+    </View>
+  )
+}
 
 interface TemplateCabedalProps {
   pedido: PedidoData
@@ -61,24 +74,20 @@ interface TemplateCabedalProps {
 
 export const TemplateCabedal = ({ pedido, item, base64Imagem, tamanhos }: TemplateCabedalProps) => (
   <FichaCard>
-    {/* Título do setor */}
+    {/* Titulo */}
     <Text style={pdfBaseStyles.titulo}>CABEDAL</Text>
 
-    {/* Bloco identificação: 3 colunas */}
-    <View style={styles.identificacao}>
-      <View style={styles.col1}>
-        <Text style={pdfBaseStyles.labelText}>Pedido</Text>
-        <Text style={pdfBaseStyles.valueText}>{pedido.numero}</Text>
-        <Text style={pdfBaseStyles.labelText}>Setor</Text>
-        <Text style={pdfBaseStyles.valueText}>CABEDAL</Text>
+    {/* Identificacao: 3 colunas alinhadas */}
+    <View style={styles.row3col}>
+      <View style={styles.col}>
+        <Field label="Pedido" value={String(pedido.numero)} />
+        <Field label="Data" value={formatDate(pedido.data)} />
       </View>
-      <View style={styles.col2}>
-        <Text style={pdfBaseStyles.labelText}>Data</Text>
-        <Text style={pdfBaseStyles.valueText}>{formatDate(pedido.data)}</Text>
-        <Text style={pdfBaseStyles.labelText}>SKU</Text>
-        <Text style={pdfBaseStyles.valueText}>{item.sku}</Text>
+      <View style={styles.col}>
+        <Field label="SKU" value={item.sku} />
+        <Field label="Setor" value="CABEDAL" />
       </View>
-      <View style={styles.col3}>
+      <View style={styles.colImagem}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
         {base64Imagem ? (
           <Image src={base64Imagem} style={styles.imagem} />
@@ -88,31 +97,24 @@ export const TemplateCabedal = ({ pedido, item, base64Imagem, tamanhos }: Templa
       </View>
     </View>
 
-    {/* Especificações */}
-    <View style={styles.especificacoes}>
-      <View style={styles.specCol}>
-        <Text style={pdfBaseStyles.labelText}>REF Cabedal</Text>
-        <Text style={pdfBaseStyles.valueText}>{item.modelo.cabedal ?? '-'}</Text>
-        <Text style={pdfBaseStyles.labelText}>REF Sola</Text>
-        <Text style={pdfBaseStyles.valueText}>{item.modelo.sola ?? '-'}</Text>
-        <Text style={pdfBaseStyles.labelText}>Cor Sola</Text>
-        <Text style={pdfBaseStyles.valueText}>{item.variante.corSola ?? item.variante.corPrincipal}</Text>
+    {/* Especificacoes: 3 colunas alinhadas com imagem acima */}
+    <View style={styles.row3col}>
+      <View style={styles.col}>
+        <Field label="REF Cabedal" value={item.modelo.cabedal ?? '-'} />
+        <Field label="REF Sola" value={item.modelo.sola ?? '-'} />
+        <Field label="Cor Sola" value={item.variante.corSola ?? item.variante.corPrincipal} />
       </View>
-      <View style={styles.specCol}>
-        <Text style={pdfBaseStyles.labelText}>Cor Cabedal</Text>
-        <Text style={pdfBaseStyles.valueText}>{item.variante.corCabedal ?? item.variante.corPrincipal}</Text>
-        <Text style={pdfBaseStyles.labelText}>REF Palmilha</Text>
-        <Text style={pdfBaseStyles.valueText}>{item.modelo.palmilha ?? '-'}</Text>
-        <Text style={pdfBaseStyles.labelText}>Cor Palmilha</Text>
-        <Text style={pdfBaseStyles.valueText}>{item.variante.corPalmilha ?? item.variante.corPrincipal}</Text>
+      <View style={styles.col}>
+        <Field label="Cor Cabedal" value={item.variante.corCabedal ?? item.variante.corPrincipal} />
+        <Field label="REF Palmilha" value={item.modelo.palmilha ?? '-'} />
+        <Field label="Cor Palmilha" value={item.variante.corPalmilha ?? item.variante.corPrincipal} />
       </View>
-      <View style={styles.specCol}>
-        <Text style={pdfBaseStyles.labelText}>Material Cabedal</Text>
-        <Text style={pdfBaseStyles.valueText}>{item.modelo.materialCabedal ?? '-'}</Text>
+      <View style={styles.col}>
+        <Field label="Material Cabedal" value={item.modelo.materialCabedal ?? '-'} />
       </View>
     </View>
 
-    {/* Grade de numeração */}
+    {/* Grade */}
     <GradeNumeracao tamanhos={tamanhos} quantidades={item.quantidades} />
   </FichaCard>
 )

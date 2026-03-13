@@ -26,7 +26,7 @@ export const PDF_TOKENS = {
     text: '#1A1A1A',
     muted: '#64748B',
   },
-  fontSize: { xs: 9, sm: 10, md: 12, lg: 14, xl: 16 },
+  fontSize: { xs: 7, sm: 8, md: 9, lg: 11, xl: 13 },
   fontFamily: {
     default: 'Inter',
     mono: 'JetBrainsMono',
@@ -36,11 +36,11 @@ export const PDF_TOKENS = {
 // Estilos compartilhados entre componentes PDF
 export const pdfBaseStyles = StyleSheet.create({
   titulo: {
-    fontSize: PDF_TOKENS.fontSize.lg,
+    fontSize: PDF_TOKENS.fontSize.md,
     fontFamily: PDF_TOKENS.fontFamily.default,
     fontWeight: 'bold',
     color: PDF_TOKENS.colors.text,
-    marginBottom: 6,
+    marginBottom: 3,
     textTransform: 'uppercase',
   },
   labelText: {

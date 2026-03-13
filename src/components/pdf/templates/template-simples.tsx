@@ -12,34 +12,45 @@ import { formatDate } from '@/lib/format'
 import type { PedidoData, ItemData } from '../pdf-types'
 
 const styles = StyleSheet.create({
-  identificacao2col: {
+  row2col: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
+    gap: 4,
+    marginBottom: 2,
   },
   col: {
     flex: 1,
-    gap: 3,
+    gap: 1,
   },
-  especificacoes: {
-    gap: 4,
-    marginBottom: 8,
-  },
-  specRow: {
+  specsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 4,
+    marginBottom: 2,
   },
-  specLabel: {
+  fieldRow: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  fieldLabel: {
     fontSize: PDF_TOKENS.fontSize.xs,
+    fontFamily: PDF_TOKENS.fontFamily.default,
     color: PDF_TOKENS.colors.muted,
-    width: 100,
   },
-  specValue: {
-    fontSize: PDF_TOKENS.fontSize.sm,
+  fieldValue: {
+    fontSize: PDF_TOKENS.fontSize.xs,
+    fontFamily: PDF_TOKENS.fontFamily.default,
     color: PDF_TOKENS.colors.text,
-    flex: 1,
+    fontWeight: 'bold',
   },
 })
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.fieldRow}>
+      <Text style={styles.fieldLabel}>{label}:</Text>
+      <Text style={styles.fieldValue}>{value}</Text>
+    </View>
+  )
+}
 
 interface EspecificacaoItem {
   label: string
@@ -62,36 +73,30 @@ export const TemplateSimples = ({
   tamanhos,
 }: TemplateSimplesProps) => (
   <FichaCard>
-    {/* Título do setor */}
     <Text style={pdfBaseStyles.titulo}>{titulo}</Text>
 
-    {/* Bloco identificação: 2 colunas (sem imagem) */}
-    <View style={styles.identificacao2col}>
+    {/* Identificacao inline */}
+    <View style={styles.row2col}>
       <View style={styles.col}>
-        <Text style={pdfBaseStyles.labelText}>Pedido</Text>
-        <Text style={pdfBaseStyles.valueText}>{pedido.numero}</Text>
-        <Text style={pdfBaseStyles.labelText}>Setor</Text>
-        <Text style={pdfBaseStyles.valueText}>{titulo}</Text>
+        <Field label="Pedido" value={String(pedido.numero)} />
+        <Field label="Setor" value={titulo} />
       </View>
       <View style={styles.col}>
-        <Text style={pdfBaseStyles.labelText}>Data</Text>
-        <Text style={pdfBaseStyles.valueText}>{formatDate(pedido.data)}</Text>
-        <Text style={pdfBaseStyles.labelText}>SKU</Text>
-        <Text style={pdfBaseStyles.valueText}>{item.sku}</Text>
+        <Field label="Data" value={formatDate(pedido.data)} />
+        <Field label="SKU" value={item.sku} />
       </View>
     </View>
 
-    {/* Especificações */}
-    <View style={styles.especificacoes}>
-      {especificacoes.map(({ label, valor }) => (
-        <View key={label} style={styles.specRow}>
-          <Text style={styles.specLabel}>{label}</Text>
-          <Text style={styles.specValue}>{valor ?? '-'}</Text>
-        </View>
-      ))}
+    {/* Especificacoes inline */}
+    <View style={styles.specsRow}>
+      <View style={styles.col}>
+        {especificacoes.map(({ label, valor }) => (
+          <Field key={label} label={label} value={valor ?? '-'} />
+        ))}
+      </View>
     </View>
 
-    {/* Grade de numeração */}
+    {/* Grade */}
     <GradeNumeracao tamanhos={tamanhos} quantidades={item.quantidades} />
   </FichaCard>
 )

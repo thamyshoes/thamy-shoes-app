@@ -9,14 +9,12 @@ import { PDF_TOKENS } from '@/lib/pdf-tokens'
 
 const styles = StyleSheet.create({
   page: {
-    padding: 20,
+    padding: 14,
     flexDirection: 'column',
-    gap: 8,
+    gap: 6,
     fontFamily: PDF_TOKENS.fontFamily.default,
   },
-  row: {
-    flexDirection: 'row',
-    gap: PDF_TOKENS.card.gap,
+  cardWrapper: {
     flex: 1,
   },
 })
@@ -33,16 +31,16 @@ interface PageLayoutProps {
   cards: any[]
 }
 
-// Distribui cards 1 por linha, 2 linhas por página (2/página)
+// 4 cards por página, 1 por linha (cada card = 1/4 da página, largura total)
 export const PageLayout = ({ cards }: PageLayoutProps) => {
-  const pages = chunk(cards, 2)
+  const pages = chunk(cards, 4)
 
   return (
     <Document>
       {pages.map((pageCards, pi) => (
         <Page key={String(pi)} size="A4" style={styles.page}>
           {pageCards.map((card, ci) => (
-            <View key={String(ci)} style={styles.row}>{card}</View>
+            <View key={String(ci)} style={styles.cardWrapper}>{card}</View>
           ))}
         </Page>
       ))}
