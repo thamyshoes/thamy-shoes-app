@@ -16,6 +16,7 @@ const createSchema = z.object({
   facheta:          z.string().max(200).optional(),
   linha:            z.string().optional(),
   observacoes:      z.string().optional(),
+  gradeId:          z.string().uuid().nullable().optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -59,6 +60,7 @@ export async function GET(request: NextRequest) {
     const gradeModelos = await prisma.gradeModelo.findMany({
       where: { modelo: { in: codigos } },
       include: { grade: true },
+      orderBy: { createdAt: 'asc' },  // mais antigo primeiro → último no Map ganha (mais recente)
     })
     for (const gm of gradeModelos) {
       gradeAtualMap.set(gm.modelo, {
@@ -91,29 +93,35 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
-  const { codigo, nome, cabedal, sola, palmilha, materialCabedal, materialSola, materialPalmilha, materialFacheta, facheta, linha, observacoes } = parsed.data
+  const { codigo, nome, cabedal, sola, palmilha, materialCabedal, materialSola, materialPalmilha, materialFacheta, facheta, linha, observacoes, gradeId } = parsed.data
 
   const existing = await prisma.modelo.findUnique({ where: { codigo } })
   if (existing) {
     return NextResponse.json({ error: `Modelo "${codigo}" já cadastrado` }, { status: 409 })
   }
 
-  const modelo = await prisma.modelo.create({
-    data: {
-      codigo,
-      nome,
-      cabedal:          cabedal          ?? null,
-      sola:             sola             ?? null,
-      palmilha:         palmilha         ?? null,
-      materialCabedal:  materialCabedal  ?? null,
-      materialSola:     materialSola     ?? null,
-      materialPalmilha: materialPalmilha ?? null,
-      materialFacheta:  materialFacheta  ?? null,
-      facheta:          facheta          ?? null,
-      linha:            linha            ?? null,
-      observacoes:      observacoes      ?? null,
-    },
-    include: { variantesCor: true },
+  const modelo = await prisma.$transaction(async (tx) => {
+    const created = await tx.modelo.create({
+      data: {
+        codigo,
+        nome,
+        cabedal:          cabedal          ?? null,
+        sola:             sola             ?? null,
+        palmilha:         palmilha         ?? null,
+        materialCabedal:  materialCabedal  ?? null,
+        materialSola:     materialSola     ?? null,
+        materialPalmilha: materialPalmilha ?? null,
+        materialFacheta:  materialFacheta  ?? null,
+        facheta:          facheta          ?? null,
+        linha:            linha            ?? null,
+        observacoes:      observacoes      ?? null,
+      },
+      include: { variantesCor: true },
+    })
+    if (gradeId) {
+      await tx.gradeModelo.create({ data: { gradeId, modelo: created.codigo } })
+    }
+    return created
   })
 
   return NextResponse.json(modelo, { status: 201 })

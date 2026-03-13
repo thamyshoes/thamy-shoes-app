@@ -33,12 +33,11 @@ export async function POST(
     )
   }
 
-  try {
-    const gradeModelo = await prisma.gradeModelo.create({
-      data: { gradeId: id, modelo: parsed.data.modelo },
-    })
-    return NextResponse.json(gradeModelo, { status: 201 })
-  } catch {
-    return NextResponse.json({ error: 'Modelo já associado a esta grade' }, { status: 409 })
-  }
+  // Semântica "move": remove vínculo anterior (qualquer grade) e cria o novo
+  // Garante regra 1 modelo → 1 grade mesmo via endpoint legado
+  const gradeModelo = await prisma.$transaction(async (tx) => {
+    await tx.gradeModelo.deleteMany({ where: { modelo: parsed.data.modelo } })
+    return tx.gradeModelo.create({ data: { gradeId: id, modelo: parsed.data.modelo } })
+  })
+  return NextResponse.json(gradeModelo, { status: 201 })
 }
