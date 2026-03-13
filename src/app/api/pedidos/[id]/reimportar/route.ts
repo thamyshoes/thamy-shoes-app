@@ -28,8 +28,11 @@ export async function POST(
   const idBling = Number(pedido.idBling)
   const pedidoBling = await blingService.getPedidoCompra(idBling)
 
-  console.log('[reimportar] fornecedor raw:', JSON.stringify(pedidoBling.fornecedor))
-  console.log('[reimportar] pedidoBling keys:', Object.keys(pedidoBling))
+  // Resolver nome do fornecedor via endpoint /contatos (detalhe do pedido só retorna id)
+  let fornecedorNome = pedidoBling.fornecedor?.nome ?? ''
+  if (!fornecedorNome && pedidoBling.fornecedor?.id) {
+    fornecedorNome = await blingService.getContatoNome(pedidoBling.fornecedor.id)
+  }
 
   await prisma.itemPedido.deleteMany({ where: { pedidoId: id } })
 
@@ -40,7 +43,7 @@ export async function POST(
       dataPrevista: pedidoBling.dataPrevista && pedidoBling.dataPrevista !== '0000-00-00'
         ? new Date(pedidoBling.dataPrevista)
         : null,
-      fornecedorNome: pedidoBling.fornecedor?.nome ?? '',
+      fornecedorNome,
       observacoes: pedidoBling.observacoes ?? null,
       status: StatusPedido.IMPORTADO,
       itens: {
@@ -110,6 +113,12 @@ export async function PUT(
   // Buscar dados atualizados do Bling
   const pedidoBling = await blingService.getPedidoCompra(idBling)
 
+  // Resolver nome do fornecedor via endpoint /contatos
+  let fornecedorNomePut = pedidoBling.fornecedor?.nome ?? ''
+  if (!fornecedorNomePut && pedidoBling.fornecedor?.id) {
+    fornecedorNomePut = await blingService.getContatoNome(pedidoBling.fornecedor.id)
+  }
+
   // Atualizar PedidoCompra com dados frescos do Bling
   // 1. Deletar itens antigos
   await prisma.itemPedido.deleteMany({ where: { pedidoId: id } })
@@ -122,7 +131,7 @@ export async function PUT(
       dataPrevista: pedidoBling.dataPrevista && pedidoBling.dataPrevista !== '0000-00-00'
         ? new Date(pedidoBling.dataPrevista)
         : null,
-      fornecedorNome: pedidoBling.fornecedor?.nome ?? '',
+      fornecedorNome: fornecedorNomePut,
       observacoes: pedidoBling.observacoes ?? null,
       status: StatusPedido.IMPORTADO,
       itens: {

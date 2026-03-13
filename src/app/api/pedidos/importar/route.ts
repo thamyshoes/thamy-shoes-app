@@ -45,6 +45,12 @@ export async function POST(req: NextRequest) {
   // Buscar pedido no Bling
   const pedidoBling = await blingService.getPedidoCompra(idBling)
 
+  // Resolver nome do fornecedor (API detalhe só retorna id, nome vem do endpoint /contatos)
+  let fornecedorNome = pedidoBling.fornecedor?.nome ?? ''
+  if (!fornecedorNome && pedidoBling.fornecedor?.id) {
+    fornecedorNome = await blingService.getContatoNome(pedidoBling.fornecedor.id)
+  }
+
   // Criar PedidoCompra com seus itens
   const pedido = await prisma.pedidoCompra.create({
     data: {
@@ -54,7 +60,7 @@ export async function POST(req: NextRequest) {
       dataPrevista: pedidoBling.dataPrevista && pedidoBling.dataPrevista !== '0000-00-00'
         ? new Date(pedidoBling.dataPrevista)
         : null,
-      fornecedorNome: pedidoBling.fornecedor?.nome ?? '',
+      fornecedorNome,
       fornecedorId: pedidoBling.fornecedor ? BigInt(pedidoBling.fornecedor.id) : null,
       observacoes: pedidoBling.observacoes ?? null,
       status: StatusPedido.IMPORTADO,

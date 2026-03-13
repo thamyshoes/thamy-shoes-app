@@ -287,6 +287,19 @@ class BlingIntegrationService {
     return response.data
   }
 
+  async getContatoNome(idContato: number): Promise<string> {
+    try {
+      const response = await this.blingRequest<{ data: { id: number; nome: string; fantasia?: string } }>(
+        'GET',
+        `/contatos/${idContato}`,
+      )
+      return response.data.fantasia || response.data.nome || ''
+    } catch {
+      console.warn(`[bling] Falha ao buscar contato ${idContato}`)
+      return ''
+    }
+  }
+
   async getSituacoesCompra(): Promise<Map<number, string>> {
     const endpoints = ['/situacoes/pedidoCompra', '/situacoes/compras', '/situacoes/pedidosCompra']
     for (const endpoint of endpoints) {
