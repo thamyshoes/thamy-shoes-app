@@ -32,14 +32,15 @@ interface ModeloApi {
   id: string
   codigo: string
   nome: string
+  linha: string | null
   cabedal: string | null
   sola: string | null
   palmilha: string | null
+  facheta: string | null
   materialCabedal: string | null
   materialSola: string | null
   materialPalmilha: string | null
   materialFacheta: string | null
-  facheta: string | null
   variantesCor: VarianteCor[]
 }
 
@@ -63,15 +64,19 @@ interface PreviewLinha {
 
 function toModeloRow(m: ModeloApi): ModeloRow {
   return {
-    id: m.id,
-    codigo: m.codigo,
-    nome: m.nome,
+    id:              m.id,
+    codigo:          m.codigo,
+    nome:            m.nome,
+    linha:           m.linha,
+    cabedal:         m.cabedal,
+    sola:            m.sola,
+    palmilha:        m.palmilha,
+    facheta:         m.facheta,
     materialCabedal:  m.materialCabedal,
     materialSola:     m.materialSola,
     materialPalmilha: m.materialPalmilha,
     materialFacheta:  m.materialFacheta,
-    facheta:          m.facheta,
-    totalVariantes:   m.variantesCor.length,
+    totalVariantes:  m.variantesCor.length,
   }
 }
 

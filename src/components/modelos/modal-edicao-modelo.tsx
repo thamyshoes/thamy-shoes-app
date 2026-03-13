@@ -19,21 +19,29 @@ interface ModalEdicaoModeloProps {
 interface FormData {
   codigo: string
   nome: string
+  linha: string
+  cabedal: string
+  sola: string
+  palmilha: string
+  facheta: string
   materialCabedal: string
   materialSola: string
   materialPalmilha: string
   materialFacheta: string
-  facheta: string
 }
 
 const EMPTY: FormData = {
   codigo: '',
   nome: '',
+  linha: '',
+  cabedal: '',
+  sola: '',
+  palmilha: '',
+  facheta: '',
   materialCabedal: '',
   materialSola: '',
   materialPalmilha: '',
   materialFacheta: '',
-  facheta: '',
 }
 
 export function ModalEdicaoModelo({ open, modelo, mode, onClose, onSaved }: ModalEdicaoModeloProps) {
@@ -44,13 +52,17 @@ export function ModalEdicaoModelo({ open, modelo, mode, onClose, onSaved }: Moda
   useEffect(() => {
     if (modelo && mode === 'edit') {
       setForm({
-        codigo: modelo.codigo,
-        nome: modelo.nome,
+        codigo:          modelo.codigo,
+        nome:            modelo.nome,
+        linha:           modelo.linha           ?? '',
+        cabedal:         modelo.cabedal         ?? '',
+        sola:            modelo.sola            ?? '',
+        palmilha:        modelo.palmilha        ?? '',
+        facheta:         modelo.facheta         ?? '',
         materialCabedal:  modelo.materialCabedal  ?? '',
         materialSola:     modelo.materialSola      ?? '',
         materialPalmilha: modelo.materialPalmilha  ?? '',
         materialFacheta:  modelo.materialFacheta   ?? '',
-        facheta:          modelo.facheta           ?? '',
       })
     } else {
       setForm(EMPTY)
@@ -64,11 +76,15 @@ export function ModalEdicaoModelo({ open, modelo, mode, onClose, onSaved }: Moda
     if (!form.nome.trim()) errs.nome = 'Nome é obrigatório'
     if (form.codigo.trim().length > 20) errs.codigo = 'Máximo 20 caracteres'
     if (form.nome.trim().length > 100) errs.nome = 'Máximo 100 caracteres'
+    if (form.linha.length > 100) errs.linha = 'Máximo 100 caracteres'
+    if (form.cabedal.length > 200) errs.cabedal = 'Máximo 200 caracteres'
+    if (form.sola.length > 200) errs.sola = 'Máximo 200 caracteres'
+    if (form.palmilha.length > 200) errs.palmilha = 'Máximo 200 caracteres'
+    if (form.facheta.length > 200) errs.facheta = 'Máximo 200 caracteres'
     if (form.materialCabedal.length > 200) errs.materialCabedal = 'Máximo 200 caracteres'
     if (form.materialSola.length > 200) errs.materialSola = 'Máximo 200 caracteres'
     if (form.materialPalmilha.length > 200) errs.materialPalmilha = 'Máximo 200 caracteres'
     if (form.materialFacheta.length > 200) errs.materialFacheta = 'Máximo 200 caracteres'
-    if (form.facheta.length > 200) errs.facheta = 'Máximo 200 caracteres'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -84,11 +100,15 @@ export function ModalEdicaoModelo({ open, modelo, mode, onClose, onSaved }: Moda
       const payload = {
         codigo:           form.codigo.trim(),
         nome:             form.nome.trim(),
+        linha:            nullIfEmpty(form.linha),
+        cabedal:          nullIfEmpty(form.cabedal),
+        sola:             nullIfEmpty(form.sola),
+        palmilha:         nullIfEmpty(form.palmilha),
+        facheta:          nullIfEmpty(form.facheta),
         materialCabedal:  nullIfEmpty(form.materialCabedal),
         materialSola:     nullIfEmpty(form.materialSola),
         materialPalmilha: nullIfEmpty(form.materialPalmilha),
         materialFacheta:  nullIfEmpty(form.materialFacheta),
-        facheta:          nullIfEmpty(form.facheta),
       }
 
       if (mode === 'edit' && modelo) {
@@ -168,6 +188,97 @@ export function ModalEdicaoModelo({ open, modelo, mode, onClose, onSaved }: Moda
                 <p id="err-nome" className="mt-1 text-xs text-danger">{errors.nome}</p>
               )}
             </div>
+            <div>
+              <label htmlFor="modelo-linha" className="mb-1 block text-xs font-medium text-secondary">
+                Linha
+              </label>
+              <input
+                id="modelo-linha"
+                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.linha ? 'border-danger' : 'border-border'}`}
+                value={form.linha}
+                onChange={(e) => setForm((f) => ({ ...f, linha: e.target.value }))}
+                disabled={saving}
+                placeholder="Ex: Clássica"
+                maxLength={100}
+                aria-describedby={errors.linha ? 'err-linha' : undefined}
+              />
+              {errors.linha && (
+                <p id="err-linha" className="mt-1 text-xs text-danger">{errors.linha}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* REFERÊNCIAS POR COMPONENTE */}
+        <div>
+          <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-secondary">
+            Referências por Componente
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="modelo-cabedal" className="mb-1 block text-xs font-medium text-secondary">Cabedal (Ref)</label>
+              <input
+                id="modelo-cabedal"
+                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.cabedal ? 'border-danger' : 'border-border'}`}
+                value={form.cabedal}
+                onChange={(e) => setForm((f) => ({ ...f, cabedal: e.target.value }))}
+                disabled={saving}
+                placeholder="Ex: CAB-001"
+                maxLength={200}
+                aria-describedby={errors.cabedal ? 'err-cabedal' : undefined}
+              />
+              {errors.cabedal && (
+                <p id="err-cabedal" className="mt-1 text-xs text-danger">{errors.cabedal}</p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="modelo-sola" className="mb-1 block text-xs font-medium text-secondary">Sola (Ref)</label>
+              <input
+                id="modelo-sola"
+                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.sola ? 'border-danger' : 'border-border'}`}
+                value={form.sola}
+                onChange={(e) => setForm((f) => ({ ...f, sola: e.target.value }))}
+                disabled={saving}
+                placeholder="Ex: SOL-002"
+                maxLength={200}
+                aria-describedby={errors.sola ? 'err-sola' : undefined}
+              />
+              {errors.sola && (
+                <p id="err-sola" className="mt-1 text-xs text-danger">{errors.sola}</p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="modelo-palmilha" className="mb-1 block text-xs font-medium text-secondary">Palmilha (Ref)</label>
+              <input
+                id="modelo-palmilha"
+                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.palmilha ? 'border-danger' : 'border-border'}`}
+                value={form.palmilha}
+                onChange={(e) => setForm((f) => ({ ...f, palmilha: e.target.value }))}
+                disabled={saving}
+                placeholder="Ex: PAL-003"
+                maxLength={200}
+                aria-describedby={errors.palmilha ? 'err-palmilha' : undefined}
+              />
+              {errors.palmilha && (
+                <p id="err-palmilha" className="mt-1 text-xs text-danger">{errors.palmilha}</p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="modelo-facheta" className="mb-1 block text-xs font-medium text-secondary">Facheta (Ref)</label>
+              <input
+                id="modelo-facheta"
+                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.facheta ? 'border-danger' : 'border-border'}`}
+                value={form.facheta}
+                onChange={(e) => setForm((f) => ({ ...f, facheta: e.target.value }))}
+                disabled={saving}
+                placeholder="Ex: FAC-004"
+                maxLength={200}
+                aria-describedby={errors.facheta ? 'err-facheta' : undefined}
+              />
+              {errors.facheta && (
+                <p id="err-facheta" className="mt-1 text-xs text-danger">{errors.facheta}</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -241,24 +352,6 @@ export function ModalEdicaoModelo({ open, modelo, mode, onClose, onSaved }: Moda
               />
               {errors.materialFacheta && (
                 <p id="err-materialFacheta" className="mt-1 text-xs text-danger">{errors.materialFacheta}</p>
-              )}
-            </div>
-            <div className="col-span-2">
-              <label htmlFor="modelo-facheta" className="mb-1 block text-xs font-medium text-secondary">
-                Facheta — Descrição
-              </label>
-              <input
-                id="modelo-facheta"
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.facheta ? 'border-danger' : 'border-border'}`}
-                value={form.facheta}
-                onChange={(e) => setForm((f) => ({ ...f, facheta: e.target.value }))}
-                disabled={saving}
-                placeholder="Ex: Facheta injetada com acabamento fosco"
-                maxLength={200}
-                aria-describedby={errors.facheta ? 'err-facheta' : undefined}
-              />
-              {errors.facheta && (
-                <p id="err-facheta" className="mt-1 text-xs text-danger">{errors.facheta}</p>
               )}
             </div>
           </div>

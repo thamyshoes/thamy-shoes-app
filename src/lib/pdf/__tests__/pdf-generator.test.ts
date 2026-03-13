@@ -3,13 +3,14 @@ import { Setor, StatusPedido } from '@prisma/client'
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
-vi.mock('@react-pdf/renderer', () => ({
-  renderToBuffer: vi.fn().mockResolvedValue(Buffer.from('pdf-content')),
-  Document: () => null,
-  Page: () => null,
-  View: () => null,
-  Text: () => null,
-  StyleSheet: { create: (s: object) => s },
+// Mock renderConsolidadoPdf (replaces direct @react-pdf/renderer usage)
+const mockRenderConsolidadoPdf = vi.fn().mockResolvedValue(Buffer.from('pdf-content'))
+vi.mock('@/lib/pdf/render-consolidado', () => ({
+  renderConsolidadoPdf: (...args: unknown[]) => mockRenderConsolidadoPdf(...args),
+}))
+
+vi.mock('@/lib/services/image-to-base64-converter', () => ({
+  imageUrlToBase64: vi.fn().mockResolvedValue(null),
 }))
 
 const mockUpload = vi.fn().mockResolvedValue({ error: null })
@@ -42,17 +43,14 @@ const mockPrisma = {
     findUnique: vi.fn(),
     create: vi.fn().mockResolvedValue({ id: 'ficha-1', setor: Setor.CABEDAL }),
   },
-  regraEquivalencia: {
-    findMany: vi.fn().mockResolvedValue([]),
-  },
-  campoExtra: {
-    findMany: vi.fn().mockResolvedValue([]),
-  },
   consolidado: {
     create: vi.fn().mockResolvedValue({ id: 'cons-1' }),
   },
   consolidadoPedido: {
     createMany: vi.fn().mockResolvedValue({ count: 2 }),
+  },
+  modelo: {
+    count: vi.fn().mockResolvedValue(0),
   },
   $transaction: vi.fn().mockImplementation((fn: (tx: unknown) => Promise<unknown>) => {
     const tx = {
@@ -112,6 +110,8 @@ describe('PdfGeneratorService', () => {
     service = new PdfGeneratorService()
     mockPrisma.pedidoCompra.findUnique.mockResolvedValue(pedidoResolvido)
     mockPrisma.fichaProducao.create.mockResolvedValue({ id: 'ficha-1', setor: Setor.CABEDAL })
+    mockPrisma.modelo.count.mockResolvedValue(0)
+    mockRenderConsolidadoPdf.mockResolvedValue(Buffer.from('pdf-content'))
     mockGetPublicUrl.mockReturnValue({
       data: { publicUrl: 'https://storage.example.com/fichas-producao/pedidos/p1/cabedal.pdf' },
     })
@@ -178,7 +178,7 @@ describe('PdfGeneratorService', () => {
     const fichas = await service.gerarFichasConsolidadas(['p1', 'p2'])
 
     expect(fichas).toHaveLength(3)
-    // Consolidado + ConsolidadoPedido are now created inside $transaction
+    // Consolidado + ConsolidadoPedido are created inside $transaction
     expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1)
   })
 
@@ -190,27 +190,20 @@ describe('PdfGeneratorService', () => {
   })
 
   // Teste 8
-  it('deve buscar campos extras por setor ao gerar fichas', async () => {
-    mockPrisma.campoExtra.findMany.mockResolvedValue([
-      { id: 'ce-1', setor: Setor.CABEDAL, nome: 'Tipo Forro', tipo: 'TEXT', obrigatorio: true, ativo: true, ordem: 1 },
-    ])
-
+  it('deve chamar renderConsolidadoPdf para cada setor', async () => {
     await service.gerarFichas('p1')
 
-    expect(mockPrisma.campoExtra.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ ativo: true }),
-        orderBy: { ordem: 'asc' },
-      }),
-    )
+    // Chamado 3 vezes (CABEDAL, PALMILHA, SOLA)
+    expect(mockRenderConsolidadoPdf).toHaveBeenCalledTimes(3)
+    const setoresChamados = mockRenderConsolidadoPdf.mock.calls.map((c) => c[0])
+    expect(setoresChamados).toContain(Setor.CABEDAL)
+    expect(setoresChamados).toContain(Setor.PALMILHA)
+    expect(setoresChamados).toContain(Setor.SOLA)
   })
 
   // Teste 9 - Facheta condicional
   it('deve excluir FACHETA quando nenhum modelo tem facheta preenchido', async () => {
-    // Mock modelo.count retornando 0 (nenhum modelo com facheta)
-    ;(mockPrisma as Record<string, unknown>).modelo = {
-      count: vi.fn().mockResolvedValue(0),
-    }
+    mockPrisma.modelo.count.mockResolvedValue(0)
 
     const { fichas } = await service.gerarFichas('p1', [
       Setor.CABEDAL, Setor.PALMILHA, Setor.SOLA, Setor.FACHETA,

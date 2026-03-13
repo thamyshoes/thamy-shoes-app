@@ -2,8 +2,10 @@ import { prisma } from '@/lib/prisma'
 import { createServerSupabaseClient, FICHAS_BUCKET } from '@/lib/supabase-server'
 import { montarGrades, montarGradesConsolidadas } from '@/lib/bling/sku-parser'
 import { imageUrlToBase64 } from '@/lib/services/image-to-base64-converter'
-import type { FichaTemplateProps } from '@/lib/pdf/templates/ficha-template'
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { renderConsolidadoPdf } from '@/lib/pdf/render-consolidado'
+import type { ConsolidadoCardData } from '@/lib/pdf/render-consolidado'
+import type { PedidoData, ModeloData, VarianteData, ItemData } from '@/components/pdf/pdf-types'
+import type { GradeRow } from '@/types'
 import { Setor, StatusPedido, StatusItem } from '@/types'
 
 export interface FichaGerada {
@@ -14,6 +16,59 @@ export interface FichaGerada {
   totalPares: number
   totalCards: number
 }
+
+// ── Adapter: GradeRow → ConsolidadoCardData ──────────────────────────────────
+
+function gradeRowToCard(
+  grade: GradeRow & { imagemBase64?: string },
+  pedidoData: PedidoData,
+): ConsolidadoCardData {
+  const tamanhos = Object.keys(grade.tamanhos)
+    .map(Number)
+    .sort((a, b) => a - b)
+
+  const quantidades: Record<number, number> = {}
+  for (const [k, v] of Object.entries(grade.tamanhos)) {
+    quantidades[Number(k)] = v
+  }
+
+  const modelo: ModeloData = {
+    codigo:           grade.modelo,
+    cabedal:          grade.modeloCabedal,
+    sola:             grade.modeloSola,
+    palmilha:         grade.modeloPalmilha,
+    facheta:          grade.modeloFacheta,
+    materialCabedal:  grade.materialCabedal,
+    materialSola:     grade.materialSola,
+    materialPalmilha: grade.materialPalmilha,
+    materialFacheta:  grade.materialFacheta,
+  }
+
+  const variante: VarianteData = {
+    corPrincipal: grade.corDescricao,
+    corCabedal:   grade.corCabedal,
+    corSola:      grade.corSola,
+    corPalmilha:  grade.corPalmilha,
+    corFacheta:   grade.corFacheta,
+    imagemBase64: grade.imagemBase64 ?? null,
+  }
+
+  const item: ItemData = {
+    sku:         `${grade.modelo}-${grade.cor}`,
+    modelo,
+    variante,
+    quantidades,
+  }
+
+  return {
+    pedido:       pedidoData,
+    item,
+    base64Imagem: grade.imagemBase64 ?? null,
+    tamanhos,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export class PdfGeneratorService {
   // ── Gerar fichas individuais ────────────────────────────────────────────────
@@ -90,40 +145,35 @@ export class PdfGeneratorService {
       }
     }
 
+    const pedidoData: PedidoData = {
+      numero: pedido.numero,
+      data:   pedido.dataEmissao,
+    }
+
     // Render and upload all PDFs in parallel (Promise.all)
     const pdfUploads = await Promise.all(
       setoresFiltrados.map(async (setor) => {
         console.log(`[gerarFichas] Renderizando PDF setor: ${setor}`)
-        const gradesSetor = grades
-        const camposExtras = await this.buscarCamposExtras(setor)
-        console.log(`[gerarFichas] Campos extras ${setor}:`, camposExtras.length)
 
         // Attach base64 images for CABEDAL grades
         const gradesComImagem = setor === Setor.CABEDAL && imagensBase64 && imagensBase64.size > 0
-          ? gradesSetor.map((g) => ({
+          ? grades.map((g) => ({
               ...g,
               imagemBase64: g.imagemUrl ? imagensBase64!.get(g.imagemUrl) ?? undefined : undefined,
             }))
-          : gradesSetor
+          : grades
+
+        const cards: ConsolidadoCardData[] = gradesComImagem.map((g) => gradeRowToCard(g, pedidoData))
 
         try {
-          const pdfBuffer = await this.renderPdf({
-            numeroPedido: pedido.numero,
-            dataEmissao: pedido.dataEmissao,
-            fornecedor: pedido.fornecedorNome,
-            setor,
-            grades: gradesComImagem,
-            totalPares,
-            camposExtras,
-            geradoEm: new Date(),
-          })
+          const pdfBuffer = await renderConsolidadoPdf(setor, cards)
           console.log(`[gerarFichas] PDF ${setor} renderizado, tamanho: ${pdfBuffer.length}`)
 
           const storagePath = `pedidos/${pedidoId}/${setor.toLowerCase()}.pdf`
           const pdfUrl = await this.uploadToStorage(pdfBuffer, storagePath)
           console.log(`[gerarFichas] PDF ${setor} upload OK: ${pdfUrl}`)
 
-          return { setor, pdfUrl, gradesSetor }
+          return { setor, pdfUrl, totalCards: cards.length }
         } catch (renderErr) {
           console.error(`[gerarFichas] ERRO renderizando/upload ${setor}:`, renderErr instanceof Error ? renderErr.message : renderErr)
           console.error(`[gerarFichas] Stack ${setor}:`, renderErr instanceof Error ? renderErr.stack : '')
@@ -137,11 +187,11 @@ export class PdfGeneratorService {
     // Persist all records in a single transaction (rollback on failure)
     const geradoEm = new Date().toISOString()
     await prisma.$transaction(async (tx) => {
-      for (const { setor, pdfUrl, gradesSetor } of pdfUploads) {
+      for (const { setor, pdfUrl, totalCards } of pdfUploads) {
         const dadosJson = {
           setor,
           pedidoId,
-          totalCards: gradesSetor.length,
+          totalCards,
           geradoEm,
           itens: pedido.itens.map((i) => ({
             sku: i.skuBruto,
@@ -160,7 +210,7 @@ export class PdfGeneratorService {
           },
         })
 
-        fichasGeradas.push({ id: ficha.id, fichaProducaoId: ficha.id, setor, pdfUrl, totalPares, totalCards: gradesSetor.length })
+        fichasGeradas.push({ id: ficha.id, fichaProducaoId: ficha.id, setor, pdfUrl, totalPares, totalCards })
       }
 
       await tx.pedidoCompra.update({
@@ -198,27 +248,22 @@ export class PdfGeneratorService {
     const totalPares = grades.reduce((acc, g) => acc + g.totalPares, 0)
     const fichasGeradas: FichaGerada[] = []
 
-    const setores = [Setor.CABEDAL, Setor.PALMILHA, Setor.SOLA]
     const pedidoNums = pedidos.map((p) => p.numero).join(', ')
+    const pedidoData: PedidoData = {
+      numero: pedidoNums,
+      data:   new Date(),
+    }
+
+    // Include FACHETA only if any grade has facheta data
+    const temFacheta = grades.some((g) => g.modeloFacheta)
+    const setores = [Setor.CABEDAL, Setor.PALMILHA, Setor.SOLA, ...(temFacheta ? [Setor.FACHETA] : [])]
 
     // Render and upload all PDFs in parallel before persisting
     const pdfUploads = await Promise.all(
       setores.map(async (setor) => {
-        const gradesSetor = grades
-        const camposExtras = await this.buscarCamposExtras(setor)
-
-        const pdfBuffer = await this.renderPdf({
-          numeroPedido: pedidoNums,
-          dataEmissao: new Date(),
-          fornecedor: 'Consolidado',
-          setor,
-          grades: gradesSetor,
-          totalPares,
-          camposExtras,
-          geradoEm: new Date(),
-        })
-
-        return { setor, pdfBuffer, gradesSetor }
+        const cards: ConsolidadoCardData[] = grades.map((g) => gradeRowToCard(g, pedidoData))
+        const pdfBuffer = await renderConsolidadoPdf(setor, cards)
+        return { setor, pdfBuffer, totalCards: cards.length }
       }),
     )
 
@@ -238,14 +283,14 @@ export class PdfGeneratorService {
         cor: i.cor,
       })))
 
-      for (const { setor, pdfBuffer, gradesSetor } of pdfUploads) {
+      for (const { setor, pdfBuffer, totalCards } of pdfUploads) {
         const storagePath = `consolidados/${consolidado.id}/${setor.toLowerCase()}.pdf`
         const pdfUrl = await this.uploadToStorage(pdfBuffer, storagePath)
 
         const dadosJson = {
           setor,
           pedidoIds,
-          totalCards: gradesSetor.length,
+          totalCards,
           geradoEm: geradoEmConsolidado,
           itens: allItens,
         }
@@ -260,7 +305,7 @@ export class PdfGeneratorService {
           },
         })
 
-        fichasGeradas.push({ id: ficha.id, fichaProducaoId: ficha.id, setor, pdfUrl, totalPares, totalCards: gradesSetor.length })
+        fichasGeradas.push({ id: ficha.id, fichaProducaoId: ficha.id, setor, pdfUrl, totalPares, totalCards })
       }
     })
 
@@ -286,25 +331,6 @@ export class PdfGeneratorService {
   }
 
   // ── Privados ────────────────────────────────────────────────────────────────
-
-  private async renderPdf(props: FichaTemplateProps): Promise<Buffer> {
-    // Next.js 15 usa React 19 canary ($$typeof = Symbol(react.transitional.element))
-    // mas @react-pdf/renderer v3.4 espera React 18 ($$typeof = Symbol(react.element)).
-    // O template usa @jsx h pragma que cria elementos com Symbol(react.element).
-    // Aqui criamos o root element também com o $$typeof correto.
-    const { renderToBuffer } = await import('@react-pdf/renderer')
-    const { FichaTemplate } = await import('@/lib/pdf/templates/ficha-template')
-
-    const REACT_ELEMENT_TYPE = Symbol.for('react.element')
-    const element = {
-      '$$typeof': REACT_ELEMENT_TYPE,
-      type: FichaTemplate,
-      key: null,
-      ref: null,
-      props,
-    }
-    return renderToBuffer(element as any)
-  }
 
   private async uploadToStorage(buffer: Buffer, storagePath: string): Promise<string> {
     const supabase = createServerSupabaseClient()

@@ -7,11 +7,15 @@ import { requireAdmin } from '@/lib/api-guard'
 const updateSchema = z.object({
   // codigo é imutável: não aceitar alteração via API (consistente com a UI)
   nome:             z.string().min(1).max(100).optional(),
+  linha:            z.string().max(100).nullable().optional(),
+  cabedal:          z.string().max(200).nullable().optional(),
+  sola:             z.string().max(200).nullable().optional(),
+  palmilha:         z.string().max(200).nullable().optional(),
+  facheta:          z.string().max(200).nullable().optional(),
   materialCabedal:  z.string().max(200).nullable().optional(),
   materialSola:     z.string().max(200).nullable().optional(),
   materialPalmilha: z.string().max(200).nullable().optional(),
   materialFacheta:  z.string().max(200).nullable().optional(),
-  facheta:          z.string().max(200).nullable().optional(),
 })
 
 async function handleUpdate(

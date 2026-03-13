@@ -19,9 +19,9 @@ export const TemplatePalmilha = ({ pedido, item, tamanhos }: TemplatePalmilhaPro
     pedido={pedido}
     item={item}
     especificacoes={[
-      { label: 'Material Palmilha', valor: item.modelo.materialPalmilha },
+      { label: 'REF Palmilha', valor: item.modelo.palmilha },
       { label: 'Cor Palmilha', valor: item.variante.corPalmilha ?? item.variante.corPrincipal },
-      { label: 'Cor Principal', valor: item.variante.corPrincipal },
+      { label: 'Material Palmilha', valor: item.modelo.materialPalmilha },
     ]}
     tamanhos={tamanhos}
   />

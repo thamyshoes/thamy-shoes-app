@@ -8,6 +8,10 @@ export interface ModeloRow {
   id: string
   codigo: string
   nome: string
+  linha?: string | null
+  cabedal?: string | null
+  sola?: string | null
+  palmilha?: string | null
   materialCabedal?: string | null
   materialSola?: string | null
   materialPalmilha?: string | null
@@ -28,26 +32,38 @@ interface TabelaModelosProps {
   onPageChange: (page: number) => void
 }
 
+// Column layout (13 cols):
+// [0] Código  [1] Nome
+// [2] Cab Ref  [3] Cab Material
+// [4] Sola Ref  [5] Sola Material
+// [6] Palm Ref  [7] Palm Material
+// [8] Fach Ref  [9] Fach Material
+// [10] Linha  [11] Variantes  [12] Ações
+const GROUP_BORDERS = new Set([2, 4, 6, 8, 10])
+
 function SkeletonRow() {
   return (
     <tr>
-      {Array.from({ length: 9 }).map((_, i) => (
+      {Array.from({ length: 13 }).map((_, i) => (
         <td
           key={i}
           className={cn(
             'px-3 py-3',
-            // Borders between groups
-            i === 2 && 'border-l-2 border-border',
-            i === 3 && 'border-l-2 border-border',
-            i === 4 && 'border-l-2 border-border',
-            i === 5 && 'border-l-2 border-border',
-            i === 7 && 'border-l-2 border-border',
+            GROUP_BORDERS.has(i) && 'border-l-2 border-border',
           )}
         >
           <div className="h-4 animate-pulse rounded bg-muted" />
         </td>
       ))}
     </tr>
+  )
+}
+
+function Cell({ value }: { value?: string | null }) {
+  return value ? (
+    <span>{value}</span>
+  ) : (
+    <span className="text-muted-foreground">—</span>
   )
 }
 
@@ -69,7 +85,6 @@ export function TabelaModelos({
           <thead>
             {/* Linha de grupos */}
             <tr className="border-b border-border bg-muted/40">
-              {/* BASE */}
               <th
                 colSpan={2}
                 scope="colgroup"
@@ -77,31 +92,27 @@ export function TabelaModelos({
               >
                 Base
               </th>
-              {/* CABEDAL */}
               <th
-                colSpan={1}
+                colSpan={2}
                 scope="colgroup"
                 className="border-l-2 border-border px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-secondary"
               >
                 Cabedal
               </th>
-              {/* SOLA */}
               <th
-                colSpan={1}
+                colSpan={2}
                 scope="colgroup"
                 className="border-l-2 border-border px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-secondary"
               >
                 Sola
               </th>
-              {/* PALMILHA */}
               <th
-                colSpan={1}
+                colSpan={2}
                 scope="colgroup"
                 className="border-l-2 border-border px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-secondary"
               >
                 Palmilha
               </th>
-              {/* FACHETA */}
               <th
                 colSpan={2}
                 scope="colgroup"
@@ -109,9 +120,8 @@ export function TabelaModelos({
               >
                 Facheta
               </th>
-              {/* FINAL */}
               <th
-                colSpan={2}
+                colSpan={3}
                 scope="colgroup"
                 className="border-l-2 border-border px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-secondary"
               >
@@ -122,22 +132,16 @@ export function TabelaModelos({
             <tr className="border-b border-border bg-muted/20">
               <th className="px-3 py-2 text-left font-medium text-secondary">Código</th>
               <th className="px-3 py-2 text-left font-medium text-secondary">Nome</th>
-              <th className="border-l-2 border-border px-3 py-2 text-left font-medium text-secondary">
-                Material
-              </th>
-              <th className="border-l-2 border-border px-3 py-2 text-left font-medium text-secondary">
-                Material
-              </th>
-              <th className="border-l-2 border-border px-3 py-2 text-left font-medium text-secondary">
-                Material
-              </th>
-              <th className="border-l-2 border-border px-3 py-2 text-left font-medium text-secondary">
-                Material
-              </th>
-              <th className="px-3 py-2 text-left font-medium text-secondary">Descrição</th>
-              <th className="border-l-2 border-border px-3 py-2 text-left font-medium text-secondary">
-                Variantes
-              </th>
+              <th className="border-l-2 border-border px-3 py-2 text-left font-medium text-secondary">Ref</th>
+              <th className="px-3 py-2 text-left font-medium text-secondary">Material</th>
+              <th className="border-l-2 border-border px-3 py-2 text-left font-medium text-secondary">Ref</th>
+              <th className="px-3 py-2 text-left font-medium text-secondary">Material</th>
+              <th className="border-l-2 border-border px-3 py-2 text-left font-medium text-secondary">Ref</th>
+              <th className="px-3 py-2 text-left font-medium text-secondary">Material</th>
+              <th className="border-l-2 border-border px-3 py-2 text-left font-medium text-secondary">Ref</th>
+              <th className="px-3 py-2 text-left font-medium text-secondary">Material</th>
+              <th className="border-l-2 border-border px-3 py-2 text-left font-medium text-secondary">Linha</th>
+              <th className="px-3 py-2 text-left font-medium text-secondary">Variantes</th>
               <th className="px-3 py-2 text-right font-medium text-secondary">Ações</th>
             </tr>
           </thead>
@@ -147,7 +151,7 @@ export function TabelaModelos({
 
             {!loading && modelos.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-secondary">
+                <td colSpan={13} className="px-4 py-12 text-center text-secondary">
                   <p>Nenhum modelo encontrado.</p>
                   {onAddFirst && (
                     <Button
@@ -174,40 +178,24 @@ export function TabelaModelos({
                   <td className="px-3 py-3 text-foreground">{m.nome}</td>
 
                   {/* CABEDAL */}
-                  <td className="border-l-2 border-border px-3 py-3">
-                    {m.materialCabedal ?? (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
+                  <td className="border-l-2 border-border px-3 py-3"><Cell value={m.cabedal} /></td>
+                  <td className="px-3 py-3"><Cell value={m.materialCabedal} /></td>
 
                   {/* SOLA */}
-                  <td className="border-l-2 border-border px-3 py-3">
-                    {m.materialSola ?? (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
+                  <td className="border-l-2 border-border px-3 py-3"><Cell value={m.sola} /></td>
+                  <td className="px-3 py-3"><Cell value={m.materialSola} /></td>
 
                   {/* PALMILHA */}
-                  <td className="border-l-2 border-border px-3 py-3">
-                    {m.materialPalmilha ?? (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
+                  <td className="border-l-2 border-border px-3 py-3"><Cell value={m.palmilha} /></td>
+                  <td className="px-3 py-3"><Cell value={m.materialPalmilha} /></td>
 
                   {/* FACHETA */}
-                  <td className="border-l-2 border-border px-3 py-3">
-                    {m.materialFacheta ?? (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3">
-                    {m.facheta ?? (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
+                  <td className="border-l-2 border-border px-3 py-3"><Cell value={m.facheta} /></td>
+                  <td className="px-3 py-3"><Cell value={m.materialFacheta} /></td>
 
                   {/* FINAL */}
-                  <td className="border-l-2 border-border px-3 py-3">
+                  <td className="border-l-2 border-border px-3 py-3"><Cell value={m.linha} /></td>
+                  <td className="px-3 py-3">
                     <button
                       onClick={() => onVerVariantes(m)}
                       className="text-primary underline hover:text-primary/80 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

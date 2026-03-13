@@ -69,8 +69,8 @@ export const TemplateCabedal = ({ pedido, item, base64Imagem, tamanhos }: Templa
       <View style={styles.col1}>
         <Text style={pdfBaseStyles.labelText}>Pedido</Text>
         <Text style={pdfBaseStyles.valueText}>{pedido.numero}</Text>
-        <Text style={pdfBaseStyles.labelText}>Modelo</Text>
-        <Text style={pdfBaseStyles.valueText}>{item.modelo.codigo ?? '-'}</Text>
+        <Text style={pdfBaseStyles.labelText}>Setor</Text>
+        <Text style={pdfBaseStyles.valueText}>CABEDAL</Text>
       </View>
       <View style={styles.col2}>
         <Text style={pdfBaseStyles.labelText}>Data</Text>
@@ -90,18 +90,24 @@ export const TemplateCabedal = ({ pedido, item, base64Imagem, tamanhos }: Templa
     {/* Especificações */}
     <View style={styles.especificacoes}>
       <View style={styles.specCol}>
-        <Text style={pdfBaseStyles.labelText}>Material Cabedal</Text>
-        <Text style={pdfBaseStyles.valueText}>{item.modelo.materialCabedal ?? '-'}</Text>
+        <Text style={pdfBaseStyles.labelText}>REF Cabedal</Text>
+        <Text style={pdfBaseStyles.valueText}>{item.modelo.cabedal ?? '-'}</Text>
+        <Text style={pdfBaseStyles.labelText}>REF Sola</Text>
+        <Text style={pdfBaseStyles.valueText}>{item.modelo.sola ?? '-'}</Text>
+        <Text style={pdfBaseStyles.labelText}>Cor Sola</Text>
+        <Text style={pdfBaseStyles.valueText}>{item.variante.corSola ?? item.variante.corPrincipal}</Text>
       </View>
       <View style={styles.specCol}>
         <Text style={pdfBaseStyles.labelText}>Cor Cabedal</Text>
-        <Text style={pdfBaseStyles.valueText}>
-          {item.variante.corCabedal ?? item.variante.corPrincipal}
-        </Text>
+        <Text style={pdfBaseStyles.valueText}>{item.variante.corCabedal ?? item.variante.corPrincipal}</Text>
+        <Text style={pdfBaseStyles.labelText}>REF Palmilha</Text>
+        <Text style={pdfBaseStyles.valueText}>{item.modelo.palmilha ?? '-'}</Text>
+        <Text style={pdfBaseStyles.labelText}>Cor Palmilha</Text>
+        <Text style={pdfBaseStyles.valueText}>{item.variante.corPalmilha ?? item.variante.corPrincipal}</Text>
       </View>
       <View style={styles.specCol}>
-        <Text style={pdfBaseStyles.labelText}>Cor Principal</Text>
-        <Text style={pdfBaseStyles.valueText}>{item.variante.corPrincipal}</Text>
+        <Text style={pdfBaseStyles.labelText}>Material Cabedal</Text>
+        <Text style={pdfBaseStyles.valueText}>{item.modelo.materialCabedal ?? '-'}</Text>
       </View>
     </View>
 
