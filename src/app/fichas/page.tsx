@@ -278,7 +278,7 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
             <thead>
               <tr className="border-b border-border bg-muted/40">
                 <th className="px-3 py-2 text-left font-medium text-secondary">Pedido</th>
-                <th className="px-3 py-2 text-left font-medium text-secondary">Data</th>
+                <th className="px-3 py-2 text-center font-medium text-secondary">Data</th>
                 <th className="px-3 py-2 text-left font-medium text-secondary">Horário</th>
                 <th className="border-l-2 border-border px-3 py-2 text-center font-medium text-secondary">Cabedal</th>
                 <th className="border-l-2 border-border px-3 py-2 text-center font-medium text-secondary">Palmilha</th>
@@ -315,7 +315,7 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
                     className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors"
                   >
                     <td className="px-3 py-3 font-mono text-foreground">{label}</td>
-                    <td className="px-3 py-3 text-foreground">{data}</td>
+                    <td className="px-3 py-3 text-center text-foreground">{data}</td>
                     <td className="px-3 py-3 text-foreground">{hora}</td>
                     <td className="border-l-2 border-border px-3 py-3">
                       <div className="flex justify-center">
