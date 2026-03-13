@@ -116,5 +116,10 @@ export const TemplateCabedal = ({ pedido, item, base64Imagem, tamanhos }: Templa
 
     {/* Grade */}
     <GradeNumeracao tamanhos={tamanhos} quantidades={item.quantidades} />
+
+    {/* Observacao */}
+    <View style={{ marginTop: 4, borderTop: `0.5pt solid ${PDF_TOKENS.colors.border}`, paddingTop: 3 }}>
+      <Text style={{ fontSize: PDF_TOKENS.fontSize.xs, fontFamily: PDF_TOKENS.fontFamily.default, fontWeight: 'bold', color: PDF_TOKENS.colors.text }}>Observação:</Text>
+    </View>
   </FichaCard>
 )

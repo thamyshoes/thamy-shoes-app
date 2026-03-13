@@ -97,5 +97,10 @@ export const TemplateSimples = ({
 
     {/* Grade */}
     <GradeNumeracao tamanhos={tamanhos} quantidades={item.quantidades} />
+
+    {/* Observacao */}
+    <View style={{ marginTop: 4, borderTop: '0.5pt solid #d4d4d4', paddingTop: 3 }}>
+      <Text style={styles.fieldLabel}><Text style={{ fontWeight: 'bold', color: PDF_TOKENS.colors.text }}>Observação:</Text></Text>
+    </View>
   </FichaCard>
 )
