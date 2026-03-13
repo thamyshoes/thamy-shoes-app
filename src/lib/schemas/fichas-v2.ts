@@ -25,7 +25,7 @@ export const VarianteItemSchema = z.object({
 })
 
 export const VarianteBatchSchema = z.object({
-  modeloId:   z.string().cuid(),
+  modeloId:   z.string().uuid(),
   variantes:  z.array(VarianteItemSchema).min(1, 'Ao menos uma variante obrigatória'),
   deletedIds: z.array(z.string()).optional(),
 })

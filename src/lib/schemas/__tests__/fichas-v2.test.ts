@@ -44,21 +44,15 @@ describe('VarianteBatchSchema', () => {
 
   it('aceita modeloId válido + array com uma variante', () => {
     const result = VarianteBatchSchema.safeParse({
-      modeloId: 'clxxxxxxxxxxxxxxxxxxxxxxxxx',
+      modeloId: '550e8400-e29b-41d4-a716-446655440000',
       variantes: [validVariante],
     })
-    // cuid validation — use a proper cuid for positive test
-    // Generate a valid-looking cuid
-    const result2 = VarianteBatchSchema.safeParse({
-      modeloId: 'clfq1234567890abcdefghijk',
-      variantes: [validVariante],
-    })
-    expect(result.success || result2.success).toBe(true)
+    expect(result.success).toBe(true)
   })
 
   it('rejeita array de variantes vazio (min 1)', () => {
     const result = VarianteBatchSchema.safeParse({
-      modeloId: 'clfq1234567890abcdefghijk',
+      modeloId: '550e8400-e29b-41d4-a716-446655440000',
       variantes: [],
     })
     expect(result.success).toBe(false)
