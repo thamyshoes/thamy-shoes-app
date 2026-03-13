@@ -52,9 +52,13 @@ const mockPrisma = {
   modelo: {
     count: vi.fn().mockResolvedValue(0),
   },
+  mapeamentoCor: {
+    findMany: vi.fn().mockResolvedValue([]),
+  },
   $transaction: vi.fn().mockImplementation((fn: (tx: unknown) => Promise<unknown>) => {
     const tx = {
       fichaProducao: {
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
         create: vi
           .fn()
           .mockResolvedValueOnce({ id: 'ficha-1', setor: Setor.CABEDAL })
@@ -129,15 +133,14 @@ describe('PdfGeneratorService', () => {
   })
 
   // Teste 2
-  it('deve lançar erro se pedido já tiver fichas geradas', async () => {
+  it('deve regenerar fichas se pedido já tiver fichas geradas (deleteMany + create)', async () => {
     mockPrisma.pedidoCompra.findUnique.mockResolvedValueOnce({
       ...pedidoResolvido,
       status: StatusPedido.FICHAS_GERADAS,
     })
 
-    await expect(service.gerarFichas('p1')).rejects.toThrow(
-      'Fichas já foram geradas para este pedido',
-    )
+    const result = await service.gerarFichas('p1')
+    expect(result.fichas.length).toBeGreaterThan(0)
   })
 
   // Teste 3

@@ -16,6 +16,11 @@ export interface VarianteData {
   corSola?: string | null
   corPalmilha?: string | null
   corFacheta?: string | null
+  // Descrições resolvidas via MapeamentoCor (cada cor do componente)
+  corCabedalDesc?: string | null
+  corSolaDesc?: string | null
+  corPalmilhaDesc?: string | null
+  corFachetaDesc?: string | null
   imagemBase64?: string | null
 }
 

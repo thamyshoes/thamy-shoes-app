@@ -22,6 +22,7 @@ export interface FichaGerada {
 function gradeRowToCard(
   grade: GradeRow & { imagemBase64?: string },
   pedidoData: PedidoData,
+  corDescMap?: Map<string, string>,
 ): ConsolidadoCardData {
   const tamanhos = Object.keys(grade.tamanhos)
     .map(Number)
@@ -44,12 +45,24 @@ function gradeRowToCard(
     materialFacheta:  grade.materialFacheta,
   }
 
+  // Resolver descrição de cada cor de componente via MapeamentoCor
+  // Em vez de usar corPrincipal para todos, buscar a descrição real de cada código
+  const resolverDesc = (code: string | undefined) => {
+    if (!code) return undefined
+    return corDescMap?.get(code) ?? code
+  }
+
   const variante: VarianteData = {
     corPrincipal: grade.corDescricao,
     corCabedal:   grade.corCabedal,
     corSola:      grade.corSola,
     corPalmilha:  grade.corPalmilha,
     corFacheta:   grade.corFacheta,
+    // Descrições resolvidas individualmente
+    corCabedalDesc:  resolverDesc(grade.corCabedal ?? undefined),
+    corSolaDesc:     resolverDesc(grade.corSola ?? undefined),
+    corPalmilhaDesc: resolverDesc(grade.corPalmilha ?? undefined),
+    corFachetaDesc:  resolverDesc(grade.corFacheta ?? undefined),
     imagemBase64: grade.imagemBase64 ?? null,
   }
 
@@ -66,6 +79,24 @@ function gradeRowToCard(
     base64Imagem: grade.imagemBase64 ?? null,
     tamanhos,
   }
+}
+
+/** Coleta todos os códigos de cor de componentes e busca descrições no MapeamentoCor */
+async function buildCorDescMap(grades: GradeRow[]): Promise<Map<string, string>> {
+  const codigos = new Set<string>()
+  for (const g of grades) {
+    if (g.corCabedal) codigos.add(g.corCabedal)
+    if (g.corSola) codigos.add(g.corSola)
+    if (g.corPalmilha) codigos.add(g.corPalmilha)
+    if (g.corFacheta) codigos.add(g.corFacheta)
+  }
+  if (codigos.size === 0) return new Map()
+
+  const mapeamentos = await prisma.mapeamentoCor.findMany({
+    where: { codigo: { in: [...codigos] } },
+    select: { codigo: true, descricao: true },
+  })
+  return new Map(mapeamentos.map((m) => [m.codigo, m.descricao]))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,6 +128,7 @@ export class PdfGeneratorService {
     console.log('[gerarFichas] Montando grades...')
     const grades = await montarGrades(pedidoId)
     console.log('[gerarFichas] Grades montadas:', grades.length)
+    const corDescMap = await buildCorDescMap(grades)
     const totalPares = grades.reduce((acc, g) => acc + g.totalPares, 0)
     console.log('[gerarFichas] Total pares:', totalPares)
 
@@ -164,7 +196,7 @@ export class PdfGeneratorService {
           }))
         : grades
 
-      const cards: ConsolidadoCardData[] = gradesComImagem.map((g) => gradeRowToCard(g, pedidoData))
+      const cards: ConsolidadoCardData[] = gradesComImagem.map((g) => gradeRowToCard(g, pedidoData, corDescMap))
 
       const pdfBuffer = await renderConsolidadoPdf(setor, cards)
       console.log(`[gerarFichas] PDF ${setor} renderizado, tamanho: ${pdfBuffer.length}`)
@@ -247,6 +279,7 @@ export class PdfGeneratorService {
     }
 
     const grades = await montarGradesConsolidadas(pedidoIds, options)
+    const corDescMap = await buildCorDescMap(grades)
     const totalPares = grades.reduce((acc, g) => acc + g.totalPares, 0)
     const fichasGeradas: FichaGerada[] = []
 
@@ -263,7 +296,7 @@ export class PdfGeneratorService {
     // Render and upload all PDFs in parallel before persisting
     const pdfUploads = await Promise.all(
       setores.map(async (setor) => {
-        const cards: ConsolidadoCardData[] = grades.map((g) => gradeRowToCard(g, pedidoData))
+        const cards: ConsolidadoCardData[] = grades.map((g) => gradeRowToCard(g, pedidoData, corDescMap))
         const pdfBuffer = await renderConsolidadoPdf(setor, cards)
         return { setor, pdfBuffer, totalCards: cards.length }
       }),

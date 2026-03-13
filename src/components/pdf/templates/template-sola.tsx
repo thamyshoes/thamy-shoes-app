@@ -21,7 +21,7 @@ export const TemplateSola = ({ pedido, item, tamanhos }: TemplateSolaProps) => (
     item={item}
     especificacoes={[
       { label: 'REF Sola', valor: item.modelo.sola },
-      { label: 'Cor Sola', valor: formatCor(item.variante.corSola, item.variante.corPrincipal) },
+      { label: 'Cor Sola', valor: formatCor(item.variante.corSola, item.variante.corSolaDesc ?? item.variante.corPrincipal) },
       { label: 'Material Sola', valor: item.modelo.materialSola },
     ]}
     tamanhos={tamanhos}
