@@ -28,6 +28,9 @@ export async function POST(
   const idBling = Number(pedido.idBling)
   const pedidoBling = await blingService.getPedidoCompra(idBling)
 
+  console.log('[reimportar] fornecedor raw:', JSON.stringify(pedidoBling.fornecedor))
+  console.log('[reimportar] pedidoBling keys:', Object.keys(pedidoBling))
+
   await prisma.itemPedido.deleteMany({ where: { pedidoId: id } })
 
   await prisma.pedidoCompra.update({
