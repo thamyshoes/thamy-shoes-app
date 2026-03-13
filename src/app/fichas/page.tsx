@@ -100,26 +100,27 @@ function SetorActions({ ficha }: { ficha: FichaRow | undefined }) {
 
   return (
     <div className="flex items-center gap-1">
-      <button
+      <Button
+        variant="secondary"
+        size="sm"
+        icon={<Eye className="h-3.5 w-3.5" />}
         onClick={handleVisualizar}
-        className="rounded p-1 text-secondary hover:bg-muted hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        aria-label="Visualizar"
-        title="Visualizar"
       >
-        <Eye className="h-3.5 w-3.5" />
-      </button>
-      <button
+        Visualizar
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={
+          downloading
+            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            : <Download className="h-3.5 w-3.5" />
+        }
         onClick={handleDownload}
         disabled={downloading}
-        className="rounded p-1 text-secondary hover:bg-muted hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
-        aria-label={downloading ? 'Baixando...' : 'Baixar'}
-        title="Baixar"
       >
-        {downloading
-          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          : <Download className="h-3.5 w-3.5" />
-        }
-      </button>
+        {downloading ? 'Baixando...' : 'Baixar'}
+      </Button>
     </div>
   )
 }
@@ -264,7 +265,16 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
       {/* Tabela */}
       <div className="rounded-lg border border-border bg-background">
         <div className="overflow-x-auto">
-          <table className="w-full text-[13px]" aria-label="Fichas de produção" aria-busy={loading}>
+          <table className="w-full table-fixed text-[13px]" aria-label="Fichas de produção" aria-busy={loading}>
+            <colgroup>
+              <col className="w-[100px]" />
+              <col className="w-[90px]" />
+              <col className="w-[60px]" />
+              <col />
+              <col />
+              <col />
+              <col />
+            </colgroup>
             <thead>
               <tr className="border-b border-border bg-muted/40">
                 <th className="px-3 py-2 text-left font-medium text-secondary">Pedido</th>
