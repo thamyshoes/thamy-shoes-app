@@ -79,7 +79,7 @@ export const TemplateSimples = ({
     <View style={styles.row2col}>
       <View style={styles.col}>
         <Field label="Pedido" value={String(pedido.numero)} />
-        <Field label="Fornecedor" value="" />
+        <Field label="Fornecedor" value={pedido.fornecedor} />
       </View>
       <View style={styles.col}>
         <Field label="Data" value={formatDate(pedido.data)} />

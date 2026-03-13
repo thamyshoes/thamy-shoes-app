@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       }),
       prisma.pedidoCompra.findMany({
         where: { id: { in: pedidoIds } },
-        select: { id: true, numero: true, dataEmissao: true },
+        select: { id: true, numero: true, dataEmissao: true, fornecedorNome: true },
       }),
     ])
 
@@ -171,6 +171,7 @@ export async function POST(req: NextRequest) {
         pedido: {
           numero: pedido?.numero ?? g.pedidoId.slice(0, 8),
           data: pedido?.dataEmissao ?? new Date(),
+          fornecedor: pedido?.fornecedorNome ?? '',
         },
         item: {
           sku: g.skuBruto ?? `${g.modelo}-${g.cor}`,

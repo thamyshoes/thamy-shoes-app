@@ -91,7 +91,15 @@ function gradeRowToCard(
 function mergeCardsPorSetor(setor: Setor, cards: ConsolidadoCardData[]): ConsolidadoCardData[] {
   if (setor === Setor.CABEDAL) return cards
 
-  // Determinar qual cor do componente usar como chave de agrupamento
+  // Determinar ref e cor do componente para chave de agrupamento
+  const getRefComponente = (card: ConsolidadoCardData): string | null => {
+    switch (setor) {
+      case Setor.SOLA:     return card.item.modelo.sola ?? null
+      case Setor.PALMILHA: return card.item.modelo.palmilha ?? null
+      case Setor.FACHETA:  return card.item.modelo.facheta ?? null
+      default:             return null
+    }
+  }
   const getCorComponente = (card: ConsolidadoCardData): string | null => {
     switch (setor) {
       case Setor.SOLA:     return card.item.variante.corSola ?? null
@@ -104,10 +112,11 @@ function mergeCardsPorSetor(setor: Setor, cards: ConsolidadoCardData[]): Consoli
   const grupos = new Map<string, ConsolidadoCardData>()
 
   for (const card of cards) {
+    const refComp = getRefComponente(card)
     const corComp = getCorComponente(card)
-    // Se cor do componente estiver ausente, não mergear — usar SKU como chave única
-    const key = corComp
-      ? `${card.item.modelo.codigo ?? ''}||${corComp}||${card.pedido.numero}`
+    // Se ref ou cor do componente estiver ausente, não mergear — usar SKU como chave única
+    const key = refComp && corComp
+      ? `${refComp}||${corComp}||${card.pedido.numero}`
       : `__nomatch__${card.item.sku}||${card.pedido.numero}`
 
     const existing = grupos.get(key)
@@ -243,6 +252,7 @@ export class PdfGeneratorService {
     const pedidoData: PedidoData = {
       numero: pedido.numero,
       data:   pedido.dataEmissao,
+      fornecedor: pedido.fornecedorNome,
     }
 
     // Render and upload PDFs sequentially (yoga-layout WASM crashes with parallel renders)
@@ -347,9 +357,11 @@ export class PdfGeneratorService {
     const fichasGeradas: FichaGerada[] = []
 
     const pedidoNums = pedidos.map((p) => p.numero).join(', ')
+    const fornecedores = [...new Set(pedidos.map((p) => p.fornecedorNome).filter(Boolean))]
     const pedidoData: PedidoData = {
       numero: pedidoNums,
       data:   new Date(),
+      fornecedor: fornecedores.join(', '),
     }
 
     // Include FACHETA only if any grade has facheta data

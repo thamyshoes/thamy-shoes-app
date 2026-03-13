@@ -8,6 +8,7 @@ export function formatCor(code: string | null | undefined, descricao: string): s
 export interface PedidoData {
   numero: string
   data: Date | string
+  fornecedor: string
 }
 
 export interface VarianteData {

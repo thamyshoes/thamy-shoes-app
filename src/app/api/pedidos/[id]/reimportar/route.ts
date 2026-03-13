@@ -20,11 +20,9 @@ export async function POST(
     return NextResponse.json({ error: 'Pedido não encontrado' }, { status: 404 })
   }
 
+  // Se o pedido já possui fichas geradas, deletar fichas antigas antes de reimportar
   if (pedido.status === StatusPedido.FICHAS_GERADAS) {
-    return NextResponse.json(
-      { error: 'Pedido já possui fichas geradas' },
-      { status: 409 },
-    )
+    await prisma.fichaProducao.deleteMany({ where: { pedidoId: id } })
   }
 
   const idBling = Number(pedido.idBling)
