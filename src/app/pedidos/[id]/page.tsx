@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { Download, FileText, Pencil, RotateCcw, Trash2 } from 'lucide-react'
+import { Download, Eye, Loader2, Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import { BotaoGerarFichas } from '@/components/pedidos/botao-gerar-fichas'
 import { toast } from 'sonner'
 import { SidebarLayout } from '@/components/layout/sidebar-layout'
@@ -231,6 +231,76 @@ function EditItemModal({ pedidoId, item, onClose, onSaved }: EditModalProps) {
   )
 }
 
+// ── Ficha Card (Visualizar + Baixar) ─────────────────────────────────────────
+
+function FichaCard({ ficha }: { ficha: FichaProducao }) {
+  const [downloading, setDownloading] = useState(false)
+
+  async function handleDownload() {
+    setDownloading(true)
+    try {
+      const res = await fetch(API_ROUTES.FICHA_DOWNLOAD_V2(ficha.id))
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string }
+        toast.error(data.error ?? 'Erro ao baixar ficha')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `ficha-${ficha.setor.toLowerCase()}-${ficha.id.slice(0, 8)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('Erro ao baixar ficha. Tente novamente.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  function handleVisualizar() {
+    window.open(`${API_ROUTES.FICHA_DOWNLOAD_V2(ficha.id)}?inline=1`, '_blank')
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-background p-4">
+      <div className="mb-3">
+        <p className="text-sm font-semibold capitalize text-foreground">
+          {ficha.setor.charAt(0) + ficha.setor.slice(1).toLowerCase()}
+        </p>
+        <p className="text-xs text-secondary">{ficha.totalPares} pares</p>
+        <p className="text-xs text-secondary">{formatDate(ficha.createdAt)}</p>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<Eye className="h-3.5 w-3.5" />}
+          onClick={handleVisualizar}
+        >
+          Visualizar
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={
+            downloading
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <Download className="h-3.5 w-3.5" />
+          }
+          onClick={handleDownload}
+          disabled={downloading}
+        >
+          {downloading ? 'Baixando...' : 'Baixar'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PedidoDetalhePage() {
@@ -455,39 +525,7 @@ function handleItemSaved() {
               </h2>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {pedido.fichas.map((ficha) => (
-                  <div
-                    key={ficha.id}
-                    className="rounded-lg border border-border bg-background p-4"
-                  >
-                    <div className="mb-3">
-                      <p className="text-sm font-semibold capitalize text-foreground">
-                        {ficha.setor.charAt(0) + ficha.setor.slice(1).toLowerCase()}
-                      </p>
-                      <p className="text-xs text-secondary">{ficha.totalPares} pares</p>
-                      <p className="text-xs text-secondary">
-                        {formatDate(ficha.createdAt)}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <a
-                        href={API_ROUTES.FICHA_DOWNLOAD_V2(ficha.id)}
-                        download
-                        className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover transition-colors"
-                      >
-                        <Download className="h-3 w-3" />
-                        Download
-                      </a>
-                      <a
-                        href={ficha.pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-                      >
-                        <FileText className="h-3 w-3" />
-                        Imprimir
-                      </a>
-                    </div>
-                  </div>
+                  <FichaCard key={ficha.id} ficha={ficha} />
                 ))}
               </div>
             </section>

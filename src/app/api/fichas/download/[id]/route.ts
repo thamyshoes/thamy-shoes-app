@@ -34,12 +34,16 @@ export async function GET(
     const inline = request.nextUrl.searchParams.get('inline') === '1'
     const disposition = inline ? `inline; filename="${filename}"` : `attachment; filename="${filename}"`
 
-    return new NextResponse(buffer.buffer as ArrayBuffer, {
+    // buffer.buffer pode ser maior que o Buffer real (pool compartilhado do Node.js).
+    // Usar slice para garantir que só os bytes relevantes sejam enviados.
+    const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+
+    return new NextResponse(arrayBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': disposition,
-        'Content-Length': String(buffer.length),
+        'Content-Length': String(buffer.byteLength),
       },
     })
   } catch (err) {
