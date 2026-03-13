@@ -49,6 +49,8 @@ interface GradeNumeracaoProps {
 }
 
 export const GradeNumeracao = ({ tamanhos, quantidades }: GradeNumeracaoProps) => {
+  const total = tamanhos.reduce((acc, t) => acc + (quantidades[t] ?? 0), 0)
+
   if (tamanhos.length === 0) {
     return (
       <View style={styles.table}>
@@ -61,18 +63,24 @@ export const GradeNumeracao = ({ tamanhos, quantidades }: GradeNumeracaoProps) =
   return (
     <View style={styles.table}>
       <View style={styles.headerRow}>
-        {tamanhos.map((t, i) => (
-          <View key={t} style={i === tamanhos.length - 1 ? styles.cellLast : styles.cell}>
+        {tamanhos.map((t) => (
+          <View key={t} style={styles.cell}>
             <Text style={styles.headerText}>{String(t)}</Text>
           </View>
         ))}
+        <View style={styles.cellLast}>
+          <Text style={styles.headerText}>Total</Text>
+        </View>
       </View>
       <View style={styles.bodyRow}>
-        {tamanhos.map((t, i) => (
-          <View key={t} style={i === tamanhos.length - 1 ? styles.cellLast : styles.cell}>
+        {tamanhos.map((t) => (
+          <View key={t} style={styles.cell}>
             <Text style={styles.bodyText}>{String(quantidades[t] ?? '')}</Text>
           </View>
         ))}
+        <View style={styles.cellLast}>
+          <Text style={{ ...styles.bodyText, fontWeight: 'bold' }}>{String(total)}</Text>
+        </View>
       </View>
     </View>
   )
