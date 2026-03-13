@@ -151,37 +151,30 @@ export class PdfGeneratorService {
       data:   pedido.dataEmissao,
     }
 
-    // Render and upload all PDFs in parallel (Promise.all)
-    const pdfUploads = await Promise.all(
-      setoresFiltrados.map(async (setor) => {
-        console.log(`[gerarFichas] Renderizando PDF setor: ${setor}`)
+    // Render and upload PDFs sequentially (yoga-layout WASM crashes with parallel renders)
+    const pdfUploads: { setor: Setor; pdfUrl: string; totalCards: number }[] = []
+    for (const setor of setoresFiltrados) {
+      console.log(`[gerarFichas] Renderizando PDF setor: ${setor}`)
 
-        // Attach base64 images for CABEDAL grades
-        const gradesComImagem = setor === Setor.CABEDAL && imagensBase64 && imagensBase64.size > 0
-          ? grades.map((g) => ({
-              ...g,
-              imagemBase64: g.imagemUrl ? imagensBase64!.get(g.imagemUrl) ?? undefined : undefined,
-            }))
-          : grades
+      // Attach base64 images for CABEDAL grades
+      const gradesComImagem = setor === Setor.CABEDAL && imagensBase64 && imagensBase64.size > 0
+        ? grades.map((g) => ({
+            ...g,
+            imagemBase64: g.imagemUrl ? imagensBase64!.get(g.imagemUrl) ?? undefined : undefined,
+          }))
+        : grades
 
-        const cards: ConsolidadoCardData[] = gradesComImagem.map((g) => gradeRowToCard(g, pedidoData))
+      const cards: ConsolidadoCardData[] = gradesComImagem.map((g) => gradeRowToCard(g, pedidoData))
 
-        try {
-          const pdfBuffer = await renderConsolidadoPdf(setor, cards)
-          console.log(`[gerarFichas] PDF ${setor} renderizado, tamanho: ${pdfBuffer.length}`)
+      const pdfBuffer = await renderConsolidadoPdf(setor, cards)
+      console.log(`[gerarFichas] PDF ${setor} renderizado, tamanho: ${pdfBuffer.length}`)
 
-          const storagePath = `pedidos/${pedidoId}/${setor.toLowerCase()}.pdf`
-          const pdfUrl = await this.uploadToStorage(pdfBuffer, storagePath)
-          console.log(`[gerarFichas] PDF ${setor} upload OK: ${pdfUrl}`)
+      const storagePath = `pedidos/${pedidoId}/${setor.toLowerCase()}.pdf`
+      const pdfUrl = await this.uploadToStorage(pdfBuffer, storagePath)
+      console.log(`[gerarFichas] PDF ${setor} upload OK: ${pdfUrl}`)
 
-          return { setor, pdfUrl, totalCards: cards.length }
-        } catch (renderErr) {
-          console.error(`[gerarFichas] ERRO renderizando/upload ${setor}:`, renderErr instanceof Error ? renderErr.message : renderErr)
-          console.error(`[gerarFichas] Stack ${setor}:`, renderErr instanceof Error ? renderErr.stack : '')
-          throw renderErr
-        }
-      }),
-    )
+      pdfUploads.push({ setor, pdfUrl, totalCards: cards.length })
+    }
 
     console.log('[gerarFichas] Todos PDFs prontos, persistindo no banco...')
 
