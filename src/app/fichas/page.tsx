@@ -269,7 +269,7 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
             <colgroup>
               <col className="w-[100px]" />
               <col className="w-[90px]" />
-              <col className="w-[60px]" />
+              <col className="w-[75px]" />
               <col />
               <col />
               <col />
