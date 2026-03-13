@@ -121,6 +121,7 @@ model ItemPedido {
   id            String     @id @default(uuid())
   pedidoId      String     @map("pedido_id")
   produtoId     String?    @map("produto_id")
+  modeloId      String?    @map("modelo_id")
   descricaoBruta String    @map("descricao_bruta")
   skuBruto      String?    @map("sku_bruto")
   quantidade    Int
@@ -133,11 +134,13 @@ model ItemPedido {
   status        StatusItem @default(PENDENTE)
   createdAt     DateTime   @default(now()) @map("created_at")
 
-  pedido  PedidoCompra @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-  produto Produto?     @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+  pedido       PedidoCompra @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto      Produto?     @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+  modeloRef    Modelo?      @relation(fields: [modeloId], references: [id], onDelete: SetNull)
 
   @@index([pedidoId])
   @@index([produtoId])
+  @@index([modeloId])
   @@index([status])
   @@index([modelo, cor])
   @@map("itens_pedido")
@@ -205,6 +208,7 @@ model Modelo {
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   variantesCor ModeloVarianteCor[]
+  itens        ItemPedido[]
 
   @@index([codigo])
   @@map("modelos")

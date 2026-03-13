@@ -55,23 +55,32 @@ export async function POST(
     return NextResponse.json({ error: 'Modelo não encontrado' }, { status: 404 })
   }
 
+  const codigoNormalizado = parsed.data.corCodigo.trim().toUpperCase()
+
   const existing = await prisma.modeloVarianteCor.findUnique({
-    where: { modeloId_corCodigo: { modeloId: id, corCodigo: parsed.data.corCodigo } },
+    where: { modeloId_corCodigo: { modeloId: id, corCodigo: codigoNormalizado } },
   })
   if (existing) {
-    return NextResponse.json({ error: `Variante para cor "${parsed.data.corCodigo}" já existe` }, { status: 409 })
+    return NextResponse.json({ error: `Variante para cor "${codigoNormalizado}" já existe` }, { status: 409 })
   }
 
   const variante = await prisma.modeloVarianteCor.create({
     data: {
       modeloId:    id,
-      corCodigo:   parsed.data.corCodigo,
+      corCodigo:   codigoNormalizado,
       imagemUrl:   parsed.data.imagemUrl   ?? null,
       corCabedal:  parsed.data.corCabedal  ?? null,
       corSola:     parsed.data.corSola     ?? null,
       corPalmilha: parsed.data.corPalmilha ?? null,
       corFacheta:  parsed.data.corFacheta  ?? null,
     },
+  })
+
+  // Auto-criar MapeamentoCor se não existir (upsert para evitar duplicata)
+  await prisma.mapeamentoCor.upsert({
+    where: { codigo: codigoNormalizado },
+    update: {},
+    create: { codigo: codigoNormalizado, descricao: codigoNormalizado },
   })
 
   return NextResponse.json(variante, { status: 201 })

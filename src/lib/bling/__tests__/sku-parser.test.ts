@@ -5,7 +5,7 @@ import { StatusItem } from '@/types'
 
 const mockPrisma = {
   regraSkU: { findFirst: vi.fn() },
-  mapeamentoCor: { findMany: vi.fn() },
+  mapeamentoCor: { findMany: vi.fn(), upsert: vi.fn() },
   itemPedido: { findMany: vi.fn(), update: vi.fn() },
   gradeModelo: { findMany: vi.fn() },
   produto: { findMany: vi.fn() },
@@ -48,6 +48,7 @@ function makeItem(overrides: Partial<{
     tamanho: null,
     variacoes: null,
     produtoId: null,
+    modeloId: null,
     status: StatusItem.PENDENTE,
     createdAt: new Date(),
     ...overrides,
@@ -108,6 +109,8 @@ describe('interpretarItens', () => {
     mockPrisma.regraSkU.findFirst.mockResolvedValue(makeRegra())
     mockPrisma.itemPedido.update.mockResolvedValue({})
     mockPrisma.produto.findMany.mockResolvedValue([])
+    mockPrisma.modelo.findMany.mockResolvedValue([])
+    mockPrisma.mapeamentoCor.upsert.mockResolvedValue({})
   })
 
   it('retorna lista vazia para itens vazios', async () => {

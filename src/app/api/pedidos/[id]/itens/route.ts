@@ -46,6 +46,16 @@ export async function PUT(
   const todosPreenchidos =
     novoModelo != null && novaCor != null && novoTamanho != null
 
+  // Resolver modeloId a partir do código do modelo
+  let modeloId: string | null = item.modeloId
+  if (modelo && modelo !== item.modelo) {
+    const modeloCadastrado = await prisma.modelo.findUnique({
+      where: { codigo: modelo },
+      select: { id: true },
+    })
+    modeloId = modeloCadastrado?.id ?? null
+  }
+
   const itemAtualizado = await prisma.itemPedido.update({
     where: { id: itemId },
     data: {
@@ -53,6 +63,7 @@ export async function PUT(
       cor: novaCor,
       corDescricao: corDescricao ?? item.corDescricao,
       tamanho: novoTamanho,
+      modeloId,
       status: todosPreenchidos ? StatusItem.RESOLVIDO : StatusItem.PENDENTE,
     },
   })
