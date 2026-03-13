@@ -1,3 +1,10 @@
+/** Formata cor como "código - descrição" (ex: "298 - branco") */
+export function formatCor(code: string | null | undefined, descricao: string): string {
+  if (!code) return descricao
+  if (code === descricao) return descricao
+  return `${code} - ${descricao}`
+}
+
 export interface PedidoData {
   numero: string
   data: Date | string

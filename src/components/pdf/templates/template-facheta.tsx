@@ -5,6 +5,7 @@
  */
 import { h } from '@/lib/pdf/h-factory'
 import { TemplateSimples } from './template-simples'
+import { formatCor } from '../pdf-types'
 import type { PedidoData, ItemData } from '../pdf-types'
 
 interface TemplateFachetaProps {
@@ -24,7 +25,7 @@ export const TemplateFacheta = ({ pedido, item, tamanhos }: TemplateFachetaProps
       item={item}
       especificacoes={[
         { label: 'REF Facheta', valor: item.modelo.facheta },
-        { label: 'Cor Facheta', valor: item.variante.corFacheta ?? item.variante.corPrincipal },
+        { label: 'Cor Facheta', valor: formatCor(item.variante.corFacheta, item.variante.corPrincipal) },
         { label: 'Material Facheta', valor: item.modelo.materialFacheta },
       ]}
       tamanhos={tamanhos}

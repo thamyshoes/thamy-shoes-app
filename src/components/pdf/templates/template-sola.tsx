@@ -5,6 +5,7 @@
  */
 import { h } from '@/lib/pdf/h-factory'
 import { TemplateSimples } from './template-simples'
+import { formatCor } from '../pdf-types'
 import type { PedidoData, ItemData } from '../pdf-types'
 
 interface TemplateSolaProps {
@@ -20,7 +21,7 @@ export const TemplateSola = ({ pedido, item, tamanhos }: TemplateSolaProps) => (
     item={item}
     especificacoes={[
       { label: 'REF Sola', valor: item.modelo.sola },
-      { label: 'Cor Sola', valor: item.variante.corSola ?? item.variante.corPrincipal },
+      { label: 'Cor Sola', valor: formatCor(item.variante.corSola, item.variante.corPrincipal) },
       { label: 'Material Sola', valor: item.modelo.materialSola },
     ]}
     tamanhos={tamanhos}

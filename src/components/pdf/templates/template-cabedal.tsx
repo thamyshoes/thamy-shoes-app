@@ -9,6 +9,7 @@ import { FichaCard } from '../ficha-card'
 import { GradeNumeracao } from '../grade-numeracao'
 import { PDF_TOKENS, pdfBaseStyles } from '@/lib/pdf-tokens'
 import { formatDate } from '@/lib/format'
+import { formatCor } from '../pdf-types'
 import type { PedidoData, ItemData } from '../pdf-types'
 
 const styles = StyleSheet.create({
@@ -102,12 +103,12 @@ export const TemplateCabedal = ({ pedido, item, base64Imagem, tamanhos }: Templa
       <View style={styles.col}>
         <Field label="REF Cabedal" value={item.modelo.cabedal ?? '-'} />
         <Field label="REF Sola" value={item.modelo.sola ?? '-'} />
-        <Field label="Cor Sola" value={item.variante.corSola ?? item.variante.corPrincipal} />
+        <Field label="Cor Sola" value={formatCor(item.variante.corSola, item.variante.corPrincipal)} />
       </View>
       <View style={styles.col}>
-        <Field label="Cor Cabedal" value={item.variante.corCabedal ?? item.variante.corPrincipal} />
+        <Field label="Cor Cabedal" value={formatCor(item.variante.corCabedal, item.variante.corPrincipal)} />
         <Field label="REF Palmilha" value={item.modelo.palmilha ?? '-'} />
-        <Field label="Cor Palmilha" value={item.variante.corPalmilha ?? item.variante.corPrincipal} />
+        <Field label="Cor Palmilha" value={formatCor(item.variante.corPalmilha, item.variante.corPrincipal)} />
       </View>
       <View style={styles.col}>
         <Field label="Material Cabedal" value={item.modelo.materialCabedal ?? '-'} />

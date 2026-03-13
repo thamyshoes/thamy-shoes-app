@@ -5,6 +5,7 @@
  */
 import { h } from '@/lib/pdf/h-factory'
 import { TemplateSimples } from './template-simples'
+import { formatCor } from '../pdf-types'
 import type { PedidoData, ItemData } from '../pdf-types'
 
 interface TemplatePalmilhaProps {
@@ -20,7 +21,7 @@ export const TemplatePalmilha = ({ pedido, item, tamanhos }: TemplatePalmilhaPro
     item={item}
     especificacoes={[
       { label: 'REF Palmilha', valor: item.modelo.palmilha },
-      { label: 'Cor Palmilha', valor: item.variante.corPalmilha ?? item.variante.corPrincipal },
+      { label: 'Cor Palmilha', valor: formatCor(item.variante.corPalmilha, item.variante.corPrincipal) },
       { label: 'Material Palmilha', valor: item.modelo.materialPalmilha },
     ]}
     tamanhos={tamanhos}
