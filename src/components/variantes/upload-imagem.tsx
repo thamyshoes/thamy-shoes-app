@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { ImageIcon, X, UploadCloud, AlertTriangle, RotateCw } from 'lucide-react'
+import { ImageIcon, UploadCloud, AlertTriangle, RotateCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/cn'
 

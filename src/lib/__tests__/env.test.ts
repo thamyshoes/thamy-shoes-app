@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
 
 // Schema Zod inline para testes isolados (não importa env.ts diretamente

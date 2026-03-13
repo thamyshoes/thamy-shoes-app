@@ -59,7 +59,7 @@ export function DataTable<T extends { id?: string }>({
   className,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<SortState | null>(null)
-  const safeData = data ?? []
+  const safeData = useMemo(() => data ?? [], [data])
 
   function handleSort(key: string) {
     setSort((prev) => {

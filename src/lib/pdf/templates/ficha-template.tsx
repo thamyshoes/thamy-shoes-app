@@ -186,6 +186,7 @@ export function FichaTemplate({
               <View key={idx} style={idx % 2 === 0 ? pdfStyles.tableRow : pdfStyles.tableRowAlt}>
                 {hasImagem && (
                   <View style={{ width: 45, paddingHorizontal: 2, justifyContent: 'center', alignItems: 'center' }}>
+                    {/* eslint-disable-next-line jsx-a11y/alt-text */}
                     {imgBase64 ? (
                       <Image src={imgBase64} style={{ width: 36, height: 36, objectFit: 'contain' }} />
                     ) : (

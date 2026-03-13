@@ -329,7 +329,6 @@ async function main() {
       materialSola: 'Borracha',
       materialPalmilha: 'Espuma',
       materialFacheta: 'Couro Natural',
-      linha: 'Clássico',
       observacoes: 'Modelo principal da coleção inverno',
       ativo: true,
     },
@@ -349,7 +348,6 @@ async function main() {
       materialSola: 'EVA',
       materialPalmilha: 'Látex',
       materialFacheta: null,
-      linha: 'Verão',
       observacoes: null,
       ativo: true,
     },
@@ -369,7 +367,6 @@ async function main() {
       materialSola: 'Borracha',
       materialPalmilha: 'Espuma',
       materialFacheta: 'Borracha',
-      linha: 'Premium',
       observacoes: 'Linha descontinuada após coleção',
       ativo: false, // inativo — cobre boolean false
     },

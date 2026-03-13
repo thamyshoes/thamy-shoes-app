@@ -79,6 +79,7 @@ export const TemplateCabedal = ({ pedido, item, base64Imagem, tamanhos }: Templa
         <Text style={pdfBaseStyles.valueText}>{item.sku}</Text>
       </View>
       <View style={styles.col3}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
         {base64Imagem ? (
           <Image src={base64Imagem} style={styles.imagem} />
         ) : (

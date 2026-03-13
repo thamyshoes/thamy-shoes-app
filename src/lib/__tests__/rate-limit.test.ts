@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { rateLimit, RATE_LIMIT_CONFIGS } from '../rate-limit'
 
 // Prefixo único por describe para isolar os testes (map em memória persiste no módulo)

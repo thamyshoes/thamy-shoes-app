@@ -36,7 +36,7 @@ describe('debounce logic', () => {
 
     const simulate = (values: string[]) => {
       let currentTimer: ReturnType<typeof setTimeout> | null = null
-      for (const v of values) {
+      for (const _v of values) {
         if (currentTimer !== null) {
           clearTimeout(currentTimer)
           clearCalled.push(true)
