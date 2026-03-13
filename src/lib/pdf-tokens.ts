@@ -26,7 +26,7 @@ export const PDF_TOKENS = {
     text: '#1A1A1A',
     muted: '#64748B',
   },
-  fontSize: { xs: 7, sm: 8, md: 9, lg: 11, xl: 13 },
+  fontSize: { xs: 9, sm: 10, md: 12, lg: 14, xl: 17 },
   fontFamily: {
     default: 'Inter',
     mono: 'JetBrainsMono',

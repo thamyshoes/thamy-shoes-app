@@ -35,11 +35,13 @@ const styles = StyleSheet.create({
     color: PDF_TOKENS.colors.white,
     fontSize: PDF_TOKENS.fontSize.xs,
     fontFamily: PDF_TOKENS.fontFamily.mono,
+    fontWeight: 'bold',
   },
   bodyText: {
     color: PDF_TOKENS.colors.black,
     fontSize: PDF_TOKENS.fontSize.xs,
     fontFamily: PDF_TOKENS.fontFamily.mono,
+    fontWeight: 'bold',
   },
 })
 
@@ -73,13 +75,18 @@ export const GradeNumeracao = ({ tamanhos, quantidades }: GradeNumeracaoProps) =
         </View>
       </View>
       <View style={styles.bodyRow}>
-        {tamanhos.map((t) => (
-          <View key={t} style={styles.cell}>
-            <Text style={styles.bodyText}>{String(quantidades[t] ?? '')}</Text>
-          </View>
-        ))}
+        {tamanhos.map((t) => {
+          const qty = quantidades[t] ?? 0
+          return (
+            <View key={t} style={styles.cell}>
+              <Text style={qty === 0 ? { ...styles.bodyText, color: PDF_TOKENS.colors.white } : styles.bodyText}>
+                {String(qty)}
+              </Text>
+            </View>
+          )
+        })}
         <View style={styles.cellLast}>
-          <Text style={{ ...styles.bodyText, fontWeight: 'bold' }}>{String(total)}</Text>
+          <Text style={styles.bodyText}>{String(total)}</Text>
         </View>
       </View>
     </View>

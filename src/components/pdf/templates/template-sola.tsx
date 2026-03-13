@@ -25,5 +25,6 @@ export const TemplateSola = ({ pedido, item, tamanhos }: TemplateSolaProps) => (
       { label: 'Material Sola', valor: item.modelo.materialSola },
     ]}
     tamanhos={tamanhos}
+    hideSku
   />
 )

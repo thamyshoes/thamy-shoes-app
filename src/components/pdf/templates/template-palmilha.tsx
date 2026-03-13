@@ -25,5 +25,6 @@ export const TemplatePalmilha = ({ pedido, item, tamanhos }: TemplatePalmilhaPro
       { label: 'Material Palmilha', valor: item.modelo.materialPalmilha },
     ]}
     tamanhos={tamanhos}
+    hideSku
   />
 )

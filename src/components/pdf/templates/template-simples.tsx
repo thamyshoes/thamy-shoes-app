@@ -63,6 +63,7 @@ interface TemplateSimplesProps {
   item: ItemData
   especificacoes: EspecificacaoItem[]
   tamanhos: number[]
+  hideSku?: boolean
 }
 
 export const TemplateSimples = ({
@@ -71,6 +72,7 @@ export const TemplateSimples = ({
   item,
   especificacoes,
   tamanhos,
+  hideSku,
 }: TemplateSimplesProps) => (
   <FichaCard>
     <Text style={pdfBaseStyles.titulo}>{titulo}</Text>
@@ -83,7 +85,7 @@ export const TemplateSimples = ({
       </View>
       <View style={styles.col}>
         <Field label="Data" value={formatDate(pedido.data)} />
-        <Field label="SKU" value={item.sku} />
+        {!hideSku && <Field label="SKU" value={item.sku} />}
       </View>
     </View>
 
