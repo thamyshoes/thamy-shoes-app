@@ -27,7 +27,6 @@ interface ModalEdicaoModeloProps {
 interface FormData {
   codigo: string
   nome: string
-  linha: string
   gradeId: string
   cabedal: string
   sola: string
@@ -42,7 +41,6 @@ interface FormData {
 const EMPTY: FormData = {
   codigo: '',
   nome: '',
-  linha: '',
   gradeId: '',
   cabedal: '',
   sola: '',
@@ -64,7 +62,6 @@ export function ModalEdicaoModelo({ open, modelo, mode, grades, onClose, onSaved
       setForm({
         codigo:           modelo.codigo,
         nome:             modelo.nome,
-        linha:            modelo.linha           ?? '',
         gradeId:          modelo.gradeId         ?? '',
         cabedal:          modelo.cabedal         ?? '',
         sola:             modelo.sola            ?? '',
@@ -87,7 +84,6 @@ export function ModalEdicaoModelo({ open, modelo, mode, grades, onClose, onSaved
     if (!form.nome.trim()) errs.nome = 'Nome é obrigatório'
     if (form.codigo.trim().length > 20) errs.codigo = 'Máximo 20 caracteres'
     if (form.nome.trim().length > 100) errs.nome = 'Máximo 100 caracteres'
-    if (form.linha.length > 100) errs.linha = 'Máximo 100 caracteres'
     if (form.cabedal.length > 200) errs.cabedal = 'Máximo 200 caracteres'
     if (form.sola.length > 200) errs.sola = 'Máximo 200 caracteres'
     if (form.palmilha.length > 200) errs.palmilha = 'Máximo 200 caracteres'
@@ -111,7 +107,6 @@ export function ModalEdicaoModelo({ open, modelo, mode, grades, onClose, onSaved
       const payload = {
         codigo:           form.codigo.trim(),
         nome:             form.nome.trim(),
-        linha:            nullIfEmpty(form.linha),
         gradeId:          form.gradeId || null,
         cabedal:          nullIfEmpty(form.cabedal),
         sola:             nullIfEmpty(form.sola),
@@ -198,24 +193,6 @@ export function ModalEdicaoModelo({ open, modelo, mode, grades, onClose, onSaved
               />
               {errors.nome && (
                 <p id="err-nome" className="mt-1 text-xs text-danger">{errors.nome}</p>
-              )}
-            </div>
-            <div>
-              <label htmlFor="modelo-linha" className="mb-1 block text-xs font-medium text-secondary">
-                Linha
-              </label>
-              <input
-                id="modelo-linha"
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.linha ? 'border-danger' : 'border-border'}`}
-                value={form.linha}
-                onChange={(e) => setForm((f) => ({ ...f, linha: e.target.value }))}
-                disabled={saving}
-                placeholder="Ex: Clássica"
-                maxLength={100}
-                aria-describedby={errors.linha ? 'err-linha' : undefined}
-              />
-              {errors.linha && (
-                <p id="err-linha" className="mt-1 text-xs text-danger">{errors.linha}</p>
               )}
             </div>
             <div>

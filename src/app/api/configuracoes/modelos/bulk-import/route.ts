@@ -8,7 +8,6 @@ interface LinhaParseada {
   cabedal: string | null
   sola: string | null
   palmilha: string | null
-  linha: string | null
   observacoes: string | null
 }
 
@@ -30,8 +29,7 @@ function parseLinha(linha: string, idx: number): { data: LinhaParseada } | { err
       cabedal: partes[2] || null,
       sola: partes[3] || null,
       palmilha: partes[4] || null,
-      linha: partes[5] || null,
-      observacoes: partes[6] || null,
+      observacoes: partes[5] || null,
     },
   }
 }
@@ -87,7 +85,6 @@ export async function POST(request: NextRequest) {
           cabedal: linha.cabedal,
           sola: linha.sola,
           palmilha: linha.palmilha,
-          linha: linha.linha,
           observacoes: linha.observacoes,
         },
       })

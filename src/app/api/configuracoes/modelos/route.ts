@@ -14,7 +14,6 @@ const createSchema = z.object({
   materialPalmilha: z.string().max(200).optional(),
   materialFacheta:  z.string().max(200).optional(),
   facheta:          z.string().max(200).optional(),
-  linha:            z.string().optional(),
   observacoes:      z.string().optional(),
   gradeId:          z.string().uuid().nullable().optional(),
 })
@@ -35,7 +34,6 @@ export async function GET(request: NextRequest) {
           { cabedal: { contains: search, mode: 'insensitive' as const } },
           { sola: { contains: search, mode: 'insensitive' as const } },
           { palmilha: { contains: search, mode: 'insensitive' as const } },
-          { linha: { contains: search, mode: 'insensitive' as const } },
         ],
       }
     : {}
@@ -93,7 +91,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
-  const { codigo, nome, cabedal, sola, palmilha, materialCabedal, materialSola, materialPalmilha, materialFacheta, facheta, linha, observacoes, gradeId } = parsed.data
+  const { codigo, nome, cabedal, sola, palmilha, materialCabedal, materialSola, materialPalmilha, materialFacheta, facheta, observacoes, gradeId } = parsed.data
 
   const existing = await prisma.modelo.findUnique({ where: { codigo } })
   if (existing) {
@@ -113,7 +111,6 @@ export async function POST(request: NextRequest) {
         materialPalmilha: materialPalmilha ?? null,
         materialFacheta:  materialFacheta  ?? null,
         facheta:          facheta          ?? null,
-        linha:            linha            ?? null,
         observacoes:      observacoes      ?? null,
       },
       include: { variantesCor: true },

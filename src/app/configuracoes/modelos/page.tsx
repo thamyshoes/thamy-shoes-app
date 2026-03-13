@@ -32,7 +32,6 @@ interface ModeloApi {
   id: string
   codigo: string
   nome: string
-  linha: string | null
   cabedal: string | null
   sola: string | null
   palmilha: string | null
@@ -68,7 +67,6 @@ function toModeloRow(m: ModeloApi): ModeloRow {
     id:               m.id,
     codigo:           m.codigo,
     nome:             m.nome,
-    linha:            m.linha,
     gradeNome:        m.gradeAtual?.nome ?? null,
     gradeId:          m.gradeAtual?.id ?? null,
     cabedal:          m.cabedal,
@@ -271,7 +269,7 @@ function ModelosContent() {
       {/* Busca */}
       <input
         type="search"
-        placeholder="Buscar por código, nome, cabedal, sola, palmilha ou linha"
+        placeholder="Buscar por código, nome, cabedal, sola ou palmilha"
         value={search}
         onChange={(e) => { setSearch(e.target.value); setPage(1) }}
         className="w-full max-w-sm rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"

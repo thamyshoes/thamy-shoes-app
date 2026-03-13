@@ -8,7 +8,6 @@ export interface ModeloRow {
   id: string
   codigo: string
   nome: string
-  linha?: string | null
   gradeNome?: string | null
   gradeId?: string | null
   cabedal?: string | null
@@ -34,19 +33,19 @@ interface TabelaModelosProps {
   onPageChange: (page: number) => void
 }
 
-// Column layout (14 cols):
+// Column layout (13 cols):
 // [0] Código  [1] Nome
 // [2] Cab Ref  [3] Cab Material
 // [4] Sola Ref  [5] Sola Material
 // [6] Palm Ref  [7] Palm Material
 // [8] Fach Ref  [9] Fach Material
-// [10] Linha  [11] Grade  [12] Variantes  [13] Ações
+// [10] Grade  [11] Variantes  [12] Ações
 const GROUP_BORDERS = new Set([2, 4, 6, 8, 10])
 
 function SkeletonRow() {
   return (
     <tr>
-      {Array.from({ length: 14 }).map((_, i) => (
+      {Array.from({ length: 13 }).map((_, i) => (
         <td
           key={i}
           className={cn(
@@ -123,7 +122,7 @@ export function TabelaModelos({
                 Facheta
               </th>
               <th
-                colSpan={4}
+                colSpan={3}
                 scope="colgroup"
                 className="border-l-2 border-border px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-secondary"
               >
@@ -142,8 +141,7 @@ export function TabelaModelos({
               <th className="px-3 py-2 text-left font-medium text-secondary">Material</th>
               <th className="border-l-2 border-border px-3 py-2 text-left font-medium text-secondary">Ref</th>
               <th className="px-3 py-2 text-left font-medium text-secondary">Material</th>
-              <th className="border-l-2 border-border px-3 py-2 text-left font-medium text-secondary">Linha</th>
-              <th className="px-3 py-2 text-left font-medium text-secondary">Grade</th>
+              <th className="border-l-2 border-border px-3 py-2 text-left font-medium text-secondary">Grade</th>
               <th className="px-3 py-2 text-left font-medium text-secondary">Variantes</th>
               <th className="px-3 py-2 text-right font-medium text-secondary">Ações</th>
             </tr>
@@ -154,7 +152,7 @@ export function TabelaModelos({
 
             {!loading && modelos.length === 0 && (
               <tr>
-                <td colSpan={14} className="px-4 py-12 text-center text-secondary">
+                <td colSpan={13} className="px-4 py-12 text-center text-secondary">
                   <p>Nenhum modelo encontrado.</p>
                   {onAddFirst && (
                     <Button
@@ -197,8 +195,7 @@ export function TabelaModelos({
                   <td className="px-3 py-3"><Cell value={m.materialFacheta} /></td>
 
                   {/* FINAL */}
-                  <td className="border-l-2 border-border px-3 py-3"><Cell value={m.linha} /></td>
-                  <td className="px-3 py-3">
+                  <td className="border-l-2 border-border px-3 py-3">
                     {m.gradeNome ? (
                       <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
                         {m.gradeNome}

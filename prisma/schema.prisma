@@ -199,7 +199,6 @@ model Modelo {
   materialPalmilha String?  @map("material_palmilha")
   materialFacheta  String?  @map("material_facheta")
   facheta          String?
-  linha            String?
   observacoes      String?
   ativo            Boolean  @default(true)
   createdAt        DateTime @default(now()) @map("created_at")
@@ -208,7 +207,6 @@ model Modelo {
   variantesCor ModeloVarianteCor[]
 
   @@index([codigo])
-  @@index([linha])
   @@map("modelos")
 }
 
