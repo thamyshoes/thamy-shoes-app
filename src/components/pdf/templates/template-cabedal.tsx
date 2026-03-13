@@ -14,41 +14,41 @@ import type { PedidoData, ItemData } from '../pdf-types'
 const styles = StyleSheet.create({
   identificacao: {
     flexDirection: 'row',
-    gap: 4,
-    marginBottom: 3,
+    gap: 8,
+    marginBottom: 8,
   },
   col1: {
     flex: 2,
-    gap: 1,
+    gap: 3,
   },
   col2: {
     flex: 2,
-    gap: 1,
+    gap: 3,
   },
   col3: {
-    width: 44,
+    width: 70,
     alignItems: 'center',
     justifyContent: 'center',
   },
   imagem: {
-    width: 40,
-    height: 40,
+    width: 65,
+    height: 65,
     objectFit: 'contain',
   },
   imagemVazia: {
-    width: 40,
-    height: 40,
+    width: 65,
+    height: 65,
     border: `0.5pt dashed ${PDF_TOKENS.colors.border}`,
     backgroundColor: '#F8FAFC',
   },
   especificacoes: {
     flexDirection: 'row',
-    gap: 4,
-    marginBottom: 2,
+    gap: 8,
+    marginBottom: 8,
   },
   specCol: {
     flex: 1,
-    gap: 1,
+    gap: 3,
   },
 })
 

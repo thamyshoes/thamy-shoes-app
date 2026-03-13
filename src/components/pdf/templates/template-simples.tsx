@@ -14,25 +14,25 @@ import type { PedidoData, ItemData } from '../pdf-types'
 const styles = StyleSheet.create({
   identificacao2col: {
     flexDirection: 'row',
-    gap: 4,
-    marginBottom: 3,
+    gap: 8,
+    marginBottom: 8,
   },
   col: {
     flex: 1,
-    gap: 1,
+    gap: 3,
   },
   especificacoes: {
-    gap: 1,
-    marginBottom: 2,
+    gap: 4,
+    marginBottom: 8,
   },
   specRow: {
     flexDirection: 'row',
-    gap: 4,
+    gap: 8,
   },
   specLabel: {
     fontSize: PDF_TOKENS.fontSize.xs,
     color: PDF_TOKENS.colors.muted,
-    width: 80,
+    width: 100,
   },
   specValue: {
     fontSize: PDF_TOKENS.fontSize.sm,

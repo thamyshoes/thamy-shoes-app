@@ -18,7 +18,7 @@ Font.register({
 
 export const PDF_TOKENS = {
   page: { width: 210, height: 297, unit: 'mm' as const, margin: 10 },
-  card: { height: 67, gap: 2 }, // mm — 4*67 + 3*2 = 274mm < 277mm disponível ✓
+  card: { height: 134, gap: 2 }, // mm — 2*134 + 1*2 = 270mm < 277mm disponível ✓
   colors: {
     black: '#000000',
     white: '#FFFFFF',
@@ -26,7 +26,7 @@ export const PDF_TOKENS = {
     text: '#1A1A1A',
     muted: '#64748B',
   },
-  fontSize: { xs: 7, sm: 8, md: 9, lg: 11, xl: 13 },
+  fontSize: { xs: 9, sm: 10, md: 12, lg: 14, xl: 16 },
   fontFamily: {
     default: 'Inter',
     mono: 'JetBrainsMono',
@@ -36,11 +36,11 @@ export const PDF_TOKENS = {
 // Estilos compartilhados entre componentes PDF
 export const pdfBaseStyles = StyleSheet.create({
   titulo: {
-    fontSize: PDF_TOKENS.fontSize.md,
+    fontSize: PDF_TOKENS.fontSize.lg,
     fontFamily: PDF_TOKENS.fontFamily.default,
     fontWeight: 'bold',
     color: PDF_TOKENS.colors.text,
-    marginBottom: 2,
+    marginBottom: 6,
     textTransform: 'uppercase',
   },
   labelText: {

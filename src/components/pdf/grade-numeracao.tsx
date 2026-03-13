@@ -10,7 +10,7 @@ import { PDF_TOKENS } from '@/lib/pdf-tokens'
 const styles = StyleSheet.create({
   table: {
     border: `1pt solid ${PDF_TOKENS.colors.black}`,
-    marginTop: 2,
+    marginTop: 6,
   },
   headerRow: {
     flexDirection: 'row',
@@ -22,13 +22,13 @@ const styles = StyleSheet.create({
   },
   cell: {
     flex: 1,
-    padding: 2,
+    padding: 4,
     textAlign: 'center',
     borderRight: `0.5pt solid ${PDF_TOKENS.colors.black}`,
   },
   cellLast: {
     flex: 1,
-    padding: 2,
+    padding: 4,
     textAlign: 'center',
   },
   headerText: {

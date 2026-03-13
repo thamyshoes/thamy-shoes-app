@@ -9,8 +9,7 @@ import { PDF_TOKENS } from '@/lib/pdf-tokens'
 
 const styles = StyleSheet.create({
   card: {
-    height: PDF_TOKENS.card.height,
-    padding: 3,
+    padding: 6,
     border: `1pt solid ${PDF_TOKENS.colors.border}`,
     flexDirection: 'column',
     flex: 1,
