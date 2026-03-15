@@ -12,7 +12,6 @@ import { useAuth } from '@/hooks/use-auth'
 import { apiClient } from '@/lib/api-client'
 import { API_ROUTES } from '@/lib/constants'
 import { toast } from 'sonner'
-import type { ReferenciaItem } from '@/hooks/use-referencias'
 import type { MaterialItem } from '@/hooks/use-materiais'
 
 const TIPOS_VALIDOS: Record<string, string> = {
@@ -27,164 +26,6 @@ const TIPO_LABELS: Record<string, string> = {
   sola: 'Sola',
   palmilha: 'Palmilha',
   facheta: 'Facheta',
-}
-
-// ── Referências Panel ────────────────────────────────────────────────────────
-
-function ReferenciasPanel({ categoria }: { categoria: string }) {
-  const [items, setItems] = useState<ReferenciaItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editando, setEditando] = useState<ReferenciaItem | null>(null)
-  const [formCodigo, setFormCodigo] = useState('')
-  const [formDescricao, setFormDescricao] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  const [confirmExcluir, setConfirmExcluir] = useState<ReferenciaItem | null>(null)
-  const [deleting, setDeleting] = useState(false)
-
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await apiClient.get<ReferenciaItem[]>(`${API_ROUTES.REFERENCIAS}?categoria=${categoria}`)
-      setItems(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar referências')
-    } finally {
-      setLoading(false)
-    }
-  }, [categoria])
-
-  useEffect(() => { void fetchData() }, [fetchData])
-
-  function abrirCriar() {
-    setEditando(null)
-    setFormCodigo('')
-    setFormDescricao('')
-    setModalOpen(true)
-  }
-
-  function abrirEditar(item: ReferenciaItem) {
-    setEditando(item)
-    setFormCodigo(item.codigo)
-    setFormDescricao(item.descricao ?? '')
-    setModalOpen(true)
-  }
-
-  async function salvar() {
-    const codigoLimpo = formCodigo.trim()
-    if (!codigoLimpo) { toast.error('Código é obrigatório'); return }
-
-    setSaving(true)
-    try {
-      const body = { codigo: codigoLimpo, descricao: formDescricao.trim() || null, categoria }
-      if (editando) {
-        await apiClient.patch(`${API_ROUTES.REFERENCIAS}/${editando.id}`, body)
-        toast.success('Referência atualizada')
-      } else {
-        await apiClient.post(API_ROUTES.REFERENCIAS, body)
-        toast.success('Referência criada')
-      }
-      setModalOpen(false)
-      await fetchData()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao salvar')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function excluir() {
-    if (!confirmExcluir) return
-    setDeleting(true)
-    try {
-      await apiClient.delete(`${API_ROUTES.REFERENCIAS}/${confirmExcluir.id}`)
-      toast.success('Referência excluída')
-      setConfirmExcluir(null)
-      await fetchData()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao excluir')
-    } finally {
-      setDeleting(false)
-    }
-  }
-
-  const columns: Column<ReferenciaItem>[] = [
-    { key: 'codigo', header: 'Código', mono: true, sortable: true },
-    { key: 'descricao', header: 'Descrição', sortable: true, render: (r) => r.descricao || '—' },
-    {
-      key: 'id',
-      header: 'Ações',
-      align: 'right',
-      render: (r) => (
-        <div className="flex items-center justify-end gap-2">
-          <button onClick={() => abrirEditar(r)} className="text-xs font-medium text-primary hover:underline">Editar</button>
-          <button onClick={() => setConfirmExcluir(r)} className="text-xs font-medium text-destructive hover:underline">Excluir</button>
-        </div>
-      ),
-    },
-  ]
-
-  if (error) return <ErrorState title="Erro ao carregar referências" description={error} onRetry={fetchData} />
-
-  return (
-    <>
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-secondary">{items.length} referência(s) cadastrada(s)</p>
-        <Button onClick={abrirCriar}>Nova Referência</Button>
-      </div>
-
-      <DataTable data={items} columns={columns} loading={loading} emptyMessage="Nenhuma referência cadastrada" />
-
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editando ? 'Editar Referência' : 'Nova Referência'}>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-foreground" htmlFor="ref-codigo">Código</label>
-            <input
-              id="ref-codigo"
-              data-autofocus
-              type="text"
-              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              value={formCodigo}
-              onChange={(e) => setFormCodigo(e.target.value)}
-              placeholder="Ex: CAB-001"
-              maxLength={100}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground" htmlFor="ref-descricao">
-              Descrição <span className="text-secondary font-normal">— opcional</span>
-            </label>
-            <input
-              id="ref-descricao"
-              type="text"
-              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              value={formDescricao}
-              onChange={(e) => setFormDescricao(e.target.value)}
-              placeholder="Ex: Cabedal couro bovino"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button onClick={salvar} disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
-          </div>
-        </div>
-      </Modal>
-
-      <ConfirmDialog
-        open={!!confirmExcluir}
-        title="Excluir referência"
-        description={`Excluir "${confirmExcluir?.codigo}"?`}
-        variant="danger"
-        onConfirm={excluir}
-        onClose={() => setConfirmExcluir(null)}
-        loading={deleting}
-      />
-    </>
-  )
 }
 
 // ── Materiais Panel ──────────────────────────────────────────────────────────
@@ -347,19 +188,10 @@ function MateriaPrimaContent({ tipo }: { tipo: string }) {
         <h1 className="mt-1 text-xl font-semibold text-foreground">Matéria Prima — {label}</h1>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Referências */}
-        <section className="rounded-lg border border-border p-4">
-          <h2 className="mb-4 text-base font-semibold text-foreground">Referências</h2>
-          <ReferenciasPanel categoria={categoria} />
-        </section>
-
-        {/* Materiais */}
-        <section className="rounded-lg border border-border p-4">
-          <h2 className="mb-4 text-base font-semibold text-foreground">Materiais</h2>
-          <MateriaisPanel categoria={categoria} />
-        </section>
-      </div>
+      <section className="rounded-lg border border-border p-4">
+        <h2 className="mb-4 text-base font-semibold text-foreground">Materiais</h2>
+        <MateriaisPanel categoria={categoria} />
+      </section>
     </div>
   )
 }

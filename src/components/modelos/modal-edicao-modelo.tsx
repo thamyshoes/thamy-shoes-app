@@ -6,7 +6,6 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { apiClient } from '@/lib/api-client'
 import { API_ROUTES } from '@/lib/constants'
-import { useReferencias } from '@/hooks/use-referencias'
 import { useMateriais } from '@/hooks/use-materiais'
 import type { ModeloRow } from './tabela-modelos'
 
@@ -58,11 +57,6 @@ export function ModalEdicaoModelo({ open, modelo, mode, grades, onClose, onSaved
   const [form, setForm] = useState<FormData>(EMPTY)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Partial<FormData>>({})
-
-  const { referencias: refsCabedal } = useReferencias('CABEDAL')
-  const { referencias: refsSola } = useReferencias('SOLA')
-  const { referencias: refsPalmilha } = useReferencias('PALMILHA')
-  const { referencias: refsFacheta } = useReferencias('FACHETA')
 
   const { materiais: matsCabedal } = useMateriais('CABEDAL')
   const { materiais: matsSola } = useMateriais('SOLA')
@@ -237,71 +231,59 @@ export function ModalEdicaoModelo({ open, modelo, mode, grades, onClose, onSaved
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="modelo-cabedal" className="mb-1 block text-xs font-medium text-secondary">Cabedal (Ref)</label>
-              <select
+              <input
                 id="modelo-cabedal"
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                type="text"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 value={form.cabedal}
                 onChange={(e) => setForm((f) => ({ ...f, cabedal: e.target.value }))}
                 disabled={saving}
-              >
-                <option value="">Selecione...</option>
-                {refsCabedal.map((r) => (
-                  <option key={r.id} value={r.codigo}>
-                    {r.codigo}{r.descricao ? ` — ${r.descricao}` : ''}
-                  </option>
-                ))}
-              </select>
+                placeholder="Ex: CAB-001"
+                maxLength={200}
+              />
+              {errors.cabedal && <p className="mt-1 text-xs text-danger">{errors.cabedal}</p>}
             </div>
             <div>
               <label htmlFor="modelo-sola" className="mb-1 block text-xs font-medium text-secondary">Sola (Ref)</label>
-              <select
+              <input
                 id="modelo-sola"
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                type="text"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 value={form.sola}
                 onChange={(e) => setForm((f) => ({ ...f, sola: e.target.value }))}
                 disabled={saving}
-              >
-                <option value="">Selecione...</option>
-                {refsSola.map((r) => (
-                  <option key={r.id} value={r.codigo}>
-                    {r.codigo}{r.descricao ? ` — ${r.descricao}` : ''}
-                  </option>
-                ))}
-              </select>
+                placeholder="Ex: SOL-001"
+                maxLength={200}
+              />
+              {errors.sola && <p className="mt-1 text-xs text-danger">{errors.sola}</p>}
             </div>
             <div>
               <label htmlFor="modelo-palmilha" className="mb-1 block text-xs font-medium text-secondary">Palmilha (Ref)</label>
-              <select
+              <input
                 id="modelo-palmilha"
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                type="text"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 value={form.palmilha}
                 onChange={(e) => setForm((f) => ({ ...f, palmilha: e.target.value }))}
                 disabled={saving}
-              >
-                <option value="">Selecione...</option>
-                {refsPalmilha.map((r) => (
-                  <option key={r.id} value={r.codigo}>
-                    {r.codigo}{r.descricao ? ` — ${r.descricao}` : ''}
-                  </option>
-                ))}
-              </select>
+                placeholder="Ex: PAL-001"
+                maxLength={200}
+              />
+              {errors.palmilha && <p className="mt-1 text-xs text-danger">{errors.palmilha}</p>}
             </div>
             <div>
               <label htmlFor="modelo-facheta" className="mb-1 block text-xs font-medium text-secondary">Facheta (Ref)</label>
-              <select
+              <input
                 id="modelo-facheta"
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                type="text"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 value={form.facheta}
                 onChange={(e) => setForm((f) => ({ ...f, facheta: e.target.value }))}
                 disabled={saving}
-              >
-                <option value="">Selecione...</option>
-                {refsFacheta.map((r) => (
-                  <option key={r.id} value={r.codigo}>
-                    {r.codigo}{r.descricao ? ` — ${r.descricao}` : ''}
-                  </option>
-                ))}
-              </select>
+                placeholder="Ex: FAC-001"
+                maxLength={200}
+              />
+              {errors.facheta && <p className="mt-1 text-xs text-danger">{errors.facheta}</p>}
             </div>
           </div>
         </div>
