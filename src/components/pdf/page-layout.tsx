@@ -11,7 +11,8 @@ const styles = StyleSheet.create({
   page: {
     padding: 14,
     flexDirection: 'column',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
+    gap: 4,
     fontFamily: PDF_TOKENS.fontFamily.default,
   },
 })
