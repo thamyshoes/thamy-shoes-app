@@ -12,7 +12,6 @@ import { useAuth } from '@/hooks/use-auth'
 import { apiClient } from '@/lib/api-client'
 import { API_ROUTES } from '@/lib/constants'
 import { toast } from 'sonner'
-import { cn } from '@/lib/cn'
 import type { ReferenciaItem } from '@/hooks/use-referencias'
 import type { MaterialItem } from '@/hooks/use-materiais'
 
@@ -30,11 +29,9 @@ const TIPO_LABELS: Record<string, string> = {
   facheta: 'Facheta',
 }
 
-type Tab = 'referencias' | 'materiais'
+// ── Referências Panel ────────────────────────────────────────────────────────
 
-// ── Referências Tab ──────────────────────────────────────────────────────────
-
-function ReferenciasTab({ categoria }: { categoria: string }) {
+function ReferenciasPanel({ categoria }: { categoria: string }) {
   const [items, setItems] = useState<ReferenciaItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -190,9 +187,9 @@ function ReferenciasTab({ categoria }: { categoria: string }) {
   )
 }
 
-// ── Materiais Tab ────────────────────────────────────────────────────────────
+// ── Materiais Panel ──────────────────────────────────────────────────────────
 
-function MateriaisTab({ categoria }: { categoria: string }) {
+function MateriaisPanel({ categoria }: { categoria: string }) {
   const [items, setItems] = useState<MaterialItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -334,7 +331,6 @@ function MateriaisTab({ categoria }: { categoria: string }) {
 // ── Page Content ─────────────────────────────────────────────────────────────
 
 function MateriaPrimaContent({ tipo }: { tipo: string }) {
-  const [tab, setTab] = useState<Tab>('referencias')
   const categoria = TIPOS_VALIDOS[tipo]
   const label = TIPO_LABELS[tipo]
 
@@ -351,30 +347,19 @@ function MateriaPrimaContent({ tipo }: { tipo: string }) {
         <h1 className="mt-1 text-xl font-semibold text-foreground">Matéria Prima — {label}</h1>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-border">
-        {(['referencias', 'materiais'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={cn(
-              'px-4 py-2 text-sm font-medium transition-colors',
-              tab === t
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-secondary hover:text-foreground',
-            )}
-          >
-            {t === 'referencias' ? 'Referências' : 'Materiais'}
-          </button>
-        ))}
-      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Referências */}
+        <section className="rounded-lg border border-border p-4">
+          <h2 className="mb-4 text-base font-semibold text-foreground">Referências</h2>
+          <ReferenciasPanel categoria={categoria} />
+        </section>
 
-      {/* Tab content */}
-      {tab === 'referencias' ? (
-        <ReferenciasTab categoria={categoria} />
-      ) : (
-        <MateriaisTab categoria={categoria} />
-      )}
+        {/* Materiais */}
+        <section className="rounded-lg border border-border p-4">
+          <h2 className="mb-4 text-base font-semibold text-foreground">Materiais</h2>
+          <MateriaisPanel categoria={categoria} />
+        </section>
+      </div>
     </div>
   )
 }
