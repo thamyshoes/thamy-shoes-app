@@ -79,7 +79,7 @@ export const TemplateCabedal = ({ pedido, item, base64Imagem, tamanhos }: Templa
     <Text style={pdfBaseStyles.titulo}>CABEDAL</Text>
 
     {/* Identificacao: 3 colunas alinhadas */}
-    <View style={styles.row3col}>
+    <View style={[styles.row3col, { marginBottom: 0 }]}>
       <View style={styles.col}>
         <Field label="Pedido" value={String(pedido.numero)} />
         <Field label="Data" value={formatDate(pedido.data)} />

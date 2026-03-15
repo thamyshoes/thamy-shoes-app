@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Layers, Package, FileText, Settings, Users, Tag } from 'lucide-react'
+import { Layers, Package, FileText, Settings, Users, Tag, Boxes } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { ROUTES } from '@/lib/constants'
 import { Perfil } from '@/types'
@@ -25,6 +25,13 @@ const SKU_CHILDREN: NavChild[] = [
   { label: 'Modelos',   href: ROUTES.CONFIG_MODELOS },
   { label: 'Cores',     href: ROUTES.CONFIG_CORES },
   { label: 'Numeração', href: ROUTES.CONFIG_GRADES },
+]
+
+const MATERIA_PRIMA_CHILDREN: NavChild[] = [
+  { label: 'Cabedal',   href: ROUTES.CONFIG_MATERIA_PRIMA_CABEDAL },
+  { label: 'Sola',      href: ROUTES.CONFIG_MATERIA_PRIMA_SOLA },
+  { label: 'Palmilha',  href: ROUTES.CONFIG_MATERIA_PRIMA_PALMILHA },
+  { label: 'Facheta',   href: ROUTES.CONFIG_MATERIA_PRIMA_FACHETA },
 ]
 
 const NAV_ITEMS: NavItem[] = [
@@ -53,6 +60,12 @@ const NAV_ITEMS: NavItem[] = [
     children: SKU_CHILDREN,
   },
   {
+    label: 'Matéria Prima',
+    icon: <Boxes className="h-4 w-4" />,
+    perfis: [Perfil.ADMIN],
+    children: MATERIA_PRIMA_CHILDREN,
+  },
+  {
     // Sub-navigation for /configuracoes is handled inside the page itself.
     // The following routes are accessible via tabs/links on /configuracoes:
     //   /configuracoes/bling        — integração com Bling ERP
@@ -72,6 +85,7 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 const SKU_ROUTES = SKU_CHILDREN.map((c) => c.href)
+const MATERIA_PRIMA_ROUTES = MATERIA_PRIMA_CHILDREN.map((c) => c.href)
 
 interface SidebarProps {
   perfil: Perfil
@@ -89,7 +103,8 @@ export function Sidebar({ perfil, onNavigate }: SidebarProps) {
     if (item.href === ROUTES.PEDIDOS) return pathname === item.href
     if (item.href === ROUTES.CONFIGURACOES) {
       return pathname.startsWith(ROUTES.CONFIGURACOES) &&
-        !SKU_ROUTES.some((r) => pathname.startsWith(r))
+        !SKU_ROUTES.some((r) => pathname.startsWith(r)) &&
+        !MATERIA_PRIMA_ROUTES.some((r) => pathname.startsWith(r))
     }
     return !!item.href && pathname.startsWith(item.href)
   }

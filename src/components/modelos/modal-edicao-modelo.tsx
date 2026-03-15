@@ -6,6 +6,8 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { apiClient } from '@/lib/api-client'
 import { API_ROUTES } from '@/lib/constants'
+import { useReferencias } from '@/hooks/use-referencias'
+import { useMateriais } from '@/hooks/use-materiais'
 import type { ModeloRow } from './tabela-modelos'
 
 export interface GradeOption {
@@ -56,6 +58,16 @@ export function ModalEdicaoModelo({ open, modelo, mode, grades, onClose, onSaved
   const [form, setForm] = useState<FormData>(EMPTY)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Partial<FormData>>({})
+
+  const { referencias: refsCabedal } = useReferencias('CABEDAL')
+  const { referencias: refsSola } = useReferencias('SOLA')
+  const { referencias: refsPalmilha } = useReferencias('PALMILHA')
+  const { referencias: refsFacheta } = useReferencias('FACHETA')
+
+  const { materiais: matsCabedal } = useMateriais('CABEDAL')
+  const { materiais: matsSola } = useMateriais('SOLA')
+  const { materiais: matsPalmilha } = useMateriais('PALMILHA')
+  const { materiais: matsFacheta } = useMateriais('FACHETA')
 
   useEffect(() => {
     if (modelo && mode === 'edit') {
@@ -225,67 +237,71 @@ export function ModalEdicaoModelo({ open, modelo, mode, grades, onClose, onSaved
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="modelo-cabedal" className="mb-1 block text-xs font-medium text-secondary">Cabedal (Ref)</label>
-              <input
+              <select
                 id="modelo-cabedal"
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.cabedal ? 'border-danger' : 'border-border'}`}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 value={form.cabedal}
                 onChange={(e) => setForm((f) => ({ ...f, cabedal: e.target.value }))}
                 disabled={saving}
-                placeholder="Ex: CAB-001"
-                maxLength={200}
-                aria-describedby={errors.cabedal ? 'err-cabedal' : undefined}
-              />
-              {errors.cabedal && (
-                <p id="err-cabedal" className="mt-1 text-xs text-danger">{errors.cabedal}</p>
-              )}
+              >
+                <option value="">Selecione...</option>
+                {refsCabedal.map((r) => (
+                  <option key={r.id} value={r.codigo}>
+                    {r.codigo}{r.descricao ? ` — ${r.descricao}` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label htmlFor="modelo-sola" className="mb-1 block text-xs font-medium text-secondary">Sola (Ref)</label>
-              <input
+              <select
                 id="modelo-sola"
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.sola ? 'border-danger' : 'border-border'}`}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 value={form.sola}
                 onChange={(e) => setForm((f) => ({ ...f, sola: e.target.value }))}
                 disabled={saving}
-                placeholder="Ex: SOL-002"
-                maxLength={200}
-                aria-describedby={errors.sola ? 'err-sola' : undefined}
-              />
-              {errors.sola && (
-                <p id="err-sola" className="mt-1 text-xs text-danger">{errors.sola}</p>
-              )}
+              >
+                <option value="">Selecione...</option>
+                {refsSola.map((r) => (
+                  <option key={r.id} value={r.codigo}>
+                    {r.codigo}{r.descricao ? ` — ${r.descricao}` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label htmlFor="modelo-palmilha" className="mb-1 block text-xs font-medium text-secondary">Palmilha (Ref)</label>
-              <input
+              <select
                 id="modelo-palmilha"
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.palmilha ? 'border-danger' : 'border-border'}`}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 value={form.palmilha}
                 onChange={(e) => setForm((f) => ({ ...f, palmilha: e.target.value }))}
                 disabled={saving}
-                placeholder="Ex: PAL-003"
-                maxLength={200}
-                aria-describedby={errors.palmilha ? 'err-palmilha' : undefined}
-              />
-              {errors.palmilha && (
-                <p id="err-palmilha" className="mt-1 text-xs text-danger">{errors.palmilha}</p>
-              )}
+              >
+                <option value="">Selecione...</option>
+                {refsPalmilha.map((r) => (
+                  <option key={r.id} value={r.codigo}>
+                    {r.codigo}{r.descricao ? ` — ${r.descricao}` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label htmlFor="modelo-facheta" className="mb-1 block text-xs font-medium text-secondary">Facheta (Ref)</label>
-              <input
+              <select
                 id="modelo-facheta"
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.facheta ? 'border-danger' : 'border-border'}`}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 value={form.facheta}
                 onChange={(e) => setForm((f) => ({ ...f, facheta: e.target.value }))}
                 disabled={saving}
-                placeholder="Ex: FAC-004"
-                maxLength={200}
-                aria-describedby={errors.facheta ? 'err-facheta' : undefined}
-              />
-              {errors.facheta && (
-                <p id="err-facheta" className="mt-1 text-xs text-danger">{errors.facheta}</p>
-              )}
+              >
+                <option value="">Selecione...</option>
+                {refsFacheta.map((r) => (
+                  <option key={r.id} value={r.codigo}>
+                    {r.codigo}{r.descricao ? ` — ${r.descricao}` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -298,69 +314,63 @@ export function ModalEdicaoModelo({ open, modelo, mode, grades, onClose, onSaved
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="modelo-materialCabedal" className="mb-1 block text-xs font-medium text-secondary">Cabedal</label>
-              <input
+              <select
                 id="modelo-materialCabedal"
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.materialCabedal ? 'border-danger' : 'border-border'}`}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 value={form.materialCabedal}
                 onChange={(e) => setForm((f) => ({ ...f, materialCabedal: e.target.value }))}
                 disabled={saving}
-                placeholder="Ex: Couro Natural"
-                maxLength={200}
-                aria-describedby={errors.materialCabedal ? 'err-materialCabedal' : undefined}
-              />
-              {errors.materialCabedal && (
-                <p id="err-materialCabedal" className="mt-1 text-xs text-danger">{errors.materialCabedal}</p>
-              )}
+              >
+                <option value="">Selecione...</option>
+                {matsCabedal.map((m) => (
+                  <option key={m.id} value={m.nome}>{m.nome}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label htmlFor="modelo-materialSola" className="mb-1 block text-xs font-medium text-secondary">Sola</label>
-              <input
+              <select
                 id="modelo-materialSola"
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.materialSola ? 'border-danger' : 'border-border'}`}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 value={form.materialSola}
                 onChange={(e) => setForm((f) => ({ ...f, materialSola: e.target.value }))}
                 disabled={saving}
-                placeholder="Ex: EVA Injetado"
-                maxLength={200}
-                aria-describedby={errors.materialSola ? 'err-materialSola' : undefined}
-              />
-              {errors.materialSola && (
-                <p id="err-materialSola" className="mt-1 text-xs text-danger">{errors.materialSola}</p>
-              )}
+              >
+                <option value="">Selecione...</option>
+                {matsSola.map((m) => (
+                  <option key={m.id} value={m.nome}>{m.nome}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label htmlFor="modelo-materialPalmilha" className="mb-1 block text-xs font-medium text-secondary">Palmilha</label>
-              <input
+              <select
                 id="modelo-materialPalmilha"
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.materialPalmilha ? 'border-danger' : 'border-border'}`}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 value={form.materialPalmilha}
                 onChange={(e) => setForm((f) => ({ ...f, materialPalmilha: e.target.value }))}
                 disabled={saving}
-                placeholder="Ex: Espuma Ortopédica"
-                maxLength={200}
-                aria-describedby={errors.materialPalmilha ? 'err-materialPalmilha' : undefined}
-              />
-              {errors.materialPalmilha && (
-                <p id="err-materialPalmilha" className="mt-1 text-xs text-danger">{errors.materialPalmilha}</p>
-              )}
+              >
+                <option value="">Selecione...</option>
+                {matsPalmilha.map((m) => (
+                  <option key={m.id} value={m.nome}>{m.nome}</option>
+                ))}
+              </select>
             </div>
             <div>
-              <label htmlFor="modelo-materialFacheta" className="mb-1 block text-xs font-medium text-secondary">
-                Facheta — Material
-              </label>
-              <input
+              <label htmlFor="modelo-materialFacheta" className="mb-1 block text-xs font-medium text-secondary">Facheta</label>
+              <select
                 id="modelo-materialFacheta"
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.materialFacheta ? 'border-danger' : 'border-border'}`}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 value={form.materialFacheta}
                 onChange={(e) => setForm((f) => ({ ...f, materialFacheta: e.target.value }))}
                 disabled={saving}
-                placeholder="Ex: Borracha"
-                maxLength={200}
-                aria-describedby={errors.materialFacheta ? 'err-materialFacheta' : undefined}
-              />
-              {errors.materialFacheta && (
-                <p id="err-materialFacheta" className="mt-1 text-xs text-danger">{errors.materialFacheta}</p>
-              )}
+              >
+                <option value="">Selecione...</option>
+                {matsFacheta.map((m) => (
+                  <option key={m.id} value={m.nome}>{m.nome}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

@@ -15,7 +15,7 @@ const styles = StyleSheet.create({
   row2col: {
     flexDirection: 'row',
     gap: 4,
-    marginBottom: 2,
+    marginBottom: 0,
   },
   col: {
     flex: 1,

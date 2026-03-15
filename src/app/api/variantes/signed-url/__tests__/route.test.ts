@@ -94,6 +94,6 @@ describe('POST /api/variantes/signed-url', () => {
 
     expect(res.status).toBe(500)
     const json = await res.json()
-    expect(json.error).toBe('Erro ao gerar URL de upload')
+    expect(json.error).toBe('falha no storage')
   })
 })

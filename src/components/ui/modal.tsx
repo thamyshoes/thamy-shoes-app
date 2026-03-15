@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
@@ -22,12 +22,18 @@ interface ModalProps {
 export function Modal({ open, onClose, title, size = 'md', children, footer }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+  useEffect(() => {
+    if (!open) return
+
+    previousFocusRef.current = document.activeElement as HTMLElement
+
+    function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.stopPropagation()
-        onClose()
+        onCloseRef.current()
         return
       }
 
@@ -49,18 +55,11 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: M
           first.focus()
         }
       }
-    },
-    [onClose],
-  )
-
-  useEffect(() => {
-    if (!open) return
-
-    previousFocusRef.current = document.activeElement as HTMLElement
+    }
 
     document.addEventListener('keydown', handleKeyDown)
 
-    // Focus first focusable element inside the dialog
+    // Focus first focusable element inside the dialog (only on open)
     requestAnimationFrame(() => {
       if (dialogRef.current) {
         const autofocus = dialogRef.current.querySelector<HTMLElement>('[autofocus], [data-autofocus]')
@@ -79,7 +78,7 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: M
       document.removeEventListener('keydown', handleKeyDown)
       previousFocusRef.current?.focus()
     }
-  }, [open, handleKeyDown])
+  }, [open])
 
   if (!open) return null
 

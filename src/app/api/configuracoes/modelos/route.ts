@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       }
     : {}
 
-  const [modelos, total] = await Promise.all([
+  const [modelosRaw, total] = await Promise.all([
     prisma.modelo.findMany({
       where,
       include: {
@@ -50,6 +50,26 @@ export async function GET(request: NextRequest) {
     }),
     prisma.modelo.count({ where }),
   ])
+
+  // Re-sort in memory: exact match first, then starts-with, then the rest alphabetically
+  const searchLower = search.toLowerCase()
+  const modelos = search
+    ? [...modelosRaw].sort((a, b) => {
+        const aCode = a.codigo.toLowerCase()
+        const bCode = b.codigo.toLowerCase()
+        const aExact = aCode === searchLower ? 0 : 1
+        const bExact = bCode === searchLower ? 0 : 1
+        if (aExact !== bExact) return aExact - bExact
+        const aStarts = aCode.startsWith(searchLower) ? 0 : 1
+        const bStarts = bCode.startsWith(searchLower) ? 0 : 1
+        if (aStarts !== bStarts) return aStarts - bStarts
+        // Among starts-with, shorter codes first (closer match)
+        if (aStarts === 0 && bStarts === 0 && a.codigo.length !== b.codigo.length) {
+          return a.codigo.length - b.codigo.length
+        }
+        return aCode.localeCompare(bCode)
+      })
+    : modelosRaw
 
   // Enriquecer com grade atual de cada modelo
   const gradeAtualMap = new Map<string, { id: string; nome: string; tamanhoMin: number; tamanhoMax: number }>()

@@ -58,6 +58,7 @@ enum CategoriaMaterial {
   CABEDAL
   SOLA
   PALMILHA
+  FACHETA
 }
 
 // ─── Models ──────────────────────────────────────────────────────────────────
@@ -188,6 +189,20 @@ model Material {
   @@unique([nome, categoria])
   @@index([categoria])
   @@map("materiais")
+}
+
+model Referencia {
+  id        String             @id @default(uuid())
+  codigo    String
+  descricao String?
+  categoria CategoriaMaterial
+  ativo     Boolean            @default(true)
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+
+  @@unique([codigo, categoria])
+  @@index([categoria])
+  @@map("referencias")
 }
 
 model Modelo {
