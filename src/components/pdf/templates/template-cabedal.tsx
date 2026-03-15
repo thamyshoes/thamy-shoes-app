@@ -85,10 +85,10 @@ export const TemplateCabedal = ({ pedido, item, base64Imagem, tamanhos }: Templa
         <Field label="Data" value={formatDate(pedido.data)} />
         <Field label="SKU" value={item.sku} />
         <Field label="Fornecedor" value={pedido.fornecedor} />
-      </View>
-      <View style={styles.col}>
         <Field label="REF Cabedal" value={item.modelo.cabedal ?? '-'} />
         <Field label="Cor Cabedal" value={formatCor(item.variante.corCabedal, item.variante.corCabedalDesc ?? item.variante.corPrincipal)} />
+      </View>
+      <View style={styles.col}>
         <Field label="Material Cabedal" value={item.modelo.materialCabedal ?? '-'} />
         <Field label="REF Sola" value={item.modelo.sola ?? '-'} />
         <Field label="Cor Sola" value={formatCor(item.variante.corSola, item.variante.corSolaDesc ?? item.variante.corPrincipal)} />
