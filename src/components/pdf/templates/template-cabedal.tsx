@@ -78,15 +78,22 @@ export const TemplateCabedal = ({ pedido, item, base64Imagem, tamanhos }: Templa
     {/* Titulo */}
     <Text style={pdfBaseStyles.titulo}>CABEDAL</Text>
 
-    {/* Identificacao: 3 colunas alinhadas */}
-    <View style={[styles.row3col, { marginBottom: 0 }]}>
+    {/* Todas as informacoes em uma unica div com 3 colunas */}
+    <View style={styles.row3col}>
       <View style={styles.col}>
         <Field label="Pedido" value={String(pedido.numero)} />
         <Field label="Data" value={formatDate(pedido.data)} />
-      </View>
-      <View style={styles.col}>
         <Field label="SKU" value={item.sku} />
         <Field label="Fornecedor" value={pedido.fornecedor} />
+        <Field label="REF Cabedal" value={item.modelo.cabedal ?? '-'} />
+        <Field label="Cor Cabedal" value={formatCor(item.variante.corCabedal, item.variante.corCabedalDesc ?? item.variante.corPrincipal)} />
+        <Field label="Material Cabedal" value={item.modelo.materialCabedal ?? '-'} />
+      </View>
+      <View style={styles.col}>
+        <Field label="REF Sola" value={item.modelo.sola ?? '-'} />
+        <Field label="Cor Sola" value={formatCor(item.variante.corSola, item.variante.corSolaDesc ?? item.variante.corPrincipal)} />
+        <Field label="REF Palmilha" value={item.modelo.palmilha ?? '-'} />
+        <Field label="Cor Palmilha" value={formatCor(item.variante.corPalmilha, item.variante.corPalmilhaDesc ?? item.variante.corPrincipal)} />
       </View>
       <View style={styles.colImagem}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
@@ -95,23 +102,6 @@ export const TemplateCabedal = ({ pedido, item, base64Imagem, tamanhos }: Templa
         ) : (
           <View style={styles.imagemVazia} />
         )}
-      </View>
-    </View>
-
-    {/* Especificacoes: 3 colunas alinhadas com imagem acima */}
-    <View style={styles.row3col}>
-      <View style={styles.col}>
-        <Field label="REF Cabedal" value={item.modelo.cabedal ?? '-'} />
-        <Field label="REF Sola" value={item.modelo.sola ?? '-'} />
-        <Field label="Cor Sola" value={formatCor(item.variante.corSola, item.variante.corSolaDesc ?? item.variante.corPrincipal)} />
-      </View>
-      <View style={styles.col}>
-        <Field label="Cor Cabedal" value={formatCor(item.variante.corCabedal, item.variante.corCabedalDesc ?? item.variante.corPrincipal)} />
-        <Field label="REF Palmilha" value={item.modelo.palmilha ?? '-'} />
-        <Field label="Cor Palmilha" value={formatCor(item.variante.corPalmilha, item.variante.corPalmilhaDesc ?? item.variante.corPrincipal)} />
-      </View>
-      <View style={styles.col}>
-        <Field label="Material Cabedal" value={item.modelo.materialCabedal ?? '-'} />
       </View>
     </View>
 

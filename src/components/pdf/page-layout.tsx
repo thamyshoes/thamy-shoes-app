@@ -11,7 +11,7 @@ const styles = StyleSheet.create({
   page: {
     padding: 14,
     flexDirection: 'column',
-    gap: 4,
+    justifyContent: 'space-between',
     fontFamily: PDF_TOKENS.fontFamily.default,
   },
 })
@@ -28,9 +28,9 @@ interface PageLayoutProps {
   cards: any[]
 }
 
-// 6 cards por página, largura total, altura fixa ao conteúdo
+// 5 cards por página, distribuidos com space-between
 export const PageLayout = ({ cards }: PageLayoutProps) => {
-  const pages = chunk(cards, 6)
+  const pages = chunk(cards, 5)
 
   return (
     <Document>
