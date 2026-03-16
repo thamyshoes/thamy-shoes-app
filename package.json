@@ -16,6 +16,7 @@
     "db:reset": "prisma migrate reset --force",
     "seed:test": "ts-node --compiler-options {\"module\":\"CommonJS\"} e2e/helpers/seed.ts",
     "seed:test-users": "ts-node scripts/seed-test-users.ts",
+    "fix:regra-sku": "ts-node --compiler-options {\"module\":\"CommonJS\"} scripts/fix-regra-sku-sufixo.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {
