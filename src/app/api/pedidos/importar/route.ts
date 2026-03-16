@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { blingService } from '@/lib/bling/bling-service'
 import { interpretarItens } from '@/lib/bling/sku-parser'
 import { importPedidoSchema } from '@/lib/validators'
+
+// Pedidos grandes (ex: 130 itens) podem levar mais de 10s
+export const maxDuration = 60
 import { StatusPedido, StatusItem } from '@/types'
 
 // POST /api/pedidos/importar

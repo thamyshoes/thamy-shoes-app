@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import type { ItemPedido } from '@prisma/client'
 import type { GradeRow, ItemInterpretado } from '@/types'
 import { StatusItem } from '@/types'
@@ -196,25 +197,35 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
     return { item, r, corDescricao, produtoId, modeloDbId, tamanhoValido, tamanhoNumerico, statusFinal }
   })
 
-  // Única transação para todos os updates — atômica, usa uma conexão só,
-  // elimina race conditions causadas por 130+ writes concorrentes no pool do Supabase
-  await prisma.$transaction(
-    computed.map(({ item, r, corDescricao, produtoId, modeloDbId, tamanhoValido, tamanhoNumerico, statusFinal }) =>
-      prisma.itemPedido.update({
-        where: { id: item.id },
-        data: {
-          modelo: r.modelo,
-          cor: r.cor,
-          corDescricao: corDescricao || null,
-          tamanho: tamanhoValido ? tamanhoNumerico : null,
-          status: statusFinal,
-          produtoId,
-          modeloId: modeloDbId,
-        },
-      }),
-    ),
-    { timeout: 30000 }, // 30s para pedidos grandes (ex: 130 itens)
+  // Bulk UPDATE: 1 round-trip para N rows (vs N round-trips com $transaction sequencial)
+  // Usa UPDATE ... FROM (VALUES ...) — idiomático no PostgreSQL, atomic, sem overhead de pool
+  const rowFragments = computed.map(({ item, r, corDescricao, produtoId, modeloDbId, tamanhoValido, tamanhoNumerico, statusFinal }) =>
+    Prisma.sql`(
+      ${item.id}::uuid,
+      ${r.modelo ?? null}::text,
+      ${r.cor ?? null}::text,
+      ${corDescricao || null}::text,
+      ${(tamanhoValido ? tamanhoNumerico : null) as number | null}::integer,
+      ${statusFinal}::text,
+      ${produtoId ?? null}::uuid,
+      ${modeloDbId ?? null}::uuid
+    )`
   )
+
+  await prisma.$executeRaw`
+    UPDATE "itens_pedido" AS i
+    SET
+      modelo       = v.modelo,
+      cor          = v.cor,
+      cor_descricao = v.cor_descricao,
+      tamanho      = v.tamanho,
+      status       = v.status::"StatusItem",
+      produto_id   = v.produto_id,
+      modelo_id    = v.modelo_id
+    FROM (VALUES ${Prisma.join(rowFragments)})
+      AS v(id, modelo, cor, cor_descricao, tamanho, status, produto_id, modelo_id)
+    WHERE i.id = v.id
+  `
 
   return computed
     .filter(({ statusFinal, r }) => statusFinal === StatusItem.RESOLVIDO && r.modelo && r.cor && r.tamanho)
