@@ -56,7 +56,7 @@ async function main() {
       passwordHash: senha,
       nome: 'Carlos Mendes',
       perfil: Perfil.PRODUCAO,
-      setor: Setor.CABEDAL,
+      setores: [Setor.CABEDAL],
       ativo: true,
     },
   })
@@ -69,7 +69,7 @@ async function main() {
       passwordHash: senha,
       nome: 'Fernanda Lima',
       perfil: Perfil.PRODUCAO,
-      setor: Setor.PALMILHA,
+      setores: [Setor.PALMILHA],
       ativo: true,
     },
   })
@@ -82,7 +82,7 @@ async function main() {
       passwordHash: senha,
       nome: 'Roberto Souza',
       perfil: Perfil.PRODUCAO,
-      setor: Setor.SOLA,
+      setores: [Setor.SOLA],
       ativo: true,
     },
   })

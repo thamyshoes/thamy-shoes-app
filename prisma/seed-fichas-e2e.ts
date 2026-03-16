@@ -51,13 +51,13 @@ async function main() {
 
   const producao = await prisma.user.upsert({
     where: { email: 'producao@thamyshoes.com.br' },
-    update: { passwordHash: hashProducao, ativo: true, setor: Setor.CABEDAL },
+    update: { passwordHash: hashProducao, ativo: true, setores: { set: [Setor.CABEDAL] } },
     create: {
       email: 'producao@thamyshoes.com.br',
       passwordHash: hashProducao,
       nome: 'Producao E2E',
       perfil: Perfil.PRODUCAO,
-      setor: Setor.CABEDAL,
+      setores: [Setor.CABEDAL],
       ativo: true,
     },
   })
