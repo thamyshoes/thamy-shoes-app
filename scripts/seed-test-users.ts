@@ -80,7 +80,7 @@ async function main() {
           passwordHash,
           nome: testUser.nome,
           perfil: testUser.role,
-          setor: testUser.setor || null,
+          setores: { set: testUser.setor ? [testUser.setor] : [] },
           ativo: testUser.ativo,
         },
         create: {
@@ -88,7 +88,7 @@ async function main() {
           passwordHash,
           nome: testUser.nome,
           perfil: testUser.role,
-          setor: testUser.setor || null,
+          setores: testUser.setor ? [testUser.setor] : [],
           ativo: testUser.ativo,
         },
       })
