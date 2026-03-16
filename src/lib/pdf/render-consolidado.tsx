@@ -73,6 +73,6 @@ export async function renderConsolidadoPdf(
     : cards
 
   const cardElements = relevantCards.map((card) => buildCardElement(setor, card))
-  const document = <PageLayout cards={cardElements} />
+  const document = <PageLayout cards={cardElements} cardsPerPage={setor === Setor.FACHETA ? 6 : 5} />
   return renderToBuffer(document as any)
 }

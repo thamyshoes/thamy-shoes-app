@@ -27,11 +27,12 @@ function chunk<T>(arr: T[], size: number): T[][] {
 
 interface PageLayoutProps {
   cards: any[]
+  cardsPerPage?: number
 }
 
 // 5 cards por página, distribuidos com space-between
-export const PageLayout = ({ cards }: PageLayoutProps) => {
-  const pages = chunk(cards, 5)
+export const PageLayout = ({ cards, cardsPerPage = 5 }: PageLayoutProps) => {
+  const pages = chunk(cards, cardsPerPage)
 
   return (
     <Document>
