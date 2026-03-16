@@ -231,7 +231,7 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
        modelo_id     = v.modelo_id
      FROM (VALUES ${placeholders})
        AS v(id, modelo, cor, cor_descricao, tamanho, status, produto_id, modelo_id)
-     WHERE i.id = v.id`,
+     WHERE i.id = v.id::uuid`,
     ...params,
   )
 
