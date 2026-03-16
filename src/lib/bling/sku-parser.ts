@@ -196,50 +196,41 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
     return { item, r, corDescricao, produtoId, modeloDbId, tamanhoValido, tamanhoNumerico, statusFinal }
   })
 
-  // Bulk UPDATE via UNNEST: 1 round-trip para N rows.
-  // UNNEST com typed array casts ($1::uuid[], $2::text[], ...) garante que o PostgreSQL
-  // conhece o tipo de cada coluna virtual antes do query planning — evita o erro
-  // "operator does not exist: text = uuid" que ocorre com VALUES CTE (onde o tipo é
-  // inferido a partir dos parâmetros enviados como text pelo driver pg).
-  const ids           = computed.map(({ item }) => item.id)
-  const modelos       = computed.map(({ r }) => r.modelo       ?? null)
-  const cores         = computed.map(({ r }) => r.cor          ?? null)
-  const corDescricoes = computed.map(({ corDescricao }) => corDescricao || null)
-  const tamanhos      = computed.map(({ tamanhoValido, tamanhoNumerico }) => tamanhoValido ? tamanhoNumerico : null)
-  const statuses      = computed.map(({ statusFinal }) => statusFinal as string)
-  const produtoIds    = computed.map(({ produtoId }) => produtoId   ?? null)
-  const modeloIds     = computed.map(({ modeloDbId }) => modeloDbId ?? null)
-
-  await prisma.$executeRawUnsafe(
-    `UPDATE "itens_pedido" AS i
-     SET
-       modelo        = v.modelo,
-       cor           = v.cor,
-       cor_descricao = v.cor_descricao,
-       tamanho       = v.tamanho,
-       status        = v.status::"StatusItem",
-       produto_id    = v.produto_id::uuid,
-       modelo_id     = v.modelo_id::uuid
-     FROM UNNEST(
-       $1::uuid[],
-       $2::text[],
-       $3::text[],
-       $4::text[],
-       $5::integer[],
-       $6::text[],
-       $7::text[],
-       $8::text[]
-     ) AS v(id, modelo, cor, cor_descricao, tamanho, status, produto_id, modelo_id)
-     WHERE i.id = v.id`,
-    ids,
-    modelos,
-    cores,
-    corDescricoes,
-    tamanhos,
-    statuses,
-    produtoIds,
-    modeloIds,
+  // Bulk UPDATE via JSON scalar: 1 round-trip para N rows.
+  //
+  // Por que JSON e não UNNEST/VALUES:
+  //   - VALUES CTE: PostgreSQL infere tipos das colunas como "text" (parâmetros pg = OID unknown)
+  //     → "operator does not exist: text = uuid" no WHERE i.id = v.id
+  //   - UNNEST com $executeRawUnsafe: arrays JS são serializados como JSON ["a","b"] pelo engine
+  //     do Prisma, não como literais PostgreSQL {a,b} — o cast ::uuid[] falha na comparação
+  //   - JSON scalar ($1::json): passa uma única string JSON comum; sem ambiguidade de tipo.
+  //     json_array_elements extrai objetos; (elem->>'id')::uuid é cast explícito text→uuid. ✓
+  const payload = JSON.stringify(
+    computed.map(({ item, r, corDescricao, produtoId, modeloDbId, tamanhoValido, tamanhoNumerico, statusFinal }) => ({
+      id:            item.id,
+      modelo:        r.modelo       ?? null,
+      cor:           r.cor          ?? null,
+      cor_descricao: corDescricao   || null,
+      tamanho:       tamanhoValido ? tamanhoNumerico : null,
+      status:        statusFinal    as string,
+      produto_id:    produtoId      ?? null,
+      modelo_id:     modeloDbId     ?? null,
+    }))
   )
+
+  await prisma.$executeRaw`
+    UPDATE "itens_pedido" AS i
+    SET
+      modelo        = (elem->>'modelo'),
+      cor           = (elem->>'cor'),
+      cor_descricao = (elem->>'cor_descricao'),
+      tamanho       = (elem->>'tamanho')::integer,
+      status        = (elem->>'status')::"StatusItem",
+      produto_id    = (elem->>'produto_id')::uuid,
+      modelo_id     = (elem->>'modelo_id')::uuid
+    FROM json_array_elements(${payload}::json) AS elem
+    WHERE i.id = (elem->>'id')::uuid
+  `
 
   return computed
     .filter(({ statusFinal, r }) => statusFinal === StatusItem.RESOLVIDO && r.modelo && r.cor && r.tamanho)
