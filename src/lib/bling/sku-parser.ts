@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
 import type { ItemPedido } from '@prisma/client'
 import type { GradeRow, ItemInterpretado } from '@/types'
 import { StatusItem } from '@/types'
@@ -198,34 +197,43 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
   })
 
   // Bulk UPDATE: 1 round-trip para N rows (vs N round-trips com $transaction sequencial)
-  // Usa UPDATE ... FROM (VALUES ...) — idiomático no PostgreSQL, atomic, sem overhead de pool
-  const rowFragments = computed.map(({ item, r, corDescricao, produtoId, modeloDbId, tamanhoValido, tamanhoNumerico, statusFinal }) =>
-    Prisma.sql`(
-      ${item.id}::uuid,
-      ${r.modelo ?? null}::text,
-      ${r.cor ?? null}::text,
-      ${corDescricao || null}::text,
-      ${(tamanhoValido ? tamanhoNumerico : null) as number | null}::integer,
-      ${statusFinal}::text,
-      ${produtoId ?? null}::uuid,
-      ${modeloDbId ?? null}::uuid
-    )`
-  )
+  // Usa $executeRawUnsafe com placeholders explícitos ($1::uuid, $2::text, ...) para garantir
+  // que PostgreSQL infere os tipos corretos nas colunas do VALUES CTE.
+  // Os valores do usuário nunca são interpolados na string SQL — apenas os índices $N.
+  const COLS = 8
+  const placeholders = computed
+    .map((_, i) => {
+      const o = i * COLS
+      return `($${o+1}::uuid, $${o+2}::text, $${o+3}::text, $${o+4}::text, $${o+5}::integer, $${o+6}::"StatusItem", $${o+7}::uuid, $${o+8}::uuid)`
+    })
+    .join(', ')
 
-  await prisma.$executeRaw`
-    UPDATE "itens_pedido" AS i
-    SET
-      modelo       = v.modelo,
-      cor          = v.cor,
-      cor_descricao = v.cor_descricao,
-      tamanho      = v.tamanho,
-      status       = v.status::"StatusItem",
-      produto_id   = v.produto_id,
-      modelo_id    = v.modelo_id
-    FROM (VALUES ${Prisma.join(rowFragments)})
-      AS v(id, modelo, cor, cor_descricao, tamanho, status, produto_id, modelo_id)
-    WHERE i.id = v.id
-  `
+  const params: unknown[] = computed.flatMap(({ item, r, corDescricao, produtoId, modeloDbId, tamanhoValido, tamanhoNumerico, statusFinal }) => [
+    item.id,
+    r.modelo ?? null,
+    r.cor ?? null,
+    corDescricao || null,
+    tamanhoValido ? tamanhoNumerico : null,
+    statusFinal,
+    produtoId ?? null,
+    modeloDbId ?? null,
+  ])
+
+  await prisma.$executeRawUnsafe(
+    `UPDATE "itens_pedido" AS i
+     SET
+       modelo        = v.modelo,
+       cor           = v.cor,
+       cor_descricao = v.cor_descricao,
+       tamanho       = v.tamanho,
+       status        = v.status::"StatusItem",
+       produto_id    = v.produto_id,
+       modelo_id     = v.modelo_id
+     FROM (VALUES ${placeholders})
+       AS v(id, modelo, cor, cor_descricao, tamanho, status, produto_id, modelo_id)
+     WHERE i.id = v.id`,
+    ...params,
+  )
 
   return computed
     .filter(({ statusFinal, r }) => statusFinal === StatusItem.RESOLVIDO && r.modelo && r.cor && r.tamanho)
