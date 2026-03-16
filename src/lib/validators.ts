@@ -25,12 +25,14 @@ export const resetPasswordFormSchema = z
     path: ['confirmPassword'],
   })
 
+const setorEnum = z.enum(['CABEDAL', 'PALMILHA', 'SOLA', 'FACHETA'])
+
 export const createUserSchema = z.object({
   email: z.string().email('Email inválido'),
   nome: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
   password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
   perfil: z.enum(['ADMIN', 'PCP', 'PRODUCAO']),
-  setor: z.enum(['CABEDAL', 'PALMILHA', 'SOLA']).nullable(),
+  setores: z.array(setorEnum).default([]),
 })
 
 export const updateUserSchema = z.object({
@@ -38,7 +40,7 @@ export const updateUserSchema = z.object({
   email: z.string().email('Email inválido').optional(),
   password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres').optional(),
   perfil: z.enum(['ADMIN', 'PCP', 'PRODUCAO']).optional(),
-  setor: z.enum(['CABEDAL', 'PALMILHA', 'SOLA']).nullable().optional(),
+  setores: z.array(setorEnum).optional(),
   ativo: z.boolean().optional(),
 })
 
@@ -47,7 +49,7 @@ export const editUserSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres').optional().or(z.literal('')),
   perfil: z.enum(['ADMIN', 'PCP', 'PRODUCAO']),
-  setor: z.enum(['CABEDAL', 'PALMILHA', 'SOLA']).nullable(),
+  setores: z.array(setorEnum).default([]),
 })
 
 export const paginationSchema = z.object({

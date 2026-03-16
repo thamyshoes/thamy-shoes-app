@@ -47,6 +47,7 @@ function UserModal({ editing, open, onClose, onSuccess, selfId }: UserModalProps
     register,
     handleSubmit,
     watch,
+    setValue,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<CreateUserInput | EditUserInput>({
@@ -57,9 +58,9 @@ function UserModal({ editing, open, onClose, onSuccess, selfId }: UserModalProps
           email: editing.email,
           password: '',
           perfil: editing.perfil as 'ADMIN' | 'PCP' | 'PRODUCAO',
-          setor: editing.setor as 'CABEDAL' | 'PALMILHA' | 'SOLA' | null,
+          setores: (editing.setores ?? []) as Array<'CABEDAL' | 'PALMILHA' | 'SOLA' | 'FACHETA'>,
         }
-      : { perfil: 'PCP', setor: null },
+      : { perfil: 'PCP', setores: [] },
   })
 
   useEffect(() => {
@@ -71,15 +72,31 @@ function UserModal({ editing, open, onClose, onSuccess, selfId }: UserModalProps
               email: editing.email,
               password: '',
               perfil: editing.perfil as 'ADMIN' | 'PCP' | 'PRODUCAO',
-              setor: editing.setor as 'CABEDAL' | 'PALMILHA' | 'SOLA' | null,
+              setores: (editing.setores ?? []) as Array<'CABEDAL' | 'PALMILHA' | 'SOLA' | 'FACHETA'>,
             }
-          : { perfil: 'PCP', setor: null },
+          : { perfil: 'PCP', setores: [] },
       )
     }
   }, [open, editing, reset])
 
   const perfil = watch('perfil')
+  const setoresSelecionados = (watch('setores') ?? []) as string[]
   const showSetor = perfil === Perfil.PRODUCAO
+
+  const SETORES_OPCOES = [
+    { value: 'CABEDAL',  label: 'Cabedal' },
+    { value: 'PALMILHA', label: 'Palmilha' },
+    { value: 'SOLA',     label: 'Sola' },
+    { value: 'FACHETA',  label: 'Facheta' },
+  ]
+
+  function toggleSetor(valor: string) {
+    const atual = (watch('setores') ?? []) as string[]
+    const novo = atual.includes(valor)
+      ? atual.filter((s) => s !== valor)
+      : [...atual, valor]
+    setValue('setores', novo as Array<'CABEDAL' | 'PALMILHA' | 'SOLA' | 'FACHETA'>)
+  }
 
   async function onSubmit(data: CreateUserInput | EditUserInput) {
     try {
@@ -88,7 +105,7 @@ function UserModal({ editing, open, onClose, onSuccess, selfId }: UserModalProps
           nome: data.nome,
           email: data.email,
           perfil: data.perfil,
-          setor: showSetor ? data.setor : null,
+          setores: showSetor ? (data as CreateUserInput).setores : [],
         }
         if ((data as EditUserInput).password) body.password = (data as EditUserInput).password
         await apiClient.put(API_ROUTES.USUARIO_DETALHE(editing!.id), body)
@@ -143,9 +160,9 @@ function UserModal({ editing, open, onClose, onSuccess, selfId }: UserModalProps
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             {...register('perfil')}
           >
-            <option value="ADMIN">Administrador</option>
-            <option value="PCP">PCP</option>
-            <option value="PRODUCAO">Produção</option>
+            <option value="ADMIN">Administrador (Acesso total, importação e cadastros)</option>
+            <option value="PCP">PCP (Pedidos e geração de fichas)</option>
+            <option value="PRODUCAO">Produção (Visualização de fichas por setor)</option>
           </select>
           {errors.perfil && (
             <p className="text-xs text-destructive">{errors.perfil.message}</p>
@@ -153,20 +170,23 @@ function UserModal({ editing, open, onClose, onSuccess, selfId }: UserModalProps
         </div>
 
         {showSetor && (
-          <div className="space-y-1">
-            <label htmlFor="user-setor" className="text-sm font-medium text-foreground">Setor</label>
-            <select
-              id="user-setor"
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              {...register('setor')}
-            >
-              <option value="">Selecione o setor</option>
-              <option value="CABEDAL">Cabedal</option>
-              <option value="PALMILHA">Palmilha</option>
-              <option value="SOLA">Sola</option>
-            </select>
-            {errors.setor && (
-              <p className="text-xs text-destructive">{errors.setor.message}</p>
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">Setores</p>
+            <div className="flex flex-wrap gap-3">
+              {SETORES_OPCOES.map((opt) => (
+                <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-border accent-primary"
+                    checked={setoresSelecionados.includes(opt.value)}
+                    onChange={() => toggleSetor(opt.value)}
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+            {errors.setores && (
+              <p className="text-xs text-destructive">{errors.setores.message}</p>
             )}
           </div>
         )}
@@ -254,9 +274,10 @@ export default function UsuariosPage() {
   }
 
   const SETOR_LABEL: Record<string, string> = {
-    CABEDAL: 'Cabedal',
+    CABEDAL:  'Cabedal',
     PALMILHA: 'Palmilha',
-    SOLA: 'Sola',
+    SOLA:     'Sola',
+    FACHETA:  'Facheta',
   }
 
   const columns: Column<UserPublic>[] = [
@@ -277,7 +298,9 @@ export default function UsuariosPage() {
       header: 'Setor',
       render: (u) => (
         <span className="text-secondary">
-          {u.setor ? SETOR_LABEL[u.setor] ?? u.setor : '—'}
+          {u.setores && u.setores.length > 0
+            ? u.setores.map((s: string) => SETOR_LABEL[s] ?? s).join(', ')
+            : '—'}
         </span>
       ),
     },

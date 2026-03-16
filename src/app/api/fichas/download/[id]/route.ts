@@ -10,19 +10,20 @@ export async function GET(
   const { id } = await params
 
   const userPerfil = request.headers.get('x-user-perfil') as Perfil | null
-  const userSetor = request.headers.get('x-user-setor') as Setor | null
+  const userSetoresRaw = request.headers.get('x-user-setores')
+  const userSetores = userSetoresRaw ? (userSetoresRaw.split(',') as Setor[]) : []
 
   if (!userPerfil) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
-  // PRODUCAO: verificar se a ficha pertence ao setor do usuario
+  // PRODUCAO: verificar se a ficha pertence a um dos setores do usuário
   if (userPerfil === Perfil.PRODUCAO) {
     const ficha = await prisma.fichaProducao.findUnique({ where: { id } })
     if (!ficha) {
       return NextResponse.json({ error: 'Ficha não encontrada' }, { status: 404 })
     }
-    if (userSetor && ficha.setor !== userSetor) {
+    if (userSetores.length > 0 && !userSetores.includes(ficha.setor)) {
       return NextResponse.json({ error: 'Sem permissão para esta ficha' }, { status: 403 })
     }
   }

@@ -69,7 +69,7 @@ model User {
   passwordHash String   @map("password_hash")
   nome         String
   perfil       Perfil
-  setor        Setor?
+  setores      Setor[]
   ativo        Boolean  @default(true)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")

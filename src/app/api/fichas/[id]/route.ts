@@ -8,7 +8,8 @@ export async function GET(
 ) {
   const { id } = await params
   const perfil = request.headers.get('x-user-perfil')
-  const userSetor = request.headers.get('x-user-setor')
+  const userSetoresRaw = request.headers.get('x-user-setores')
+  const userSetores = userSetoresRaw ? (userSetoresRaw.split(',') as Setor[]) : []
 
   if (!perfil) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
@@ -30,8 +31,8 @@ export async function GET(
     return NextResponse.json({ error: 'Ficha não encontrada' }, { status: 404 })
   }
 
-  // PRODUCAO só pode ver fichas do seu setor
-  if (perfil === 'PRODUCAO' && userSetor && ficha.setor !== (userSetor as Setor)) {
+  // PRODUCAO só pode ver fichas dos seus setores
+  if (perfil === 'PRODUCAO' && userSetores.length > 0 && !userSetores.includes(ficha.setor)) {
     return NextResponse.json({ error: 'Acesso não autorizado' }, { status: 403 })
   }
 

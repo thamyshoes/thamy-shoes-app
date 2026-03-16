@@ -16,7 +16,8 @@ const querySchema = z.object({
 
 export async function GET(request: NextRequest) {
   const perfil = request.headers.get('x-user-perfil')
-  const userSetor = request.headers.get('x-user-setor')
+  const userSetoresRaw = request.headers.get('x-user-setores')
+  const userSetores = userSetoresRaw ? (userSetoresRaw.split(',') as Setor[]) : []
 
   if (!perfil) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
@@ -41,16 +42,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Data fim inválida. Use dd/mm/aaaa.' }, { status: 422 })
   }
 
-  // PRODUCAO: forçar filtro pelo setor do usuário
-  const setorFilter: Setor | undefined =
-    perfil === 'PRODUCAO' && userSetor
-      ? (userSetor as Setor)
-      : setor
-
   const where: Record<string, unknown> = {}
 
-  if (setorFilter) {
-    where.setor = setorFilter
+  // PRODUCAO: forçar filtro pelos setores do usuário
+  if (perfil === 'PRODUCAO' && userSetores.length > 0) {
+    where.setor = { in: userSetores }
+  } else if (setor) {
+    where.setor = setor
   }
 
   if (pedidoId) {

@@ -41,7 +41,7 @@ export interface UserSession {
   email: string
   nome: string
   perfil: import('@prisma/client').Perfil
-  setor: import('@prisma/client').Setor | null
+  setores: import('@prisma/client').Setor[]
 }
 
 // ── DTOs de resposta de API ───────────────────────────────────────────────────

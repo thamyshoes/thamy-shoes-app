@@ -42,7 +42,7 @@ export async function generateToken(user: UserSession): Promise<string> {
     email: user.email,
     nome: user.nome,
     perfil: user.perfil,
-    setor: user.setor,
+    setores: user.setores,
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -58,7 +58,7 @@ export async function verifyToken(token: string): Promise<UserSession | null> {
       email: payload.email as string,
       nome: payload.nome as string,
       perfil: payload.perfil as UserSession['perfil'],
-      setor: (payload.setor ?? null) as UserSession['setor'],
+      setores: (payload.setores ?? []) as UserSession['setores'],
     }
   } catch {
     return null

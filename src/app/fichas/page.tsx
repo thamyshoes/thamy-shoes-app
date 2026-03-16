@@ -141,13 +141,15 @@ function SkeletonRow() {
 
 // ── Inner content ─────────────────────────────────────────────────────────────
 
-function FichasContent({ user }: { user: { id: string; perfil: string; setor: string | null; nome: string; email: string } }) {
+function FichasContent({ user }: { user: { id: string; perfil: string; setores: string[]; nome: string; email: string } }) {
   const searchParams = useSearchParams()
 
   const isProducao = user.perfil === 'PRODUCAO'
+  // Se PRODUCAO tem exatamente 1 setor, trava o filtro nele; se tiver múltiplos, deixa livre
+  const setorUnico = isProducao && user.setores.length === 1 ? user.setores[0] : null
 
   const [setorInput, setSetorInput] = useState(
-    isProducao && user.setor ? user.setor : (searchParams.get('setor') ?? ''),
+    setorUnico ?? (searchParams.get('setor') ?? ''),
   )
   const [pedidoInput, setPedidoInput] = useState(searchParams.get('search') ?? '')
   const [dataInput, setDataInput] = useState(
@@ -179,10 +181,10 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
   }
 
   function limparFiltros() {
-    setSetorInput(isProducao && user.setor ? user.setor : '')
+    setSetorInput(setorUnico ?? '')
     setPedidoInput('')
     setDataInput('')
-    setSetorAplicado(isProducao && user.setor ? user.setor : '')
+    setSetorAplicado(setorUnico ?? '')
     setPedidoAplicado('')
     setDataAplicada('')
     setPage(1)
@@ -215,7 +217,7 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setor: st
             className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
             value={setorInput}
             onChange={(e) => setSetorInput(e.target.value)}
-            disabled={isProducao && !!user.setor}
+            disabled={!!setorUnico}
             aria-label="Filtrar por setor"
           >
             {SETOR_OPTIONS.map((opt) => (

@@ -61,7 +61,7 @@ async function verifyJwt(token: string): Promise<UserSession | null> {
       email: payload.email as string,
       nome: payload.nome as string,
       perfil: payload.perfil as UserSession['perfil'],
-      setor: (payload.setor ?? null) as UserSession['setor'],
+      setores: (payload.setores ?? []) as UserSession['setores'],
     }
   } catch {
     return null
@@ -150,7 +150,7 @@ export async function middleware(request: NextRequest) {
   // Attach user headers and refresh activity cookie
   requestHeaders.set('x-user-id', user.id)
   requestHeaders.set('x-user-perfil', user.perfil)
-  if (user.setor) requestHeaders.set('x-user-setor', user.setor)
+  if (user.setores?.length) requestHeaders.set('x-user-setores', user.setores.join(','))
 
   const response = NextResponse.next({ request: { headers: requestHeaders } })
   response.headers.set('x-request-id', requestId)

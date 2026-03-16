@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     email: user.email,
     nome: user.nome,
     perfil: user.perfil,
-    setor: user.setor,
+    setores: user.setores,
   }
 
   const token = await generateToken(session)

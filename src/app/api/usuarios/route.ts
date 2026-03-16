@@ -61,12 +61,12 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { email, nome, password, perfil, setor } = parsed.data
+  const { email, nome, password, perfil, setores } = parsed.data
 
-  // Setor obrigatório para PRODUCAO
-  if (perfil === Perfil.PRODUCAO && !setor) {
+  // Pelo menos um setor obrigatório para PRODUCAO
+  if (perfil === Perfil.PRODUCAO && (!setores || setores.length === 0)) {
     return NextResponse.json(
-      { error: 'Setor obrigatório para perfil PRODUCAO' },
+      { error: 'Selecione ao menos um setor para o perfil PRODUCAO' },
       { status: 400 },
     )
   }
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       nome,
       passwordHash,
       perfil: perfil as import('@prisma/client').Perfil,
-      setor: setor as import('@prisma/client').Setor | null,
+      setores: (perfil === Perfil.PRODUCAO ? setores : []) as import('@prisma/client').Setor[],
     },
   })
 
