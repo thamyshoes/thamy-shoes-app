@@ -113,15 +113,24 @@ function mergeCardsPorSetor(setor: Setor, cards: ConsolidadoCardData[]): Consoli
       default:             return null
     }
   }
+  const getMaterialComponente = (card: ConsolidadoCardData): string | null => {
+    switch (setor) {
+      case Setor.PALMILHA: return card.item.modelo.materialPalmilha ?? null
+      case Setor.FACHETA:  return card.item.modelo.materialFacheta ?? null
+      default:             return null
+    }
+  }
 
   const grupos = new Map<string, ConsolidadoCardData>()
 
   for (const card of cards) {
-    const refComp = getRefComponente(card)
-    const corComp = getCorComponente(card)
+    const refComp      = getRefComponente(card)
+    const corComp      = getCorComponente(card)
+    const materialComp = getMaterialComponente(card)
     // Se ref ou cor do componente estiver ausente, não mergear — usar SKU como chave única
+    // Para PALMILHA e FACHETA, o material também integra a chave de agrupamento
     const key = refComp && corComp
-      ? `${refComp}||${corComp}||${card.pedido.numero}`
+      ? `${refComp}||${corComp}||${materialComp ?? ''}||${card.pedido.numero}`
       : `__nomatch__${card.item.sku}||${card.pedido.numero}`
 
     const existing = grupos.get(key)
