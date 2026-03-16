@@ -105,66 +105,9 @@ export async function parseSku(skuBruto: string): Promise<SkuParseResult> {
   const modelo = mapa['modelo'] ?? null
   const cor = mapa['cor'] ?? null
   const tamanho = mapa['tamanho'] ?? null
-  const resolvido = regra.ordem.every((campo) => mapa[campo] != null)
+  const resolvido = !!modelo && !!cor && !!tamanho
 
   return { modelo, cor, tamanho, status: resolvido ? StatusItem.RESOLVIDO : StatusItem.PENDENTE }
-}
-
-// ── Fallback: resolução por prefixo de Modelo cadastrado ─────────────────────
-
-interface ModeloPrefixo {
-  id: string
-  codigo: string
-}
-
-async function resolverPorPrefixoModelo(
-  skuBruto: string,
-  modelosAtivos: ModeloPrefixo[],
-  digitosSufixo: DigitosSegmento[] | null,
-): Promise<SkuParseResult & { modeloDbId: string | null }> {
-  const skuLimpo = skuBruto?.trim() ?? ''
-  if (!skuLimpo || modelosAtivos.length === 0) {
-    return { modelo: null, cor: null, tamanho: null, status: StatusItem.PENDENTE, modeloDbId: null }
-  }
-
-  // Ordenar por comprimento de código decrescente (maior prefixo primeiro)
-  const sorted = [...modelosAtivos].sort((a, b) => b.codigo.length - a.codigo.length)
-
-  for (const m of sorted) {
-    if (!skuLimpo.startsWith(m.codigo)) continue
-
-    const restante = skuLimpo.slice(m.codigo.length)
-    if (restante.length === 0) continue
-
-    // Tentar extrair cor+tamanho do restante usando a mesma lógica de dígitos
-    if (digitosSufixo) {
-      const result = parseSkuSufixo(m.codigo + restante, digitosSufixo)
-      // Verificar se o resultado bate com o modelo encontrado
-      if (result.modelo === m.codigo && result.cor && result.tamanho) {
-        return { ...result, modeloDbId: m.id }
-      }
-    }
-
-    // Fallback: últimos 2 dígitos = tamanho, restante = cor
-    // Cor deve ser alfanumérica (sem separadores/lixo)
-    if (restante.length >= 3 && /^[A-Za-z0-9]+$/.test(restante)) {
-      const tamanho = restante.slice(-2)
-      const cor = restante.slice(0, -2)
-      const tamNum = parseInt(tamanho, 10)
-      // Range 10-50 cobre calçados infantis (16-27) e adultos (33-45)
-      if (!isNaN(tamNum) && tamNum >= 10 && tamNum <= 50 && cor.length > 0) {
-        return {
-          modelo: m.codigo,
-          cor,
-          tamanho,
-          status: StatusItem.RESOLVIDO,
-          modeloDbId: m.id,
-        }
-      }
-    }
-  }
-
-  return { modelo: null, cor: null, tamanho: null, status: StatusItem.PENDENTE, modeloDbId: null }
 }
 
 // ── ST002: interpretarItens ───────────────────────────────────────────────────
@@ -175,44 +118,9 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
   const coresUnicas = new Set<string>()
   const resultados = await Promise.all(itens.map((item) => parseSku(item.skuBruto ?? '')))
 
-  // Identificar itens pendentes para fallback
-  const itensPendentes: number[] = []
-  resultados.forEach((r, idx) => {
+  resultados.forEach((r) => {
     if (r.cor) coresUnicas.add(r.cor)
-    if (r.status === StatusItem.PENDENTE) itensPendentes.push(idx)
   })
-
-  // Buscar modelos ativos para fallback e para enriquecimento
-  const modelosAtivos = await prisma.modelo.findMany({
-    where: { ativo: true },
-    select: { id: true, codigo: true },
-  })
-
-  // Fallback por prefixo para itens que o parser não resolveu
-  const regra = await getRegraAtiva()
-  const fallbackResults = new Map<number, SkuParseResult & { modeloDbId: string | null }>()
-
-  if (itensPendentes.length > 0 && modelosAtivos.length > 0) {
-    await Promise.all(
-      itensPendentes.map(async (idx) => {
-        const skuBruto = itens[idx]!.skuBruto ?? ''
-        const fallback = await resolverPorPrefixoModelo(
-          skuBruto,
-          modelosAtivos,
-          regra?.digitosSufixo ?? null,
-        )
-        if (fallback.status === StatusItem.RESOLVIDO) {
-          fallbackResults.set(idx, fallback)
-          if (fallback.cor) coresUnicas.add(fallback.cor)
-        }
-      }),
-    )
-  }
-
-  // Merge: usar fallback para itens que o parser não resolveu
-  for (const [idx, fallback] of fallbackResults) {
-    resultados[idx] = fallback
-  }
 
   // Coletar modelos únicos (códigos string)
   const modelosUnicos = [...new Set(resultados.map((r) => r.modelo).filter(Boolean) as string[])]
@@ -268,21 +176,20 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
   await Promise.all(
     itens.map(async (item, idx) => {
       const r = resultados[idx]!
-      const fallback = fallbackResults.get(idx)
 
       // Resolver corDescricao: MapeamentoCor primeiro, fallback para código
       const corDescricao = r.cor ? (mapaDescricao.get(r.cor) ?? r.cor) : ''
       const produtoId = r.modelo ? (mapaProduto.get(r.modelo) ?? null) : null
 
-      // Resolver modeloId: do fallback ou do mapa de modelos cadastrados
-      let modeloDbId: string | null = fallback?.modeloDbId ?? null
-      if (!modeloDbId && r.modelo) {
+      // Resolver modeloId do mapa de modelos cadastrados
+      let modeloDbId: string | null = null
+      if (r.modelo) {
         const modeloInfo = mapaModelo.get(r.modelo)
         modeloDbId = modeloInfo?.id ?? null
       }
 
-      const tamanhoNumerico = r.tamanho ? parseInt(r.tamanho, 10) : null
-      const tamanhoValido = tamanhoNumerico !== null && !isNaN(tamanhoNumerico)
+      const tamanhoValido = !!r.tamanho && /^\d+$/.test(r.tamanho)
+      const tamanhoNumerico = tamanhoValido ? parseInt(r.tamanho!, 10) : null
       const statusFinal = r.status === StatusItem.RESOLVIDO && !tamanhoValido
         ? StatusItem.PENDENTE
         : r.status
