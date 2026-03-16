@@ -196,28 +196,19 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
     return { item, r, corDescricao, produtoId, modeloDbId, tamanhoValido, tamanhoNumerico, statusFinal }
   })
 
-  // Bulk UPDATE: 1 round-trip para N rows (vs N round-trips com $transaction sequencial)
-  // Usa $executeRawUnsafe com placeholders explícitos ($1::uuid, $2::text, ...) para garantir
-  // que PostgreSQL infere os tipos corretos nas colunas do VALUES CTE.
-  // Os valores do usuário nunca são interpolados na string SQL — apenas os índices $N.
-  const COLS = 8
-  const placeholders = computed
-    .map((_, i) => {
-      const o = i * COLS
-      return `($${o+1}::uuid, $${o+2}::text, $${o+3}::text, $${o+4}::text, $${o+5}::integer, $${o+6}::"StatusItem", $${o+7}::uuid, $${o+8}::uuid)`
-    })
-    .join(', ')
-
-  const params: unknown[] = computed.flatMap(({ item, r, corDescricao, produtoId, modeloDbId, tamanhoValido, tamanhoNumerico, statusFinal }) => [
-    item.id,
-    r.modelo ?? null,
-    r.cor ?? null,
-    corDescricao || null,
-    tamanhoValido ? tamanhoNumerico : null,
-    statusFinal,
-    produtoId ?? null,
-    modeloDbId ?? null,
-  ])
+  // Bulk UPDATE via UNNEST: 1 round-trip para N rows.
+  // UNNEST com typed array casts ($1::uuid[], $2::text[], ...) garante que o PostgreSQL
+  // conhece o tipo de cada coluna virtual antes do query planning — evita o erro
+  // "operator does not exist: text = uuid" que ocorre com VALUES CTE (onde o tipo é
+  // inferido a partir dos parâmetros enviados como text pelo driver pg).
+  const ids           = computed.map(({ item }) => item.id)
+  const modelos       = computed.map(({ r }) => r.modelo       ?? null)
+  const cores         = computed.map(({ r }) => r.cor          ?? null)
+  const corDescricoes = computed.map(({ corDescricao }) => corDescricao || null)
+  const tamanhos      = computed.map(({ tamanhoValido, tamanhoNumerico }) => tamanhoValido ? tamanhoNumerico : null)
+  const statuses      = computed.map(({ statusFinal }) => statusFinal as string)
+  const produtoIds    = computed.map(({ produtoId }) => produtoId   ?? null)
+  const modeloIds     = computed.map(({ modeloDbId }) => modeloDbId ?? null)
 
   await prisma.$executeRawUnsafe(
     `UPDATE "itens_pedido" AS i
@@ -227,12 +218,27 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
        cor_descricao = v.cor_descricao,
        tamanho       = v.tamanho,
        status        = v.status::"StatusItem",
-       produto_id    = v.produto_id,
-       modelo_id     = v.modelo_id
-     FROM (VALUES ${placeholders})
-       AS v(id, modelo, cor, cor_descricao, tamanho, status, produto_id, modelo_id)
-     WHERE i.id = v.id::uuid`,
-    ...params,
+       produto_id    = v.produto_id::uuid,
+       modelo_id     = v.modelo_id::uuid
+     FROM UNNEST(
+       $1::uuid[],
+       $2::text[],
+       $3::text[],
+       $4::text[],
+       $5::integer[],
+       $6::text[],
+       $7::text[],
+       $8::text[]
+     ) AS v(id, modelo, cor, cor_descricao, tamanho, status, produto_id, modelo_id)
+     WHERE i.id = v.id`,
+    ids,
+    modelos,
+    cores,
+    corDescricoes,
+    tamanhos,
+    statuses,
+    produtoIds,
+    modeloIds,
   )
 
   return computed
