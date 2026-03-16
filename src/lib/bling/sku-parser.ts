@@ -27,29 +27,41 @@ interface CachedRegra {
 // ── Cache de regra ativa (por processo, revalidado sob demanda) ───────────────
 
 let cachedRegra: CachedRegra | null | undefined = undefined
+// Promise deduplication: evita N queries simultâneas no cold start
+let loadingRegraPromise: Promise<CachedRegra | null> | null = null
 
 async function getRegraAtiva(): Promise<CachedRegra | null> {
   if (cachedRegra !== undefined) return cachedRegra
 
-  const regra = await prisma.regraSkU.findFirst({ where: { ativa: true } })
-  if (!regra) {
-    cachedRegra = null
-    return null
+  // Se já há uma busca em andamento, aguarda a mesma promise (não dispara nova query)
+  if (!loadingRegraPromise) {
+    loadingRegraPromise = prisma.regraSkU
+      .findFirst({ where: { ativa: true } })
+      .then((regra) => {
+        if (!regra) {
+          cachedRegra = null
+          return null
+        }
+        const modo = typeof regra.modo === 'string' ? regra.modo : 'SEPARADOR'
+        const ordem = Array.isArray(regra.ordem) ? (regra.ordem as string[]) : []
+        const digitosSufixo = Array.isArray(regra.digitosSufixo)
+          ? (regra.digitosSufixo as unknown as DigitosSegmento[])
+          : null
+        cachedRegra = { modo, separador: regra.separador, ordem, digitosSufixo }
+        return cachedRegra
+      })
+      .finally(() => {
+        loadingRegraPromise = null
+      })
   }
 
-  const modo = typeof regra.modo === 'string' ? regra.modo : 'SEPARADOR'
-  const ordem = Array.isArray(regra.ordem) ? (regra.ordem as string[]) : []
-  const digitosSufixo = Array.isArray(regra.digitosSufixo)
-    ? (regra.digitosSufixo as unknown as DigitosSegmento[])
-    : null
-
-  cachedRegra = { modo, separador: regra.separador, ordem, digitosSufixo }
-  return cachedRegra
+  return loadingRegraPromise
 }
 
 /** Invalida o cache para forçar re-busca (útil após atualização de regra). */
 export function invalidarCacheRegra(): void {
   cachedRegra = undefined
+  loadingRegraPromise = null
 }
 
 // ── Parsing por sufixo (direita para esquerda) ────────────────────────────────
@@ -171,30 +183,24 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
     )
   }
 
-  const interpretados: ItemInterpretado[] = []
+  // Calcular todos os payloads de forma síncrona antes de tocar no DB
+  const computed = itens.map((item, idx) => {
+    const r = resultados[idx]!
+    const corDescricao = r.cor ? (mapaDescricao.get(r.cor) ?? r.cor) : ''
+    const produtoId = r.modelo ? (mapaProduto.get(r.modelo) ?? null) : null
+    const modeloDbId = r.modelo ? (mapaModelo.get(r.modelo)?.id ?? null) : null
+    const tamanhoValido = !!r.tamanho && /^\d+$/.test(r.tamanho)
+    const tamanhoNumerico = tamanhoValido ? parseInt(r.tamanho!, 10) : null
+    const statusFinal =
+      r.status === StatusItem.RESOLVIDO && !tamanhoValido ? StatusItem.PENDENTE : r.status
+    return { item, r, corDescricao, produtoId, modeloDbId, tamanhoValido, tamanhoNumerico, statusFinal }
+  })
 
-  await Promise.all(
-    itens.map(async (item, idx) => {
-      const r = resultados[idx]!
-
-      // Resolver corDescricao: MapeamentoCor primeiro, fallback para código
-      const corDescricao = r.cor ? (mapaDescricao.get(r.cor) ?? r.cor) : ''
-      const produtoId = r.modelo ? (mapaProduto.get(r.modelo) ?? null) : null
-
-      // Resolver modeloId do mapa de modelos cadastrados
-      let modeloDbId: string | null = null
-      if (r.modelo) {
-        const modeloInfo = mapaModelo.get(r.modelo)
-        modeloDbId = modeloInfo?.id ?? null
-      }
-
-      const tamanhoValido = !!r.tamanho && /^\d+$/.test(r.tamanho)
-      const tamanhoNumerico = tamanhoValido ? parseInt(r.tamanho!, 10) : null
-      const statusFinal = r.status === StatusItem.RESOLVIDO && !tamanhoValido
-        ? StatusItem.PENDENTE
-        : r.status
-
-      await prisma.itemPedido.update({
+  // Única transação para todos os updates — atômica, usa uma conexão só,
+  // elimina race conditions causadas por 130+ writes concorrentes no pool do Supabase
+  await prisma.$transaction(
+    computed.map(({ item, r, corDescricao, produtoId, modeloDbId, tamanhoValido, tamanhoNumerico, statusFinal }) =>
+      prisma.itemPedido.update({
         where: { id: item.id },
         data: {
           modelo: r.modelo,
@@ -205,22 +211,21 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
           produtoId,
           modeloId: modeloDbId,
         },
-      })
-
-      if (statusFinal === StatusItem.RESOLVIDO && r.modelo && r.cor && r.tamanho) {
-        interpretados.push({
-          modelo: r.modelo,
-          cor: r.cor,
-          corDescricao: corDescricao || r.cor,
-          tamanho: r.tamanho,
-          quantidade: item.quantidade,
-          status: StatusItem.RESOLVIDO,
-        })
-      }
-    }),
+      }),
+    ),
+    { timeout: 30000 }, // 30s para pedidos grandes (ex: 130 itens)
   )
 
-  return interpretados
+  return computed
+    .filter(({ statusFinal, r }) => statusFinal === StatusItem.RESOLVIDO && r.modelo && r.cor && r.tamanho)
+    .map(({ r, corDescricao, item }) => ({
+      modelo: r.modelo!,
+      cor: r.cor!,
+      corDescricao: corDescricao || r.cor!,
+      tamanho: r.tamanho!,
+      quantidade: item.quantidade,
+      status: StatusItem.RESOLVIDO,
+    }))
 }
 
 // ── Classificação de faixa de numeração ──────────────────────────────────────
