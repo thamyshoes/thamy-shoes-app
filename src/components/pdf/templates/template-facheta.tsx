@@ -23,6 +23,7 @@ export const TemplateFacheta = ({ pedido, item, tamanhos }: TemplateFachetaProps
       titulo="FACHETA"
       pedido={pedido}
       item={item}
+      columns={3}
       especificacoes={[
         { label: 'REF Facheta', valor: item.modelo.facheta },
         { label: 'Cor Facheta', valor: formatCor(item.variante.corFacheta, item.variante.corFachetaDesc ?? item.variante.corPrincipal) },

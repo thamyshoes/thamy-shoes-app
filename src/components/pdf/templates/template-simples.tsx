@@ -64,6 +64,7 @@ interface TemplateSimplesProps {
   especificacoes: EspecificacaoItem[]
   tamanhos: number[]
   hideSku?: boolean
+  columns?: number
 }
 
 export const TemplateSimples = ({
@@ -73,37 +74,47 @@ export const TemplateSimples = ({
   especificacoes,
   tamanhos,
   hideSku,
-}: TemplateSimplesProps) => (
-  <FichaCard>
-    <Text style={pdfBaseStyles.titulo}>{titulo}</Text>
+  columns = 1,
+}: TemplateSimplesProps) => {
+  const specsPerCol = Math.ceil(especificacoes.length / columns)
+  const specCols = Array.from({ length: columns }, (_, i) =>
+    especificacoes.slice(i * specsPerCol, (i + 1) * specsPerCol),
+  )
 
-    {/* Identificacao inline */}
-    <View style={styles.row2col}>
-      <View style={styles.col}>
-        <Field label="Pedido" value={String(pedido.numero)} />
-        <Field label="Fornecedor" value={pedido.fornecedor} />
-      </View>
-      <View style={styles.col}>
-        <Field label="Data" value={formatDate(pedido.data)} />
-        {!hideSku && <Field label="SKU" value={item.sku} />}
-      </View>
-    </View>
+  return (
+    <FichaCard>
+      <Text style={pdfBaseStyles.titulo}>{titulo}</Text>
 
-    {/* Especificacoes inline */}
-    <View style={styles.specsRow}>
-      <View style={styles.col}>
-        {especificacoes.map(({ label, valor }) => (
-          <Field key={label} label={label} value={valor ?? '-'} />
+      {/* Identificacao inline */}
+      <View style={styles.row2col}>
+        <View style={styles.col}>
+          <Field label="Pedido" value={String(pedido.numero)} />
+          <Field label="Fornecedor" value={pedido.fornecedor} />
+        </View>
+        <View style={styles.col}>
+          <Field label="Data" value={formatDate(pedido.data)} />
+          {!hideSku && <Field label="SKU" value={item.sku} />}
+        </View>
+      </View>
+
+      {/* Especificacoes em N colunas balanceadas */}
+      <View style={styles.specsRow}>
+        {specCols.map((colSpecs, i) => (
+          <View key={String(i)} style={styles.col}>
+            {colSpecs.map(({ label, valor }) => (
+              <Field key={label} label={label} value={valor ?? '-'} />
+            ))}
+          </View>
         ))}
       </View>
-    </View>
 
-    {/* Grade */}
-    <GradeNumeracao tamanhos={tamanhos} quantidades={item.quantidades} />
+      {/* Grade */}
+      <GradeNumeracao tamanhos={tamanhos} quantidades={item.quantidades} />
 
-    {/* Observacao */}
-    <View style={{ marginTop: 4, borderTop: '0.5pt solid #d4d4d4', paddingTop: 3 }}>
-      <Text style={styles.fieldLabel}><Text style={{ fontWeight: 'bold', color: PDF_TOKENS.colors.text }}>Observação:</Text></Text>
-    </View>
-  </FichaCard>
-)
+      {/* Observacao */}
+      <View style={{ marginTop: 4, borderTop: '0.5pt solid #d4d4d4', paddingTop: 3 }}>
+        <Text style={styles.fieldLabel}><Text style={{ fontWeight: 'bold', color: PDF_TOKENS.colors.text }}>Observação:</Text></Text>
+      </View>
+    </FichaCard>
+  )
+}

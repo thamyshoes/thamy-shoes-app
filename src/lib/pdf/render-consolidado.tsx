@@ -66,7 +66,7 @@ export async function renderConsolidadoPdf(
   setor: Setor,
   cards: ConsolidadoCardData[],
 ): Promise<Buffer> {
-  const cardElements = cards.map((card) => buildCardElement(setor, card))
+  const cardElements = cards.map((card) => buildCardElement(setor, card)).filter(Boolean)
   const document = <PageLayout cards={cardElements} />
   return renderToBuffer(document as any)
 }
