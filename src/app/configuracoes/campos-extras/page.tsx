@@ -10,7 +10,7 @@ import { ErrorState } from '@/components/ui/error-state'
 import { useAuth } from '@/hooks/use-auth'
 import { apiClient } from '@/lib/api-client'
 import { API_ROUTES, ROUTES } from '@/lib/constants'
-import { Setor, TipoCampo } from '@/types'
+import { Setor, TipoCampo, type UserSession } from '@/types'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
@@ -46,7 +46,7 @@ const SETORES: { key: Setor; label: string }[] = [
 
 // ── Inner content ─────────────────────────────────────────────────────────────
 
-function CamposExtrasContent({ user }: { user: { id: string; perfil: string; setor: string | null; nome: string; email: string } }) {
+function CamposExtrasContent({ user }: { user: UserSession }) {
   const [abaAtiva, setAbaAtiva] = useState<Setor>(Setor.CABEDAL)
   const [campos, setCampos] = useState<CampoExtra[]>([])
   const [loading, setLoading] = useState(true)

@@ -12,7 +12,7 @@ import { apiClient } from '@/lib/api-client'
 import { API_ROUTES, ROUTES } from '@/lib/constants'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { EscopoEquivalencia } from '@/types'
+import { EscopoEquivalencia, type UserSession } from '@/types'
 
 type Escopo = EscopoEquivalencia
 
@@ -26,7 +26,7 @@ interface RegraEquivalencia {
 
 // ── Inner content ─────────────────────────────────────────────────────────────
 
-function EquivalenciasContent({ user }: { user: { id: string; perfil: string; setor: string | null; nome: string; email: string } }) {
+function EquivalenciasContent({ user }: { user: UserSession }) {
   const [equivalencias, setEquivalencias] = useState<RegraEquivalencia[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

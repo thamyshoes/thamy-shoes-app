@@ -12,6 +12,7 @@ import { apiClient } from '@/lib/api-client'
 import { API_ROUTES, ROUTES, TIMING } from '@/lib/constants'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import type { UserSession } from '@/types'
 
 type Segmento = 'modelo' | 'cor' | 'tamanho'
 type Modo = 'SEPARADOR' | 'SUFIXO'
@@ -75,7 +76,7 @@ function parseSkuSufixoLocal(
 
 // ── Inner content ─────────────────────────────────────────────────────────────
 
-function SkuContent({ user }: { user: { id: string; perfil: string; setor: string | null; nome: string; email: string } }) {
+function SkuContent({ user }: { user: UserSession }) {
   const [regras, setRegras] = useState<RegraSkU[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

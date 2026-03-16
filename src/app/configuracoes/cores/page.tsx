@@ -12,6 +12,7 @@ import { apiClient } from '@/lib/api-client'
 import { API_ROUTES, ROUTES } from '@/lib/constants'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import type { UserSession } from '@/types'
 import { SwatchCor } from '@/components/ui/swatch-cor'
 import type { MapeamentoCor } from '@/hooks/use-cores'
 
@@ -24,7 +25,7 @@ interface PreviewLinha {
 
 // ── Inner content ─────────────────────────────────────────────────────────────
 
-function CoresContent({ user }: { user: { id: string; perfil: string; setor: string | null; nome: string; email: string } }) {
+function CoresContent({ user }: { user: UserSession }) {
   const [cores, setCores] = useState<MapeamentoCor[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
