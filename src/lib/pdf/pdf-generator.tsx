@@ -91,6 +91,11 @@ function gradeRowToCard(
 function mergeCardsPorSetor(setor: Setor, cards: ConsolidadoCardData[]): ConsolidadoCardData[] {
   if (setor === Setor.CABEDAL) return cards
 
+  // Para FACHETA: descartar cards sem facheta antes de agrupar
+  if (setor === Setor.FACHETA) {
+    cards = cards.filter((c) => !!c.item.modelo.facheta)
+  }
+
   // Determinar ref e cor do componente para chave de agrupamento
   const getRefComponente = (card: ConsolidadoCardData): string | null => {
     switch (setor) {

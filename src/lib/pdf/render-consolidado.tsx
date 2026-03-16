@@ -66,7 +66,13 @@ export async function renderConsolidadoPdf(
   setor: Setor,
   cards: ConsolidadoCardData[],
 ): Promise<Buffer> {
-  const cardElements = cards.map((card) => buildCardElement(setor, card)).filter(Boolean)
+  // Filtrar cards sem dados relevantes para o setor ANTES de criar elementos JSX.
+  // filter(Boolean) em JSX não funciona — React elements são sempre truthy.
+  const relevantCards = setor === Setor.FACHETA
+    ? cards.filter((c) => !!c.item.modelo.facheta)
+    : cards
+
+  const cardElements = relevantCards.map((card) => buildCardElement(setor, card))
   const document = <PageLayout cards={cardElements} />
   return renderToBuffer(document as any)
 }
