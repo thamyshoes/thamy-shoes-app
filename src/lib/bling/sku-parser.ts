@@ -196,41 +196,29 @@ export async function interpretarItens(itens: ItemPedido[]): Promise<ItemInterpr
     return { item, r, corDescricao, produtoId, modeloDbId, tamanhoValido, tamanhoNumerico, statusFinal }
   })
 
-  // Bulk UPDATE via JSON scalar: 1 round-trip para N rows.
-  //
-  // Por que JSON e não UNNEST/VALUES:
-  //   - VALUES CTE: PostgreSQL infere tipos das colunas como "text" (parâmetros pg = OID unknown)
-  //     → "operator does not exist: text = uuid" no WHERE i.id = v.id
-  //   - UNNEST com $executeRawUnsafe: arrays JS são serializados como JSON ["a","b"] pelo engine
-  //     do Prisma, não como literais PostgreSQL {a,b} — o cast ::uuid[] falha na comparação
-  //   - JSON scalar ($1::json): passa uma única string JSON comum; sem ambiguidade de tipo.
-  //     json_array_elements extrai objetos; (elem->>'id')::uuid é cast explícito text→uuid. ✓
-  const payload = JSON.stringify(
-    computed.map(({ item, r, corDescricao, produtoId, modeloDbId, tamanhoValido, tamanhoNumerico, statusFinal }) => ({
-      id:            item.id,
-      modelo:        r.modelo       ?? null,
-      cor:           r.cor          ?? null,
-      cor_descricao: corDescricao   || null,
-      tamanho:       tamanhoValido ? tamanhoNumerico : null,
-      status:        statusFinal    as string,
-      produto_id:    produtoId      ?? null,
-      modelo_id:     modeloDbId     ?? null,
-    }))
-  )
-
-  await prisma.$executeRaw`
-    UPDATE "itens_pedido" AS i
-    SET
-      modelo        = (elem->>'modelo'),
-      cor           = (elem->>'cor'),
-      cor_descricao = (elem->>'cor_descricao'),
-      tamanho       = (elem->>'tamanho')::integer,
-      status        = (elem->>'status')::"StatusItem",
-      produto_id    = (elem->>'produto_id')::uuid,
-      modelo_id     = (elem->>'modelo_id')::uuid
-    FROM json_array_elements(${payload}::json) AS elem
-    WHERE i.id = (elem->>'id')::uuid
-  `
+  // Lotes de updates tipados via Prisma client: zero raw SQL, zero inferência de tipo.
+  // Lotes de 10 (máx 10 conexões simultâneas) — seguro para pgBouncer transaction mode (20-25 pool).
+  // 130 itens / 10 = 13 lotes × ~50ms = ~650ms total. Dentro do maxDuration=60s com folga.
+  const BATCH_SIZE = 10
+  for (let i = 0; i < computed.length; i += BATCH_SIZE) {
+    const batch = computed.slice(i, i + BATCH_SIZE)
+    await Promise.all(
+      batch.map(({ item, r, corDescricao, produtoId, modeloDbId, tamanhoValido, tamanhoNumerico, statusFinal }) =>
+        prisma.itemPedido.update({
+          where: { id: item.id },
+          data: {
+            modelo:       r.modelo       ?? null,
+            cor:          r.cor          ?? null,
+            corDescricao: corDescricao   || null,
+            tamanho:      tamanhoValido ? tamanhoNumerico : null,
+            status:       statusFinal,
+            produtoId:    produtoId      ?? null,
+            modeloId:     modeloDbId     ?? null,
+          },
+        })
+      )
+    )
+  }
 
   return computed
     .filter(({ statusFinal, r }) => statusFinal === StatusItem.RESOLVIDO && r.modelo && r.cor && r.tamanho)
