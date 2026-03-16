@@ -75,9 +75,13 @@ export type LoginInput = z.infer<typeof loginSchema>
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>
 export type ResetPasswordFormInput = z.infer<typeof resetPasswordFormSchema>
-export type CreateUserInput = z.infer<typeof createUserSchema>
-export type UpdateUserInput = z.infer<typeof updateUserSchema>
-export type EditUserInput = z.infer<typeof editUserSchema>
+export type CreateUserInput = z.output<typeof createUserSchema>
+export type UpdateUserInput = z.output<typeof updateUserSchema>
+export type EditUserInput = z.output<typeof editUserSchema>
+
+// Tipos de formulário (z.input) — usados no useForm para compatibilidade com zodResolver + .default()
+export type CreateUserFormInput = z.input<typeof createUserSchema>
+export type EditUserFormInput = z.input<typeof editUserSchema>
 export type PaginationInput = z.infer<typeof paginationSchema>
 export type ImportPedidoInput = z.infer<typeof importPedidoSchema>
 export type GerarFichasInput = z.infer<typeof gerarFichasSchema>

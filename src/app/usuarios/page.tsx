@@ -18,8 +18,8 @@ import { useAuth } from '@/hooks/use-auth'
 import { useDebounce } from '@/hooks/use-debounce'
 import { API_ROUTES, MESSAGES, LIMITS } from '@/lib/constants'
 import { createUserSchema, editUserSchema } from '@/lib/validators'
-import type { CreateUserInput, EditUserInput } from '@/lib/validators'
-import { Perfil, Setor } from '@/types'
+import type { CreateUserFormInput, EditUserFormInput } from '@/lib/validators'
+import { Perfil } from '@/types'
 import type { PaginatedResponse, UserPublic } from '@/types'
 
 // ── Badge helpers ──────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ function UserModal({ editing, open, onClose, onSuccess, selfId }: UserModalProps
     setValue,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<CreateUserInput | EditUserInput>({
+  } = useForm<CreateUserFormInput | EditUserFormInput>({
     resolver: zodResolver(isEdit ? editUserSchema : createUserSchema),
     defaultValues: editing
       ? {
@@ -98,16 +98,16 @@ function UserModal({ editing, open, onClose, onSuccess, selfId }: UserModalProps
     setValue('setores', novo as Array<'CABEDAL' | 'PALMILHA' | 'SOLA' | 'FACHETA'>)
   }
 
-  async function onSubmit(data: CreateUserInput | EditUserInput) {
+  async function onSubmit(data: CreateUserFormInput | EditUserFormInput) {
     try {
       if (isEdit) {
         const body: Record<string, unknown> = {
           nome: data.nome,
           email: data.email,
           perfil: data.perfil,
-          setores: showSetor ? (data as CreateUserInput).setores : [],
+          setores: showSetor ? ((data as CreateUserFormInput).setores ?? []) : [],
         }
-        if ((data as EditUserInput).password) body.password = (data as EditUserInput).password
+        if ((data as EditUserFormInput).password) body.password = (data as EditUserFormInput).password
         await apiClient.put(API_ROUTES.USUARIO_DETALHE(editing!.id), body)
       } else {
         await apiClient.post(API_ROUTES.USUARIOS, data)
