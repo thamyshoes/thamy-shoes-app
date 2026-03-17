@@ -13,15 +13,16 @@ import { useAuth } from '@/hooks/use-auth'
 import { useFichas, type FichaRow, type FichaGroup } from '@/hooks/use-fichas'
 import { formatDateInput, isValidDateInput, normalizeDateInput } from '@/lib/format'
 import { API_ROUTES } from '@/lib/constants'
-import type { Setor } from '@prisma/client'
 
-const SETOR_OPTIONS = [
-  { value: '', label: 'Todos os setores' },
-  { value: 'CABEDAL', label: 'Cabedal' },
-  { value: 'PALMILHA', label: 'Palmilha' },
-  { value: 'SOLA', label: 'Sola' },
-  { value: 'FACHETA', label: 'Facheta' },
-]
+const ALL_SETORES = ['CABEDAL', 'PALMILHA', 'SOLA', 'FACHETA'] as const
+type SetorKey = typeof ALL_SETORES[number]
+
+const SETOR_LABEL: Record<SetorKey, string> = {
+  CABEDAL: 'Cabedal',
+  PALMILHA: 'Palmilha',
+  SOLA: 'Sola',
+  FACHETA: 'Facheta',
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -52,10 +53,6 @@ function getGroupCreatedAt(group: FichaGroup): string | Date {
 
 function findBySetor(group: FichaGroup, setor: string): FichaRow | undefined {
   return group.find((f) => f.setor === setor)
-}
-
-function groupHasFacheta(group: FichaGroup): boolean {
-  return group.some((f) => f.setor === 'FACHETA')
 }
 
 // ── Setor Cell Buttons ───────────────────────────────────────────────────────
@@ -127,10 +124,10 @@ function SetorActions({ ficha }: { ficha: FichaRow | undefined }) {
 
 // ── Skeleton Row ─────────────────────────────────────────────────────────────
 
-function SkeletonRow() {
+function SkeletonRow({ cols }: { cols: number }) {
   return (
     <tr>
-      {Array.from({ length: 7 }).map((_, i) => (
+      {Array.from({ length: cols }).map((_, i) => (
         <td key={i} className="px-3 py-3">
           <div className="h-4 animate-pulse rounded bg-muted" />
         </td>
@@ -145,46 +142,39 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setores: 
   const searchParams = useSearchParams()
 
   const isProducao = user.perfil === 'PRODUCAO'
-  // Se PRODUCAO tem exatamente 1 setor, trava o filtro nele; se tiver múltiplos, deixa livre
-  const setorUnico = isProducao && user.setores.length === 1 ? user.setores[0] : null
+  // Para PRODUCAO, mostrar apenas colunas dos setores atribuídos
+  const setoresVisiveis = isProducao && user.setores.length > 0
+    ? (user.setores as SetorKey[]).filter((s) => ALL_SETORES.includes(s))
+    : [...ALL_SETORES]
 
-  const [setorInput, setSetorInput] = useState(
-    setorUnico ?? (searchParams.get('setor') ?? ''),
-  )
   const [pedidoInput, setPedidoInput] = useState(searchParams.get('search') ?? '')
   const [dataInput, setDataInput] = useState(
     formatDateInput(searchParams.get('dataInicio') ?? ''),
   )
 
-  const [setorAplicado, setSetorAplicado] = useState(setorInput)
   const [pedidoAplicado, setPedidoAplicado] = useState(pedidoInput)
   const [dataAplicada, setDataAplicada] = useState(dataInput)
   const [page, setPage] = useState(1)
 
-  const setorEfetivo = (setorAplicado || undefined) as Setor | undefined
   const dataFiltro = isValidDateInput(dataAplicada) ? dataAplicada : undefined
 
   const { groups, total, totalPages, loading, error, refetch } = useFichas({
-    setor: setorEfetivo,
     dataInicio: dataFiltro,
     search: pedidoAplicado || undefined,
     page,
   })
 
-  useEffect(() => { setPage(1) }, [setorAplicado, pedidoAplicado, dataAplicada])
+  useEffect(() => { setPage(1) }, [pedidoAplicado, dataAplicada])
 
   function aplicarFiltros() {
-    setSetorAplicado(setorInput)
     setPedidoAplicado(pedidoInput)
     setDataAplicada(dataInput)
     setPage(1)
   }
 
   function limparFiltros() {
-    setSetorInput(setorUnico ?? '')
     setPedidoInput('')
     setDataInput('')
-    setSetorAplicado(setorUnico ?? '')
     setPedidoAplicado('')
     setDataAplicada('')
     setPage(1)
@@ -208,24 +198,6 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setores: 
 
       {/* Filtros */}
       <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-secondary" htmlFor="filtro-setor">
-            Setor
-          </label>
-          <select
-            id="filtro-setor"
-            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
-            value={setorInput}
-            onChange={(e) => setSetorInput(e.target.value)}
-            disabled={!!setorUnico}
-            aria-label="Filtrar por setor"
-          >
-            {SETOR_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
-
         <div>
           <label className="mb-1 block text-xs font-medium text-secondary" htmlFor="filtro-pedido">
             Pedido
@@ -272,29 +244,27 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setores: 
               <col className="w-[100px]" />
               <col className="w-[90px]" />
               <col className="w-[75px]" />
-              <col />
-              <col />
-              <col />
-              <col />
+              {setoresVisiveis.map((s) => <col key={s} />)}
             </colgroup>
             <thead>
               <tr className="border-b border-border bg-muted/40">
                 <th className="px-3 py-2 text-left font-medium text-secondary">Pedido</th>
                 <th className="px-3 py-2 text-center font-medium text-secondary">Data</th>
                 <th className="px-3 py-2 text-left font-medium text-secondary">Horário</th>
-                <th className="border-l-2 border-border px-3 py-2 text-center font-medium text-secondary">Cabedal</th>
-                <th className="border-l-2 border-border px-3 py-2 text-center font-medium text-secondary">Palmilha</th>
-                <th className="border-l-2 border-border px-3 py-2 text-center font-medium text-secondary">Sola</th>
-                <th className="border-l-2 border-border px-3 py-2 text-center font-medium text-secondary">Facheta</th>
+                {setoresVisiveis.map((s) => (
+                  <th key={s} className="border-l-2 border-border px-3 py-2 text-center font-medium text-secondary">
+                    {SETOR_LABEL[s]}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {loading &&
-                Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
+                Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} cols={3 + setoresVisiveis.length} />)}
 
               {!loading && groups.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-secondary">
+                  <td colSpan={3 + setoresVisiveis.length} className="px-4 py-12 text-center text-secondary">
                     <div className="flex flex-col items-center">
                       <ClipboardList className="mb-3 h-10 w-10 text-muted-foreground/40" />
                       <p className="text-sm font-medium text-foreground">Nenhuma ficha encontrada.</p>
@@ -309,7 +279,6 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setores: 
               {!loading && groups.map((group) => {
                 const label = getGroupLabel(group)
                 const { data, hora } = formatDt(getGroupCreatedAt(group))
-                const hasFacheta = groupHasFacheta(group)
 
                 return (
                   <tr
@@ -319,29 +288,13 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setores: 
                     <td className="px-3 py-3 font-mono text-foreground">{label}</td>
                     <td className="px-3 py-3 text-center text-foreground">{data}</td>
                     <td className="px-3 py-3 text-foreground">{hora}</td>
-                    <td className="border-l-2 border-border px-3 py-3">
-                      <div className="flex justify-center">
-                        <SetorActions ficha={findBySetor(group, 'CABEDAL')} />
-                      </div>
-                    </td>
-                    <td className="border-l-2 border-border px-3 py-3">
-                      <div className="flex justify-center">
-                        <SetorActions ficha={findBySetor(group, 'PALMILHA')} />
-                      </div>
-                    </td>
-                    <td className="border-l-2 border-border px-3 py-3">
-                      <div className="flex justify-center">
-                        <SetorActions ficha={findBySetor(group, 'SOLA')} />
-                      </div>
-                    </td>
-                    <td className="border-l-2 border-border px-3 py-3">
-                      <div className="flex justify-center">
-                        {hasFacheta
-                          ? <SetorActions ficha={findBySetor(group, 'FACHETA')} />
-                          : <span className="text-muted-foreground">—</span>
-                        }
-                      </div>
-                    </td>
+                    {setoresVisiveis.map((s) => (
+                      <td key={s} className="border-l-2 border-border px-3 py-3">
+                        <div className="flex justify-center">
+                          <SetorActions ficha={findBySetor(group, s)} />
+                        </div>
+                      </td>
+                    ))}
                   </tr>
                 )
               })}

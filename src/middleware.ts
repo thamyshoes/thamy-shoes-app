@@ -31,12 +31,15 @@ function isPublicRoute(pathname: string): boolean {
 function requiresAdmin(pathname: string): boolean {
   return (
     pathname.startsWith('/pedidos/importar') ||
-    pathname.startsWith('/configuracoes') ||
+    (pathname.startsWith('/configuracoes') && !pathname.startsWith('/configuracoes/senha')) ||
     pathname.startsWith('/mapeamento-sku') ||
     pathname.startsWith('/usuarios') ||
     pathname.startsWith('/api/usuarios') ||
     pathname.startsWith('/api/configuracoes') ||
-    pathname.startsWith('/api/bling/')
+    pathname.startsWith('/api/bling/connect') ||
+    pathname.startsWith('/api/bling/disconnect') ||
+    pathname.startsWith('/api/bling/produtos') ||
+    pathname.startsWith('/api/bling/callback')
   )
 }
 
@@ -44,6 +47,8 @@ function requiresAdminOrPCP(pathname: string): boolean {
   return (
     pathname.startsWith('/pedidos') ||
     pathname.startsWith('/api/pedidos') ||
+    pathname.startsWith('/api/bling/status') ||
+    pathname.startsWith('/api/bling/pedidos') ||
     pathname.startsWith('/api/fichas/gerar') ||
     pathname.startsWith('/api/fichas/consolidar') ||
     pathname.startsWith('/api/consolidar')

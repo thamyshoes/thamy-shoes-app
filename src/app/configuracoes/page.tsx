@@ -31,6 +31,12 @@ const CARDS: ConfigCard[] = [
     href: ROUTES.CONFIG_CAMPOS_EXTRAS,
     icon: '➕',
   },
+  {
+    title: 'Alterar Senha',
+    description: 'Redefina sua senha de acesso ao sistema.',
+    href: '/configuracoes/senha',
+    icon: '🔑',
+  },
 ]
 
 function ConfiguracoesContent() {

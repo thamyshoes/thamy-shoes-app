@@ -153,7 +153,7 @@ export default function PedidosPage() {
     )
   }
 
-  const isAdmin = user.perfil === Perfil.ADMIN
+  const canImportar = isAdminOrPCP(user.perfil)
   const canConsolidar = isAdminOrPCP(user.perfil)
   const columns = buildColumns(canConsolidar, refetch)
 
@@ -172,7 +172,7 @@ export default function PedidosPage() {
                 Consolidar
               </Button>
             )}
-            {isAdmin && (
+            {canImportar && (
               <Button
                 variant="primary"
                 size="sm"
@@ -248,7 +248,7 @@ export default function PedidosPage() {
           loading={loading}
           emptyMessage="Nenhum pedido importado"
           emptyAction={
-            isAdmin
+            canImportar
               ? {
                   label: 'Importar primeiro pedido',
                   onClick: () => setShowImportar(true),

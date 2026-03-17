@@ -20,7 +20,15 @@ import { API_ROUTES, MESSAGES, LIMITS } from '@/lib/constants'
 import { createUserSchema, editUserSchema } from '@/lib/validators'
 import type { CreateUserFormInput, EditUserFormInput } from '@/lib/validators'
 import { Perfil } from '@/types'
-import type { PaginatedResponse, UserPublic } from '@/types'
+import type { UserPublic } from '@/types'
+
+interface UsersResponse {
+  items: UserPublic[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
 
 // ── Badge helpers ──────────────────────────────────────────────────────────────
 
@@ -231,10 +239,10 @@ export default function UsuariosPage() {
         pageSize: String(LIMITS.PAGE_SIZE),
       })
       if (debouncedSearch) params.set('search', debouncedSearch)
-      const data = await apiClient.get<PaginatedResponse<UserPublic>>(
+      const data = await apiClient.get<UsersResponse>(
         `${API_ROUTES.USUARIOS}?${params}`,
       )
-      setUsers(data.data ?? [])
+      setUsers(data.items ?? [])
       setTotal(data.total ?? 0)
     } catch {
       setError(true)

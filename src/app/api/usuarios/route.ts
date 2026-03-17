@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma'
 import { hashPassword, toUserPublic } from '@/lib/auth'
 import { createUserSchema, paginationSchema } from '@/lib/validators'
 import { Perfil } from '@/types'
-import type { PaginatedResponse, UserPublic } from '@/types'
 
 // GET /api/usuarios
 export async function GET(request: NextRequest) {
@@ -33,15 +32,13 @@ export async function GET(request: NextRequest) {
     prisma.user.count({ where }),
   ])
 
-  const response: PaginatedResponse<UserPublic> = {
-    data: users.map(toUserPublic),
+  return NextResponse.json({
+    items: users.map(toUserPublic),
     total,
     page,
     pageSize,
     totalPages: Math.ceil(total / pageSize),
-  }
-
-  return NextResponse.json(response)
+  })
 }
 
 // POST /api/usuarios

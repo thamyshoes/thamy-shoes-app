@@ -77,6 +77,12 @@ const NAV_ITEMS: NavItem[] = [
     perfis: [Perfil.ADMIN],
   },
   {
+    label: 'Configurações',
+    href: '/configuracoes/senha',
+    icon: <Settings className="h-4 w-4" />,
+    perfis: [Perfil.PCP, Perfil.PRODUCAO],
+  },
+  {
     label: 'Gestão de Usuários',
     href: ROUTES.USUARIOS,
     icon: <Users className="h-4 w-4" />,
