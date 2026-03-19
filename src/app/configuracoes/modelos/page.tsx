@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { SidebarLayout } from '@/components/layout/sidebar-layout'
@@ -54,12 +54,21 @@ interface ListResponse {
 
 interface PreviewLinha {
   codigo: string
-  nome: string
-  cabedal: string
-  sola: string
-  palmilha: string
+  modelo: string
+  cor: string
+  tamanho: string
+  descricao: string
   valida: boolean
   erro?: string
+}
+
+interface ImportResult {
+  modelosCriados: number
+  modelosExistentes: number
+  variantesCriadas: number
+  linhasProcessadas: number
+  linhasIgnoradas: number
+  erros: string[]
 }
 
 function toModeloRow(m: ModeloApi): ModeloRow {
@@ -130,6 +139,7 @@ function ModelosContent() {
   // Sync imagens do Bling
   const [syncing, setSyncing] = useState(false)
   const [syncProgress, setSyncProgress] = useState<{ atual: number; produto: string } | null>(null)
+  const syncAbortRef = useRef<AbortController | null>(null)
 
   // Confirm excluir
   const [confirmExcluir, setConfirmExcluir] = useState<ModeloRow | null>(null)
@@ -202,32 +212,79 @@ function ModelosContent() {
   // ── Bulk import ─────────────────────────────────────────────────────────────
 
   function gerarPreview(csv: string): PreviewLinha[] {
-    return csv
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean)
-      .map((linha, i) => {
-        const sep = linha.includes(';') ? ';' : ','
-        const partes = linha.split(sep).map((p) => p.trim())
-        const codigo = partes[0] ?? ''
-        const nome = partes[1] ?? ''
-        if (!codigo || !nome) {
-          return { codigo, nome, cabedal: '', sola: '', palmilha: '', valida: false, erro: `Linha ${i + 1}: código e nome obrigatórios` }
+    const linhas = csv.split('\n').map((l) => l.trim()).filter(Boolean)
+    if (linhas.length === 0) return []
+
+    // Strip BOM UTF-8 se presente
+    linhas[0] = linhas[0]!.replace(/^\uFEFF/, '')
+    const isBling = linhas[0]!.includes('\t') && /^(ID|id)\t/i.test(linhas[0]!)
+    const startIdx = isBling ? 1 : 0
+
+    return linhas.slice(startIdx).map((linha, i) => {
+      if (isBling) {
+        const cols = linha.split('\t')
+        const codigo = cols[1]?.trim() ?? ''
+        const descricao = cols[2]?.trim() ?? ''
+
+        if (!codigo) {
+          return { codigo: '', modelo: '', cor: '', tamanho: '', descricao, valida: false, erro: `Linha ${startIdx + i + 1}: código vazio` }
         }
-        return { codigo, nome, cabedal: partes[2] ?? '', sola: partes[3] ?? '', palmilha: partes[4] ?? '', valida: true }
-      })
+
+        // Preview simplificado: extrair referência do código pelo sufixo
+        // O parsing real acontece no backend via parseSku
+        return { codigo, modelo: '(via SKU)', cor: '', tamanho: '', descricao, valida: true }
+      }
+
+      // Formato manual (backward compat)
+      const sep = linha.includes(';') ? ';' : ','
+      const partes = linha.split(sep).map((p) => p.trim())
+      const cod = partes[0] ?? ''
+      const nome = partes[1] ?? ''
+      if (!cod || !nome) {
+        return { codigo: cod, modelo: '', cor: '', tamanho: '', descricao: nome, valida: false, erro: `Linha ${i + 1}: código e nome obrigatórios` }
+      }
+      return { codigo: cod, modelo: cod, cor: '', tamanho: '', descricao: nome, valida: true }
+    })
+  }
+
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      const text = evt.target?.result
+      if (typeof text === 'string') {
+        setCsvTexto(text)
+        setPreview([])
+      }
+    }
+    reader.readAsText(file, 'UTF-8')
+    // Limpar o input para permitir re-upload do mesmo arquivo
+    e.target.value = ''
   }
 
   async function importar() {
-    if (!csvTexto.trim()) { toast.error('Cole os dados antes de importar'); return }
+    if (!csvTexto.trim()) { toast.error('Selecione ou cole os dados antes de importar'); return }
     setImporting(true)
     try {
-      const result = await apiClient.post<{ criados: number; atualizados: number; erros: string[] }>(
+      const result = await apiClient.post<ImportResult>(
         `${API_ROUTES.MODELOS}/bulk-import`,
         { dados: csvTexto },
       )
-      const msg = `${result.criados} criados, ${result.atualizados} atualizados${result.erros.length ? `, ${result.erros.length} erros` : ''}`
-      toast.success(msg)
+      const partes: string[] = []
+      if (result.modelosCriados > 0) partes.push(`${result.modelosCriados} modelo(s) criado(s)`)
+      if (result.modelosExistentes > 0) partes.push(`${result.modelosExistentes} já existente(s)`)
+      if (result.variantesCriadas > 0) partes.push(`${result.variantesCriadas} variante(s) criada(s)`)
+      if (result.linhasIgnoradas > 0) partes.push(`${result.linhasIgnoradas} ignorada(s)`)
+      if (result.erros.length > 0) partes.push(`${result.erros.length} erro(s)`)
+      const msg = partes.length > 0 ? partes.join(', ') : 'Nenhum dado processado'
+
+      if (result.erros.length > 0) {
+        toast.error(`Importado com erros: ${msg}`)
+      } else {
+        toast.success(`Importação concluída: ${msg}`)
+      }
       setImportModalOpen(false)
       setCsvTexto('')
       setPreview([])
@@ -239,51 +296,84 @@ function ModelosContent() {
     }
   }
 
+  function cancelSync() {
+    syncAbortRef.current?.abort()
+  }
+
   async function syncBling() {
+    const abortController = new AbortController()
+    syncAbortRef.current = abortController
+
     setSyncing(true)
     setSyncProgress(null)
 
-    const totais = { criadas: 0, atualizadas: 0, semModelo: 0, semImagem: 0, imagensBaixadas: 0, erros: [] as string[] }
-    let processadosKeys: string[] = []
-    let pagina = 1
-    let hasMore = true
+    const totais = { criadas: 0, atualizadas: 0, modelosCriados: 0, semImagem: 0, imagensBaixadas: 0, erros: [] as string[] }
+    const MAX_ERROS = 100
+    let totalProcessados = 0
+    const fetchOpts = {
+      method: 'POST',
+      credentials: 'include' as RequestCredentials,
+      headers: { 'Content-Type': 'application/json' },
+      signal: abortController.signal,
+    }
 
     try {
+      // 1. Info: descobrir se é full sync ou incremental
+      setSyncProgress({ atual: 0, produto: 'Consultando Bling…' })
+      const infoRes = await fetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=info`, fetchOpts)
+      if (!infoRes.ok) throw new Error(`Erro ${infoRes.status}`)
+      const info = await infoRes.json() as { isFullSync: boolean }
+
+      if (info.isFullSync) {
+        toast.info('Primeira sincronização — processando todos os produtos do Bling. Isso pode levar alguns minutos.')
+      }
+
+      // 2. Paginar até hasMore=false
+      let pagina = 1
+      let hasMore = true
+
       while (hasMore) {
-        setSyncProgress({ atual: (pagina - 1) * 20, produto: `página ${pagina}` })
+        if (abortController.signal.aborted) break
 
-        const res = await fetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=${pagina}`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ processados: processadosKeys }),
-        })
+        const label = info.isFullSync
+          ? `página ${pagina} (sync completa)`
+          : `página ${pagina}`
+        setSyncProgress({ atual: totalProcessados, produto: label })
 
+        const res = await fetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=${pagina}`, fetchOpts)
         if (!res.ok) throw new Error(`Erro ${res.status}`)
 
         const result = await res.json()
         hasMore = result.hasMore
-        processadosKeys = result.processadosKeys ?? []
+        totalProcessados += result.processados ?? 0
         pagina++
 
         totais.criadas += result.criadas
         totais.atualizadas += result.atualizadas
-        totais.semModelo += result.semModelo
+        totais.modelosCriados += result.modelosCriados ?? 0
         totais.semImagem += result.semImagem
         totais.imagensBaixadas += result.imagensBaixadas
-        if (result.erros?.length) totais.erros.push(...result.erros)
+        if (result.erros?.length && totais.erros.length < MAX_ERROS) {
+          totais.erros.push(...result.erros.slice(0, MAX_ERROS - totais.erros.length))
+        }
+      }
 
-        setSyncProgress({ atual: (pagina - 1) * 20, produto: `página ${pagina - 1} concluída` })
+      // 3. Marcar sync como concluída (atualiza lastSyncProdutosAt)
+      if (!abortController.signal.aborted) {
+        await fetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=done`, fetchOpts).catch(() => {})
       }
 
       const partes: string[] = []
-      if (totais.criadas > 0) partes.push(`${totais.criadas} criada${totais.criadas !== 1 ? 's' : ''}`)
-      if (totais.atualizadas > 0) partes.push(`${totais.atualizadas} atualizada${totais.atualizadas !== 1 ? 's' : ''}`)
+      if (totais.modelosCriados > 0) partes.push(`${totais.modelosCriados} modelo(s) criado(s)`)
+      if (totais.criadas > 0) partes.push(`${totais.criadas} variante(s) criada(s)`)
+      if (totais.atualizadas > 0) partes.push(`${totais.atualizadas} variante(s) atualizada(s)`)
       if (totais.imagensBaixadas > 0) partes.push(`${totais.imagensBaixadas} imagem(ns) importada(s)`)
-      if (totais.semModelo > 0) partes.push(`${totais.semModelo} sem modelo cadastrado`)
-      if (totais.erros.length > 0) partes.push(`${totais.erros.length} erro${totais.erros.length !== 1 ? 's' : ''}`)
+      if (totais.erros.length > 0) partes.push(`${totais.erros.length} erro(s)`)
       const msg = partes.length > 0 ? partes.join(', ') : 'Nenhuma variante encontrada'
-      if (totais.erros.length > 0) {
+
+      if (abortController.signal.aborted) {
+        toast.info(`Sincronização cancelada. Processados até agora: ${msg}`)
+      } else if (totais.erros.length > 0) {
         toast.error(`Sincronizado com erros: ${msg}`)
       } else {
         toast.success(`Sincronização concluída: ${msg}`)
@@ -291,8 +381,13 @@ function ModelosContent() {
 
       await fetchModelos()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao sincronizar com Bling')
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        toast.info('Sincronização cancelada')
+      } else {
+        toast.error(err instanceof Error ? err.message : 'Erro ao sincronizar com Bling')
+      }
     } finally {
+      syncAbortRef.current = null
       setSyncing(false)
       setSyncProgress(null)
     }
@@ -320,13 +415,17 @@ function ModelosContent() {
           </h1>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => void syncBling()} disabled={syncing}>
-            {syncing
-              ? syncProgress
-                ? `Sincronizando… ${syncProgress.atual} produtos`
-                : 'Conectando ao Bling…'
-              : 'Sincronizar Bling'}
-          </Button>
+          {syncing ? (
+            <Button variant="destructive" onClick={cancelSync}>
+              {syncProgress
+                ? `Cancelar (${syncProgress.produto})`
+                : 'Cancelar'}
+            </Button>
+          ) : (
+            <Button variant="secondary" onClick={() => void syncBling()}>
+              Sincronizar Bling
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => { setCsvTexto(''); setPreview([]); setImportModalOpen(true) }}>
             Importar Lote
           </Button>
@@ -393,32 +492,60 @@ function ModelosContent() {
       >
         <div className="space-y-4">
           <p className="text-sm text-secondary">
-            Cole os dados no formato:<br />
-            <span className="font-mono text-xs">Código;Nome;Cabedal;Sola;Palmilha</span><br />
-            Cabedal, Sola e Palmilha são opcionais. Separador: <span className="font-mono">;</span> ou <span className="font-mono">,</span>
+            Importe o CSV exportado pelo Bling. Apenas as colunas <strong>Código</strong> e <strong>Descrição</strong> serão usadas.<br />
+            O SKU será parseado para extrair referência, cor e tamanho. Campos de ficha ficam em branco.<br />
+            <span className="text-xs text-secondary/70">O arquivo CSV não é armazenado — é processado e descartado.</span>
           </p>
-          <textarea
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            rows={8}
-            placeholder={'607;Modelo 607;SANTORINE;100;100\n608;Modelo 608;SANTORINE;100;100'}
-            value={csvTexto}
-            onChange={(e) => { setCsvTexto(e.target.value); setPreview([]) }}
-            aria-label="Dados dos modelos"
-          />
-          <Button variant="secondary" onClick={() => setPreview(gerarPreview(csvTexto))}>
-            Pré-visualizar ({csvTexto.split('\n').filter((l) => l.trim()).length} linhas)
-          </Button>
+
+          {/* Upload de arquivo */}
+          <div className="flex items-center gap-3">
+            <label
+              htmlFor="csv-upload"
+              className="cursor-pointer rounded-md border border-border bg-muted px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted/80 transition-colors"
+            >
+              Selecionar arquivo CSV
+            </label>
+            <input
+              id="csv-upload"
+              type="file"
+              accept=".csv,.txt,.tsv"
+              onChange={handleFileUpload}
+              className="hidden"
+              aria-label="Upload de arquivo CSV"
+            />
+            {csvTexto && (
+              <span className="text-xs text-secondary">
+                {csvTexto.split('\n').filter((l) => l.trim()).length} linhas carregadas
+              </span>
+            )}
+          </div>
+
+          {/* Textarea para colar (alternativa) */}
+          <details className="text-sm">
+            <summary className="cursor-pointer text-secondary hover:text-foreground">Ou cole o conteúdo manualmente</summary>
+            <textarea
+              className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              rows={6}
+              placeholder="Cole o conteúdo do CSV exportado do Bling aqui..."
+              value={csvTexto}
+              onChange={(e) => { setCsvTexto(e.target.value); setPreview([]) }}
+              aria-label="Dados dos modelos"
+            />
+          </details>
+
+          {csvTexto.trim() && (
+            <Button variant="secondary" onClick={() => setPreview(gerarPreview(csvTexto))}>
+              Pré-visualizar
+            </Button>
+          )}
 
           {preview.length > 0 && (
             <div className="max-h-48 overflow-y-auto rounded border border-border">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-muted">
                   <tr>
-                    <th className="px-2 py-1 text-left">Código</th>
-                    <th className="px-2 py-1 text-left">Nome</th>
-                    <th className="px-2 py-1 text-left">Cabedal</th>
-                    <th className="px-2 py-1 text-left">Sola</th>
-                    <th className="px-2 py-1 text-left">Palmilha</th>
+                    <th className="px-2 py-1 text-left">Código SKU</th>
+                    <th className="px-2 py-1 text-left">Descrição</th>
                     <th className="px-2 py-1 text-left">Status</th>
                   </tr>
                 </thead>
@@ -426,17 +553,17 @@ function ModelosContent() {
                   {preview.map((p, i) => (
                     <tr key={i} className={!p.valida ? 'bg-destructive/5' : ''}>
                       <td className="px-2 py-1 font-mono">{p.codigo || '—'}</td>
-                      <td className="px-2 py-1">{p.nome || '—'}</td>
-                      <td className="px-2 py-1 text-secondary">{p.cabedal || '—'}</td>
-                      <td className="px-2 py-1 text-secondary">{p.sola || '—'}</td>
-                      <td className="px-2 py-1 text-secondary">{p.palmilha || '—'}</td>
+                      <td className="px-2 py-1 text-secondary truncate max-w-[200px]">{p.descricao || '—'}</td>
                       <td className={`px-2 py-1 ${p.valida ? 'text-success' : 'text-destructive'}`}>
-                        {p.valida ? 'Válido' : p.erro}
+                        {p.valida ? 'OK' : p.erro}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              <p className="px-2 py-1 text-xs text-secondary border-t border-border">
+                {preview.filter((p) => p.valida).length} válidas, {preview.filter((p) => !p.valida).length} ignoradas
+              </p>
             </div>
           )}
 

@@ -9,12 +9,35 @@ export interface SyncBlingPageResult {
   pagina: number
   hasMore: boolean
   processados: number
+  novos: number
   criadas: number
   atualizadas: number
-  semModelo: number
+  modelosCriados: number
   semImagem: number
   imagensBaixadas: number
   erros: string[]
+  isFullSync?: boolean
+  totalPaginas?: number
+}
+
+// ── Allowlist de domínios para download de imagem (proteção SSRF) ────────────
+
+const ALLOWED_IMAGE_HOSTS = new Set([
+  'i.ibb.co',
+  'images.bling.com.br',
+  'www.bling.com.br',
+  'bling.com.br',
+  'cdn.bling.com.br',
+])
+
+function isAllowedImageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false
+    return ALLOWED_IMAGE_HOSTS.has(parsed.hostname)
+  } catch {
+    return false
+  }
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -24,34 +47,52 @@ async function downloadToSupabase(
   modeloCodigo: string,
   corCodigo: string,
 ): Promise<string | null> {
+  if (!isAllowedImageUrl(remoteUrl)) return null
+
   const ext = remoteUrl.match(/\.(jpe?g|png|webp)/i)?.[1] ?? 'jpg'
   const fileName = `${modeloCodigo}-${corCodigo}.${ext}`
   return StorageService.uploadFromUrl(remoteUrl, fileName)
 }
 
-async function upsertVariante(
+async function findOrCreateModelo(
   modeloCodigo: string,
-  corCodigo: string,
-  imagemRemota: string | null,
-  counters: Pick<SyncBlingPageResult, 'criadas' | 'atualizadas' | 'semModelo' | 'semImagem' | 'imagensBaixadas'>,
-): Promise<void> {
-  const modelo = await prisma.modelo.findUnique({
+  nomeSugerido: string | null,
+  counters: Pick<SyncBlingPageResult, 'modelosCriados'>,
+): Promise<string> {
+  const existing = await prisma.modelo.findUnique({
     where: { codigo: modeloCodigo },
     select: { id: true },
   })
+  if (existing) return existing.id
 
-  if (!modelo) {
-    counters.semModelo++
-    return
-  }
+  const isVariationDesc = nomeSugerido && /tamanho:|cor:/i.test(nomeSugerido)
+  const nome = (nomeSugerido && !isVariationDesc) ? nomeSugerido : `Modelo ${modeloCodigo}`
 
+  const result = await prisma.modelo.upsert({
+    where: { codigo: modeloCodigo },
+    update: {},
+    create: { codigo: modeloCodigo, nome },
+    select: { id: true },
+  })
+
+  counters.modelosCriados++
+  return result.id
+}
+
+/** Retorna true se a variante era nova (não existia no banco). */
+async function upsertVariante(
+  modeloId: string,
+  modeloCodigo: string,
+  corCodigo: string,
+  imagemRemota: string | null,
+  counters: Pick<SyncBlingPageResult, 'criadas' | 'atualizadas' | 'semImagem' | 'imagensBaixadas'>,
+): Promise<boolean> {
   const existente = await prisma.modeloVarianteCor.findUnique({
-    where: { modeloId_corCodigo: { modeloId: modelo.id, corCodigo } },
+    where: { modeloId_corCodigo: { modeloId, corCodigo } },
     select: { id: true, imagemUrl: true },
   })
 
   const jaTemImagemLocal = existente?.imagemUrl?.includes('supabase')
-
   let imagemUrl: string | null = existente?.imagemUrl ?? null
 
   if (imagemRemota && !jaTemImagemLocal) {
@@ -59,69 +100,116 @@ async function upsertVariante(
     if (publicUrl) {
       imagemUrl = publicUrl
       counters.imagensBaixadas++
-    } else {
-      if (!existente?.imagemUrl) {
-        counters.semImagem++
-      }
+    } else if (!existente?.imagemUrl) {
+      counters.semImagem++
     }
   } else if (!imagemRemota && !existente?.imagemUrl) {
     counters.semImagem++
   }
 
+  const hasUpdate = imagemUrl && !jaTemImagemLocal
   await prisma.modeloVarianteCor.upsert({
-    where: { modeloId_corCodigo: { modeloId: modelo.id, corCodigo } },
-    update: imagemUrl && !jaTemImagemLocal ? { imagemUrl } : {},
-    create: { modeloId: modelo.id, corCodigo, imagemUrl },
+    where: { modeloId_corCodigo: { modeloId, corCodigo } },
+    update: hasUpdate ? { imagemUrl } : {},
+    create: { modeloId, corCodigo, imagemUrl },
   })
 
   if (existente) {
-    counters.atualizadas++
+    if (hasUpdate) counters.atualizadas++
+    return false
   } else {
     counters.criadas++
+    return true
   }
+}
+
+/** Formata Date para o Bling v3: YYYY-MM-DD HH:MM:SS */
+function formatBlingDatetime(d: Date): string {
+  return d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '')
 }
 
 // ── route ─────────────────────────────────────────────────────────────────────
 
 // POST /api/configuracoes/modelos/variantes/sync-bling?pagina=N
 //
-// Processa UMA página do Bling (20 produtos) por request.
-// O frontend chama em loop: pagina=1, pagina=2, ... até hasMore=false.
-// Cada request dura poucos segundos → sem timeout na Vercel.
+// Sync incremental: usa lastSyncProdutosAt do BlingConnection para buscar
+// apenas produtos alterados desde a última sync (via dataAlteracaoInicial).
+// Se nunca sincronizou, faz full sync (sem filtro de data).
 //
-// Query param "skip" (opcional): lista de chaves "modelo:cor" já processados
-// em páginas anteriores, enviada como JSON array.
+// pagina=info → retorna se é full sync ou incremental + estimativa
+// pagina=N   → processa página N
+// pagina=done → marca sync como concluída (atualiza lastSyncProdutosAt)
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const guard = requireAdmin(request)
   if (guard) return guard
 
-  const pagina = parseInt(request.nextUrl.searchParams.get('pagina') ?? '1', 10) || 1
+  const paginaParam = request.nextUrl.searchParams.get('pagina') ?? '1'
 
-  // Chaves já processadas em lotes anteriores (deduplicação cross-page)
-  let skipKeys: string[] = []
-  try {
-    const body = await request.json().catch(() => ({}))
-    if (Array.isArray(body?.processados)) {
-      skipKeys = body.processados
+  // Buscar a conexão para saber lastSyncProdutosAt
+  const connection = await prisma.blingConnection.findFirst({
+    select: { id: true, lastSyncProdutosAt: true },
+  })
+
+  const lastSync = connection?.lastSyncProdutosAt ?? null
+  // Buffer de 5 minutos para cobrir alterações em trânsito
+  const desdeDate = lastSync ? new Date(lastSync.getTime() - 5 * 60 * 1000) : null
+  const desde = desdeDate ? formatBlingDatetime(desdeDate) : undefined
+
+  // Modo info: retorna metadados da sync sem processar
+  if (paginaParam === 'info') {
+    try {
+      const { data, hasMore } = await blingService.listProdutos(1, desde)
+      if (!hasMore) {
+        return NextResponse.json({
+          isFullSync: !lastSync,
+          totalPaginas: data.length > 0 ? 1 : 0,
+          estimativa: data.length,
+        })
+      }
+      // Estimar total: se página 1 está cheia, são pelo menos 2+ páginas
+      return NextResponse.json({
+        isFullSync: !lastSync,
+        totalPaginas: null, // desconhecido, frontend paginará até hasMore=false
+        estimativa: !lastSync ? '20000+' : 'desconhecido',
+      })
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : 'Erro ao consultar Bling' },
+        { status: 500 },
+      )
     }
-  } catch { /* vazio é ok */ }
+  }
 
-  const processados = new Set<string>(skipKeys)
+  // Modo done: marca sync como concluída
+  if (paginaParam === 'done') {
+    if (connection) {
+      await prisma.blingConnection.update({
+        where: { id: connection.id },
+        data: { lastSyncProdutosAt: new Date() },
+      })
+    }
+    return NextResponse.json({ ok: true })
+  }
+
+  const pagina = parseInt(paginaParam, 10) || 1
+  const processadosNaPagina = new Set<string>()
 
   const counters: SyncBlingPageResult = {
     pagina,
     hasMore: false,
     processados: 0,
+    novos: 0,
     criadas: 0,
     atualizadas: 0,
-    semModelo: 0,
+    modelosCriados: 0,
     semImagem: 0,
     imagensBaixadas: 0,
     erros: [],
+    isFullSync: !lastSync,
   }
 
   try {
-    const { data: produtos, hasMore } = await blingService.listProdutos(pagina)
+    const { data: produtos, hasMore } = await blingService.listProdutos(pagina, desde)
     counters.hasMore = hasMore
     counters.processados = produtos.length
 
@@ -131,11 +219,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
         if (parsed.modelo && parsed.cor) {
           const chave = `${parsed.modelo}:${parsed.cor}`
-          if (processados.has(chave)) continue
-          processados.add(chave)
+          if (processadosNaPagina.has(chave)) continue
+          processadosNaPagina.add(chave)
 
+          const modeloId = await findOrCreateModelo(parsed.modelo, produto.nome ?? null, counters)
           const imagemUrl = produto.imagemThumbnail ?? null
-          await upsertVariante(parsed.modelo, parsed.cor, imagemUrl, counters)
+          const isNew = await upsertVariante(modeloId, parsed.modelo, parsed.cor, imagemUrl, counters)
+          if (isNew) counters.novos++
           continue
         }
 
@@ -149,11 +239,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           if (!parsedVar.modelo || !parsedVar.cor) continue
 
           const chave = `${parsedVar.modelo}:${parsedVar.cor}`
-          if (processados.has(chave)) continue
-          processados.add(chave)
+          if (processadosNaPagina.has(chave)) continue
+          processadosNaPagina.add(chave)
 
+          const modeloId = await findOrCreateModelo(parsedVar.modelo, detalhe.nome ?? null, counters)
           const imagemUrl = variacao.imagens?.[0]?.link ?? null
-          await upsertVariante(parsedVar.modelo, parsedVar.cor, imagemUrl, counters)
+          const isNew = await upsertVariante(modeloId, parsedVar.modelo, parsedVar.cor, imagemUrl, counters)
+          if (isNew) counters.novos++
         }
       } catch (err) {
         counters.erros.push(
@@ -165,9 +257,5 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     counters.erros.push(err instanceof Error ? err.message : 'erro fatal')
   }
 
-  return NextResponse.json({
-    ...counters,
-    // Retorna chaves processadas para o frontend enviar no próximo lote
-    processadosKeys: Array.from(processados),
-  })
+  return NextResponse.json(counters)
 }
