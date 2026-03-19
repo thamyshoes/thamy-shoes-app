@@ -144,6 +144,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (guard) return guard
 
   const paginaParam = request.nextUrl.searchParams.get('pagina') ?? '1'
+  const diasParam = parseInt(request.nextUrl.searchParams.get('dias') ?? '0', 10) || 0
 
   // Buscar a conexão para saber lastSyncProdutosAt
   const connection = await prisma.blingConnection.findFirst({
@@ -151,11 +152,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   })
 
   const lastSync = connection?.lastSyncProdutosAt ?? null
-  // Se nunca sincronizou, busca apenas últimos 5 dias (não puxa catálogo inteiro)
   const DEFAULT_SYNC_DAYS = 5
-  const desdeDate = lastSync
-    ? new Date(lastSync.getTime() - 5 * 60 * 1000) // buffer 5min para alterações em trânsito
-    : new Date(Date.now() - DEFAULT_SYNC_DAYS * 24 * 60 * 60 * 1000)
+
+  let desdeDate: Date
+  if (diasParam > 0) {
+    // Override explícito do frontend (ex: "Bling 5 dias" ou "Bling 30 dias")
+    desdeDate = new Date(Date.now() - diasParam * 24 * 60 * 60 * 1000)
+  } else if (lastSync) {
+    desdeDate = new Date(lastSync.getTime() - 5 * 60 * 1000) // buffer 5min
+  } else {
+    desdeDate = new Date(Date.now() - DEFAULT_SYNC_DAYS * 24 * 60 * 60 * 1000)
+  }
   const desde = formatBlingDatetime(desdeDate)
 
   // Modo info: retorna metadados da sync sem processar

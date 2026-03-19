@@ -300,7 +300,7 @@ function ModelosContent() {
     syncAbortRef.current?.abort()
   }
 
-  async function syncBling() {
+  async function syncBling(dias?: number) {
     const abortController = new AbortController()
     syncAbortRef.current = abortController
 
@@ -311,6 +311,7 @@ function ModelosContent() {
     const MAX_ERROS = 100
     let totalProcessados = 0
 
+    const diasParam = dias ? `&dias=${dias}` : ''
     const doFetch = (url: string) =>
       fetch(url, {
         method: 'POST',
@@ -322,7 +323,7 @@ function ModelosContent() {
     try {
       // 1. Info: descobrir se é full sync ou incremental
       setSyncProgress({ atual: 0, produto: 'Consultando Bling…' })
-      const infoRes = await doFetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=info`)
+      const infoRes = await doFetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=info${diasParam}`)
       if (!infoRes.ok) throw new Error(`Erro ${infoRes.status}`)
       const info = await infoRes.json() as { isFirstSync: boolean; desde: string }
 
@@ -342,7 +343,7 @@ function ModelosContent() {
           produto: `Página ${pagina}…`,
         })
 
-        const res = await doFetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=${pagina}`)
+        const res = await doFetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=${pagina}${diasParam}`)
         if (!res.ok) throw new Error(`Erro ${res.status}`)
 
         const result = await res.json()
@@ -435,20 +436,22 @@ function ModelosContent() {
         </div>
         <div className="flex gap-2">
           {syncing ? (
+            <Button variant="destructive" onClick={cancelSync}>
+              Cancelar
+              <svg className="ml-2 h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            </Button>
+          ) : (
             <>
-              <span className="text-sm text-secondary animate-pulse">
-                {syncProgress
-                  ? `${syncProgress.produto} (${syncProgress.atual} produtos)`
-                  : 'Conectando…'}
-              </span>
-              <Button variant="destructive" onClick={cancelSync}>
-                Cancelar
+              <Button variant="secondary" onClick={() => void syncBling(5)}>
+                Bling (5 dias)
+              </Button>
+              <Button variant="secondary" onClick={() => void syncBling(30)}>
+                Bling (30 dias)
               </Button>
             </>
-          ) : (
-            <Button variant="secondary" onClick={() => void syncBling()}>
-              Sincronizar Bling
-            </Button>
           )}
           <Button variant="secondary" onClick={() => { setCsvTexto(''); setPreview([]); setImportModalOpen(true) }}>
             Importar Lote
