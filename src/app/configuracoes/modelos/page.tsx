@@ -310,22 +310,24 @@ function ModelosContent() {
     const totais = { criadas: 0, atualizadas: 0, modelosCriados: 0, semImagem: 0, imagensBaixadas: 0, erros: [] as string[] }
     const MAX_ERROS = 100
     let totalProcessados = 0
-    const fetchOpts = {
-      method: 'POST',
-      credentials: 'include' as RequestCredentials,
-      headers: { 'Content-Type': 'application/json' },
-      signal: abortController.signal,
-    }
+
+    const doFetch = (url: string) =>
+      fetch(url, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        signal: abortController.signal,
+      })
 
     try {
       // 1. Info: descobrir se é full sync ou incremental
       setSyncProgress({ atual: 0, produto: 'Consultando Bling…' })
-      const infoRes = await fetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=info`, fetchOpts)
+      const infoRes = await doFetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=info`)
       if (!infoRes.ok) throw new Error(`Erro ${infoRes.status}`)
       const info = await infoRes.json() as { isFullSync: boolean }
 
       if (info.isFullSync) {
-        toast.info('Primeira sincronização — processando todos os produtos do Bling. Isso pode levar alguns minutos.')
+        toast.info('Primeira sincronização — pode levar alguns minutos.')
       }
 
       // 2. Paginar até hasMore=false
@@ -335,12 +337,12 @@ function ModelosContent() {
       while (hasMore) {
         if (abortController.signal.aborted) break
 
-        const label = info.isFullSync
-          ? `página ${pagina} (sync completa)`
-          : `página ${pagina}`
-        setSyncProgress({ atual: totalProcessados, produto: label })
+        setSyncProgress({
+          atual: totalProcessados,
+          produto: info.isFullSync ? `Sync completa — página ${pagina}…` : `Página ${pagina}…`,
+        })
 
-        const res = await fetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=${pagina}`, fetchOpts)
+        const res = await doFetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=${pagina}`)
         if (!res.ok) throw new Error(`Erro ${res.status}`)
 
         const result = await res.json()
@@ -358,38 +360,48 @@ function ModelosContent() {
         }
       }
 
-      // 3. Marcar sync como concluída (atualiza lastSyncProdutosAt)
+      // 3. Limpar estado visual ANTES de chamadas finais
+      setSyncing(false)
+      setSyncProgress(null)
+      syncAbortRef.current = null
+
+      // 4. Marcar sync como concluída (sem abort signal — request independente)
       if (!abortController.signal.aborted) {
-        await fetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=done`, fetchOpts).catch(() => {})
+        await fetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=done`, {
+          method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+        }).catch(() => {})
       }
 
+      // 5. Mostrar resultado
       const partes: string[] = []
       if (totais.modelosCriados > 0) partes.push(`${totais.modelosCriados} modelo(s) criado(s)`)
       if (totais.criadas > 0) partes.push(`${totais.criadas} variante(s) criada(s)`)
       if (totais.atualizadas > 0) partes.push(`${totais.atualizadas} variante(s) atualizada(s)`)
       if (totais.imagensBaixadas > 0) partes.push(`${totais.imagensBaixadas} imagem(ns) importada(s)`)
       if (totais.erros.length > 0) partes.push(`${totais.erros.length} erro(s)`)
-      const msg = partes.length > 0 ? partes.join(', ') : 'Nenhuma variante encontrada'
+      const msg = partes.length > 0 ? partes.join(', ') : 'Nenhuma variante nova'
 
       if (abortController.signal.aborted) {
-        toast.info(`Sincronização cancelada. Processados até agora: ${msg}`)
+        toast.info(`Cancelado. ${msg}`)
       } else if (totais.erros.length > 0) {
         toast.error(`Sincronizado com erros: ${msg}`)
       } else {
         toast.success(`Sincronização concluída: ${msg}`)
       }
 
-      await fetchModelos()
+      // 6. Recarregar lista de modelos
+      fetchModelos().catch(() => {})
     } catch (err) {
+      // Limpar estado visual no catch também
+      setSyncing(false)
+      setSyncProgress(null)
+      syncAbortRef.current = null
+
       if (err instanceof DOMException && err.name === 'AbortError') {
         toast.info('Sincronização cancelada')
       } else {
         toast.error(err instanceof Error ? err.message : 'Erro ao sincronizar com Bling')
       }
-    } finally {
-      syncAbortRef.current = null
-      setSyncing(false)
-      setSyncProgress(null)
     }
   }
 
@@ -416,11 +428,16 @@ function ModelosContent() {
         </div>
         <div className="flex gap-2">
           {syncing ? (
-            <Button variant="destructive" onClick={cancelSync}>
-              {syncProgress
-                ? `Cancelar (${syncProgress.produto})`
-                : 'Cancelar'}
-            </Button>
+            <>
+              <span className="text-sm text-secondary animate-pulse">
+                {syncProgress
+                  ? `${syncProgress.produto} (${syncProgress.atual} produtos)`
+                  : 'Conectando…'}
+              </span>
+              <Button variant="destructive" size="sm" onClick={cancelSync}>
+                Cancelar
+              </Button>
+            </>
           ) : (
             <Button variant="secondary" onClick={() => void syncBling()}>
               Sincronizar Bling
