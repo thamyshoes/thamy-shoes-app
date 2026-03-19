@@ -5,6 +5,10 @@
     {
       "path": "/api/cron/check-bling-token",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-fichas",
+      "schedule": "0 3 * * *"
     }
   ],
   "headers": [
