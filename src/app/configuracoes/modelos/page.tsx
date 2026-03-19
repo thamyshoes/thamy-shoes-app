@@ -441,7 +441,7 @@ function ModelosContent() {
                   ? `${syncProgress.produto} (${syncProgress.atual} produtos)`
                   : 'Conectando…'}
               </span>
-              <Button variant="destructive" size="sm" onClick={cancelSync}>
+              <Button variant="destructive" onClick={cancelSync}>
                 Cancelar
               </Button>
             </>
