@@ -331,9 +331,9 @@ class BlingIntegrationService {
   /**
    * Lista produtos do Bling com paginação.
    * @param pagina Página (1-based)
-   * @param desde Datetime no formato Bling "YYYY-MM-DD HH:MM:SS" — filtra por dataAlteracaoInicial
+   * @param criadosDesde Datetime "YYYY-MM-DD HH:MM:SS" — filtra por dataInclusaoInicial (data de CRIAÇÃO)
    */
-  async listProdutos(pagina = 1, desde?: string): Promise<{ data: BlingProduto[]; hasMore: boolean }> {
+  async listProdutos(pagina = 1, criadosDesde?: string): Promise<{ data: BlingProduto[]; hasMore: boolean }> {
     const limite = 100
     const params = new URLSearchParams({
       pagina: String(pagina),
@@ -341,17 +341,18 @@ class BlingIntegrationService {
       situacao: 'A',
     })
 
-    if (desde) {
-      params.set('dataAlteracaoInicial', desde)
+    if (criadosDesde) {
+      params.set('dataInclusaoInicial', criadosDesde)
       const now = new Date()
       const fim = `${now.toISOString().split('T')[0]} 23:59:59`
-      params.set('dataAlteracaoFinal', fim)
+      params.set('dataInclusaoFinal', fim)
     }
 
-    const response = await this.blingRequest<{ data: BlingProduto[] }>(
-      'GET',
-      `/produtos?${params.toString()}`,
-    )
+    const path = `/produtos?${params.toString()}`
+    console.log(`[bling-sync] GET ${path}`)
+
+    const response = await this.blingRequest<{ data: BlingProduto[] }>('GET', path)
+    console.log(`[bling-sync] Página ${pagina}: ${response.data.length} produtos retornados`)
     return { data: response.data, hasMore: response.data.length === limite }
   }
 

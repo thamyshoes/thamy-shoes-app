@@ -17,7 +17,7 @@ export interface SyncBlingPageResult {
   imagensBaixadas: number
   erros: string[]
   isFirstSync?: boolean
-  totalPaginas?: number
+  desde?: string  // debug: filtro de data usado
 }
 
 // ── Allowlist de domínios para download de imagem (proteção SSRF) ────────────
@@ -133,8 +133,8 @@ function formatBlingDatetime(d: Date): string {
 // POST /api/configuracoes/modelos/variantes/sync-bling?pagina=N
 //
 // Sync incremental: usa lastSyncProdutosAt do BlingConnection para buscar
-// apenas produtos alterados desde a última sync (via dataAlteracaoInicial).
-// Se nunca sincronizou, faz full sync (sem filtro de data).
+// apenas produtos CRIADOS desde a última sync (via dataInclusaoInicial).
+// Se nunca sincronizou, busca últimos N dias (default 5).
 //
 // pagina=info → retorna se é full sync ou incremental + estimativa
 // pagina=N   → processa página N
@@ -202,6 +202,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     imagensBaixadas: 0,
     erros: [],
     isFirstSync: !lastSync,
+    desde,
   }
 
   try {
