@@ -16,7 +16,7 @@ export interface SyncBlingPageResult {
   semImagem: number
   imagensBaixadas: number
   erros: string[]
-  isFullSync?: boolean
+  isFirstSync?: boolean
   totalPaginas?: number
 }
 
@@ -151,26 +151,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   })
 
   const lastSync = connection?.lastSyncProdutosAt ?? null
-  // Buffer de 5 minutos para cobrir alterações em trânsito
-  const desdeDate = lastSync ? new Date(lastSync.getTime() - 5 * 60 * 1000) : null
-  const desde = desdeDate ? formatBlingDatetime(desdeDate) : undefined
+  // Se nunca sincronizou, busca apenas últimos 5 dias (não puxa catálogo inteiro)
+  const DEFAULT_SYNC_DAYS = 5
+  const desdeDate = lastSync
+    ? new Date(lastSync.getTime() - 5 * 60 * 1000) // buffer 5min para alterações em trânsito
+    : new Date(Date.now() - DEFAULT_SYNC_DAYS * 24 * 60 * 60 * 1000)
+  const desde = formatBlingDatetime(desdeDate)
 
   // Modo info: retorna metadados da sync sem processar
   if (paginaParam === 'info') {
     try {
       const { data, hasMore } = await blingService.listProdutos(1, desde)
-      if (!hasMore) {
-        return NextResponse.json({
-          isFullSync: !lastSync,
-          totalPaginas: data.length > 0 ? 1 : 0,
-          estimativa: data.length,
-        })
-      }
-      // Estimar total: se página 1 está cheia, são pelo menos 2+ páginas
       return NextResponse.json({
-        isFullSync: !lastSync,
-        totalPaginas: null, // desconhecido, frontend paginará até hasMore=false
-        estimativa: !lastSync ? '20000+' : 'desconhecido',
+        isFirstSync: !lastSync,
+        hasMore,
+        estimativa: data.length,
+        desde: formatBlingDatetime(desdeDate),
       })
     } catch (err) {
       return NextResponse.json(
@@ -205,7 +201,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     semImagem: 0,
     imagensBaixadas: 0,
     erros: [],
-    isFullSync: !lastSync,
+    isFirstSync: !lastSync,
   }
 
   try {

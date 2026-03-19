@@ -324,10 +324,10 @@ function ModelosContent() {
       setSyncProgress({ atual: 0, produto: 'Consultando Bling…' })
       const infoRes = await doFetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=info`)
       if (!infoRes.ok) throw new Error(`Erro ${infoRes.status}`)
-      const info = await infoRes.json() as { isFullSync: boolean }
+      const info = await infoRes.json() as { isFirstSync: boolean; desde: string }
 
-      if (info.isFullSync) {
-        toast.info('Primeira sincronização — pode levar alguns minutos.')
+      if (info.isFirstSync) {
+        toast.info('Primeira sincronização — buscando produtos dos últimos dias.')
       }
 
       // 2. Paginar até hasMore=false
@@ -339,7 +339,7 @@ function ModelosContent() {
 
         setSyncProgress({
           atual: totalProcessados,
-          produto: info.isFullSync ? `Sync completa — página ${pagina}…` : `Página ${pagina}…`,
+          produto: `Página ${pagina}…`,
         })
 
         const res = await doFetch(`${API_ROUTES.VARIANTES_SYNC_BLING}?pagina=${pagina}`)
