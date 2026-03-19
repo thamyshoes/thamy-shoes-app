@@ -372,21 +372,28 @@ function ModelosContent() {
         }).catch(() => {})
       }
 
-      // 5. Mostrar resultado
-      const partes: string[] = []
-      if (totais.modelosCriados > 0) partes.push(`${totais.modelosCriados} modelo(s) criado(s)`)
-      if (totais.criadas > 0) partes.push(`${totais.criadas} variante(s) criada(s)`)
-      if (totais.atualizadas > 0) partes.push(`${totais.atualizadas} variante(s) atualizada(s)`)
-      if (totais.imagensBaixadas > 0) partes.push(`${totais.imagensBaixadas} imagem(ns) importada(s)`)
-      if (totais.erros.length > 0) partes.push(`${totais.erros.length} erro(s)`)
-      const msg = partes.length > 0 ? partes.join(', ') : 'Nenhuma variante nova'
+      // 5. Mostrar resultado amigável
+      const teveMudanca = totais.modelosCriados > 0 || totais.criadas > 0 || totais.atualizadas > 0 || totais.imagensBaixadas > 0
 
       if (abortController.signal.aborted) {
-        toast.info(`Cancelado. ${msg}`)
+        toast.info('Sincronização cancelada.')
       } else if (totais.erros.length > 0) {
-        toast.error(`Sincronizado com erros: ${msg}`)
+        const partes: string[] = []
+        if (teveMudanca) {
+          if (totais.modelosCriados > 0) partes.push(`${totais.modelosCriados} modelo(s) novo(s)`)
+          if (totais.criadas > 0) partes.push(`${totais.criadas} variante(s) nova(s)`)
+        }
+        partes.push(`${totais.erros.length} erro(s)`)
+        toast.error(`Sincronizado com erros: ${partes.join(', ')}`)
+      } else if (!teveMudanca) {
+        toast.success(`Tudo sincronizado! ${totalProcessados} produto(s) verificado(s), nenhuma novidade.`)
       } else {
-        toast.success(`Sincronização concluída: ${msg}`)
+        const partes: string[] = []
+        if (totais.modelosCriados > 0) partes.push(`${totais.modelosCriados} modelo(s) novo(s)`)
+        if (totais.criadas > 0) partes.push(`${totais.criadas} variante(s) nova(s)`)
+        if (totais.atualizadas > 0) partes.push(`${totais.atualizadas} atualizada(s)`)
+        if (totais.imagensBaixadas > 0) partes.push(`${totais.imagensBaixadas} imagem(ns) importada(s)`)
+        toast.success(`Sincronização concluída: ${partes.join(', ')}`)
       }
 
       // 6. Recarregar lista de modelos
