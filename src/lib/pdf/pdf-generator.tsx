@@ -232,36 +232,19 @@ export class PdfGeneratorService {
 
     // Usar setores solicitados ou auto-detectar (inclui FACHETA se algum modelo tem)
     const setoresBase = setoresSolicitados ?? [Setor.CABEDAL, Setor.PALMILHA, Setor.SOLA]
-    const setoresFiltrados = temFacheta && !setoresBase.includes(Setor.FACHETA)
+    const setoresComFacheta = temFacheta && !setoresBase.includes(Setor.FACHETA)
       ? [...setoresBase, Setor.FACHETA]
       : temFacheta
         ? setoresBase
         : setoresBase.filter((s) => s !== Setor.FACHETA)
 
-    console.log('[gerarFichas] temFacheta:', temFacheta, 'setores:', setoresFiltrados)
+    // Ordenar: setores leves primeiro, CABEDAL por último (mais pesado — inclui download de imagens)
+    const SETOR_PESO: Record<string, number> = { SOLA: 0, PALMILHA: 1, FACHETA: 2, CABEDAL: 3 }
+    const setoresFiltrados = [...setoresComFacheta].sort(
+      (a, b) => (SETOR_PESO[a] ?? 9) - (SETOR_PESO[b] ?? 9),
+    )
 
-    // Pre-convert images to base64 for CABEDAL setor (runs once, shared across renders)
-    let imagensBase64: Map<string, string> | undefined
-    if (setoresFiltrados.includes(Setor.CABEDAL)) {
-      const urlsUnicas = [...new Set(grades.map((g) => g.imagemUrl).filter((u): u is string => !!u))]
-      if (urlsUnicas.length > 0) {
-        const conversoes = await Promise.all(urlsUnicas.map(async (url) => {
-          const b64 = await imageUrlToBase64(url)
-          return [url, b64] as const
-        }))
-        imagensBase64 = new Map(conversoes.filter(([, b64]) => b64 !== null) as [string, string][])
-        console.log(`[gerarFichas] Imagens convertidas para CABEDAL: ${imagensBase64.size}/${urlsUnicas.length}`)
-      }
-
-      // Detectar grades sem imagem de variante e gerar aviso
-      const gradesSemImagem = grades.filter((g) => !g.imagemUrl)
-      if (gradesSemImagem.length > 0) {
-        const nomes = gradesSemImagem.map((g) => `${g.modelo} cor ${g.cor ?? '?'}`).join(', ')
-        const aviso = `CABEDAL: ${gradesSemImagem.length} grade(s) sem imagem de variante — ${nomes}. Cadastre a variante de cor em Configurações > Modelos.`
-        console.warn('[gerarFichas]', aviso)
-        avisos.push(aviso)
-      }
-    }
+    console.log('[gerarFichas] temFacheta:', temFacheta, 'setores (ordenados):', setoresFiltrados)
 
     const pedidoData: PedidoData = {
       numero: pedido.numero,
@@ -269,50 +252,70 @@ export class PdfGeneratorService {
       fornecedor: pedido.fornecedorNome,
     }
 
-    // Render and upload PDFs sequentially (yoga-layout WASM crashes with parallel renders)
-    const pdfUploads: { setor: Setor; pdfUrl: string; totalCards: number }[] = []
-    for (const setor of setoresFiltrados) {
-      console.log(`[gerarFichas] Renderizando PDF setor: ${setor}`)
+    // Deletar fichas antigas antes de começar (para que fichas salvas incrementalmente não coexistam com antigas)
+    await prisma.fichaProducao.deleteMany({
+      where: {
+        pedidoId,
+        setor: { in: setoresFiltrados },
+      },
+    })
 
-      // Attach base64 images for CABEDAL grades
-      const gradesComImagem = setor === Setor.CABEDAL && imagensBase64 && imagensBase64.size > 0
-        ? grades.map((g) => ({
-            ...g,
-            imagemBase64: g.imagemUrl ? imagensBase64!.get(g.imagemUrl) ?? undefined : undefined,
-          }))
-        : grades
-
-      const cardsRaw: ConsolidadoCardData[] = gradesComImagem.map((g) => gradeRowToCard(g, pedidoData, corDescMap))
-      const cards = mergeCardsPorSetor(setor, cardsRaw)
-
-      const pdfBuffer = await renderConsolidadoPdf(setor, cards)
-      console.log(`[gerarFichas] PDF ${setor} renderizado, tamanho: ${pdfBuffer.length}`)
-
-      const storagePath = `pedidos/${pedidoId}/${setor.toLowerCase()}.pdf`
-      const pdfUrl = await this.uploadToStorage(pdfBuffer, storagePath)
-      console.log(`[gerarFichas] PDF ${setor} upload OK: ${pdfUrl}`)
-
-      pdfUploads.push({ setor, pdfUrl, totalCards: cards.length })
-    }
-
-    console.log('[gerarFichas] Todos PDFs prontos, persistindo no banco...')
-
-    // Persist all records in a single transaction (rollback on failure)
     const geradoEm = new Date().toISOString()
-    await prisma.$transaction(async (tx) => {
-      // Deletar fichas antigas dos setores que serão regerados
-      await tx.fichaProducao.deleteMany({
-        where: {
-          pedidoId,
-          setor: { in: pdfUploads.map((u) => u.setor) },
-        },
-      })
+    const setoresFalhados: string[] = []
 
-      for (const { setor, pdfUrl, totalCards } of pdfUploads) {
+    // Render, upload e persist INCREMENTALMENTE por setor
+    // (yoga-layout WASM requer renders sequenciais; persistência imediata evita perda por timeout)
+    for (const setor of setoresFiltrados) {
+      try {
+        console.log(`[gerarFichas] Renderizando PDF setor: ${setor}`)
+
+        // Converter imagens para base64 apenas quando for CABEDAL (mais pesado, feito por último)
+        let gradesParaRender = grades
+        if (setor === Setor.CABEDAL) {
+          const urlsUnicas = [...new Set(grades.map((g) => g.imagemUrl).filter((u): u is string => !!u))]
+          if (urlsUnicas.length > 0) {
+            const conversoes = await Promise.all(urlsUnicas.map(async (url) => {
+              const b64 = await imageUrlToBase64(url)
+              return [url, b64] as const
+            }))
+            const imagensBase64 = new Map(conversoes.filter(([, b64]) => b64 !== null) as [string, string][])
+            console.log(`[gerarFichas] Imagens convertidas para CABEDAL: ${imagensBase64.size}/${urlsUnicas.length}`)
+            gradesParaRender = grades.map((g) => ({
+              ...g,
+              imagemBase64: g.imagemUrl ? imagensBase64.get(g.imagemUrl) ?? undefined : undefined,
+            }))
+          }
+
+          // Detectar grades sem imagem de variante e gerar aviso
+          const gradesSemImagem = grades.filter((g) => !g.imagemUrl)
+          if (gradesSemImagem.length > 0) {
+            const nomes = gradesSemImagem.map((g) => `${g.modelo} cor ${g.cor ?? '?'}`).join(', ')
+            const aviso = `CABEDAL: ${gradesSemImagem.length} grade(s) sem imagem de variante — ${nomes}. Cadastre a variante de cor em Configurações > Modelos.`
+            console.warn('[gerarFichas]', aviso)
+            avisos.push(aviso)
+          }
+        }
+
+        const cardsRaw: ConsolidadoCardData[] = gradesParaRender.map((g) => gradeRowToCard(g, pedidoData, corDescMap))
+        const cards = mergeCardsPorSetor(setor, cardsRaw)
+
+        if (cards.length === 0) {
+          console.warn(`[gerarFichas] Setor ${setor}: 0 cards após merge, pulando`)
+          continue
+        }
+
+        const pdfBuffer = await renderConsolidadoPdf(setor, cards)
+        console.log(`[gerarFichas] PDF ${setor} renderizado, tamanho: ${pdfBuffer.length}`)
+
+        const storagePath = `pedidos/${pedidoId}/${setor.toLowerCase()}.pdf`
+        const pdfUrl = await this.uploadToStorage(pdfBuffer, storagePath)
+        console.log(`[gerarFichas] PDF ${setor} upload OK: ${pdfUrl}`)
+
+        // Persistir ficha imediatamente (não esperar todos os setores)
         const dadosJson = {
           setor,
           pedidoId,
-          totalCards,
+          totalCards: cards.length,
           geradoEm,
           itens: pedido.itens.map((i) => ({
             sku: i.skuBruto,
@@ -321,7 +324,7 @@ export class PdfGeneratorService {
           })),
         }
 
-        const ficha = await tx.fichaProducao.create({
+        const ficha = await prisma.fichaProducao.create({
           data: {
             pedidoId,
             setor,
@@ -331,16 +334,33 @@ export class PdfGeneratorService {
           },
         })
 
-        fichasGeradas.push({ id: ficha.id, fichaProducaoId: ficha.id, setor, pdfUrl, totalPares, totalCards })
+        fichasGeradas.push({ id: ficha.id, fichaProducaoId: ficha.id, setor, pdfUrl, totalPares, totalCards: cards.length })
+        console.log(`[gerarFichas] Ficha ${setor} persistida: ${ficha.id}`)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error(`[gerarFichas] ERRO no setor ${setor}:`, msg, err instanceof Error ? err.stack : '')
+        setoresFalhados.push(setor)
+        avisos.push(`Falha ao gerar ficha de ${setor}: ${msg}`)
       }
+    }
 
-      await tx.pedidoCompra.update({
+    // Atualizar status do pedido se pelo menos uma ficha foi gerada
+    if (fichasGeradas.length > 0) {
+      await prisma.pedidoCompra.update({
         where: { id: pedidoId },
         data: { status: StatusPedido.FICHAS_GERADAS },
       })
-    })
+    }
 
-    console.log('[gerarFichas] Transação OK, fichas criadas:', fichasGeradas.length)
+    if (fichasGeradas.length === 0) {
+      throw new Error('Nenhuma ficha foi gerada. Verifique os logs para mais detalhes.')
+    }
+
+    if (setoresFalhados.length > 0) {
+      console.warn(`[gerarFichas] Setores com falha: ${setoresFalhados.join(', ')}`)
+    }
+
+    console.log('[gerarFichas] Fichas criadas:', fichasGeradas.length, 'de', setoresFiltrados.length, 'setores')
     return { fichas: fichasGeradas, avisos }
   }
 

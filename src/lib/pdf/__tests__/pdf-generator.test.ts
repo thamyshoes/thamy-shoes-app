@@ -33,6 +33,7 @@ vi.mock('@/lib/supabase-server', () => ({
   FICHAS_BUCKET: 'fichas-producao',
 }))
 
+let fichaCreateCounter = 0
 const mockPrisma = {
   pedidoCompra: {
     findUnique: vi.fn(),
@@ -41,7 +42,11 @@ const mockPrisma = {
   },
   fichaProducao: {
     findUnique: vi.fn(),
-    create: vi.fn().mockResolvedValue({ id: 'ficha-1', setor: Setor.CABEDAL }),
+    create: vi.fn().mockImplementation(() => {
+      fichaCreateCounter++
+      return Promise.resolve({ id: `ficha-${fichaCreateCounter}`, setor: Setor.CABEDAL })
+    }),
+    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
   },
   consolidado: {
     create: vi.fn().mockResolvedValue({ id: 'cons-1' }),
@@ -111,9 +116,14 @@ describe('PdfGeneratorService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    fichaCreateCounter = 0
     service = new PdfGeneratorService()
     mockPrisma.pedidoCompra.findUnique.mockResolvedValue(pedidoResolvido)
-    mockPrisma.fichaProducao.create.mockResolvedValue({ id: 'ficha-1', setor: Setor.CABEDAL })
+    mockPrisma.fichaProducao.create.mockImplementation(() => {
+      fichaCreateCounter++
+      return Promise.resolve({ id: `ficha-${fichaCreateCounter}`, setor: Setor.CABEDAL })
+    })
+    mockPrisma.fichaProducao.deleteMany.mockResolvedValue({ count: 0 })
     mockPrisma.modelo.count.mockResolvedValue(0)
     mockRenderConsolidadoPdf.mockResolvedValue(Buffer.from('pdf-content'))
     mockGetPublicUrl.mockReturnValue({
@@ -186,10 +196,16 @@ describe('PdfGeneratorService', () => {
   })
 
   // Teste 7
-  it('deve lançar erro se upload ao storage falhar', async () => {
-    mockUpload.mockResolvedValueOnce({ error: { message: 'Storage offline' } })
+  it('deve reportar aviso e continuar se upload ao storage falhar para um setor', async () => {
+    // Falha apenas no primeiro upload (SOLA, que agora é processado primeiro)
+    mockUpload
+      .mockResolvedValueOnce({ error: { message: 'Storage offline' } })
+      .mockResolvedValue({ error: null })
 
-    await expect(service.gerarFichas('p1')).rejects.toThrow('Erro ao fazer upload do PDF')
+    const { fichas, avisos } = await service.gerarFichas('p1')
+    // 2 fichas geradas (PALMILHA e CABEDAL), 1 falhou (SOLA)
+    expect(fichas).toHaveLength(2)
+    expect(avisos.some((a) => a.includes('SOLA'))).toBe(true)
   })
 
   // Teste 8
