@@ -76,6 +76,8 @@ function BotaoGerarIndividual({ pedidoId, disabled }: { pedidoId: string; disabl
   )
 }
 
+const ITEMS_POR_PAGINA = 15
+
 // ST002: Client Component com estado de seleção
 export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
   const { user, loading: authLoading } = useAuth()
@@ -83,6 +85,13 @@ export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
   const [selecionados, setSelecionados] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [agruparPorFaixa, setAgruparPorFaixa] = useState(false)
+  const [paginaAtual, setPaginaAtual] = useState(1)
+
+  const totalPaginas = Math.max(1, Math.ceil(pedidos.length / ITEMS_POR_PAGINA))
+  const pedidosPaginados = pedidos.slice(
+    (paginaAtual - 1) * ITEMS_POR_PAGINA,
+    paginaAtual * ITEMS_POR_PAGINA,
+  )
 
   // ST002: Toggle individual de pedido
   const togglePedido = (id: string) => {
@@ -192,7 +201,7 @@ export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
               role="group"
               aria-label="Lista de pedidos para consolidar"
             >
-              {pedidos.map((pedido) => {
+              {pedidosPaginados.map((pedido) => {
                 const selecionado = selecionados.includes(pedido.id)
                 return (
                   <div
@@ -235,6 +244,33 @@ export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
                 )
               })}
             </div>
+
+            {/* Paginação */}
+            {totalPaginas > 1 && (
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-sm text-muted-foreground">
+                  Página {paginaAtual} de {totalPaginas} ({pedidos.length} pedidos)
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPaginaAtual((p) => Math.max(1, p - 1))}
+                    disabled={paginaAtual === 1 || isLoading}
+                  >
+                    Anterior
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
+                    disabled={paginaAtual === totalPaginas || isLoading}
+                  >
+                    Próxima
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Contador de seleção (aria-live para screen readers) */}
             <p className="sr-only" aria-live="polite" aria-atomic="true">
