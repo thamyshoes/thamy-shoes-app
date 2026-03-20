@@ -59,7 +59,9 @@ export async function GET(request: NextRequest) {
     }
 
     const { access_token, refresh_token, expires_in } = tokenData
-    const expiresAt = new Date(Date.now() + expires_in * 1000)
+    const now = Date.now()
+    const expiresAt = new Date(now + expires_in * 1000)
+    const refreshTokenExpiresAt = new Date(now + 30 * 24 * 60 * 60 * 1000) // 30 dias
 
     // Upsert BlingConnection (single-row pattern)
     const existing = await prisma.blingConnection.findFirst()
@@ -67,8 +69,11 @@ export async function GET(request: NextRequest) {
       accessToken: encrypt(access_token),
       refreshToken: encrypt(refresh_token),
       expiresAt,
+      refreshTokenExpiresAt,
       connectedAt: new Date(),
       status: StatusConexao.CONECTADO,
+      isRefreshing: false,
+      refreshingAt: null,
     }
 
     if (existing) {

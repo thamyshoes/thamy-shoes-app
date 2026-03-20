@@ -48,14 +48,17 @@ export class NotificationService {
   }
 
   async verificarTokenBling(): Promise<{ alertaEnviado: boolean; diasRestantes: number | null }> {
+    // Buscar qualquer conexão (não apenas CONECTADO — o cron pode já ter feito refresh)
     const conn = await prisma.blingConnection.findFirst({
-      where: { status: StatusConexao.CONECTADO },
+      where: { status: { not: StatusConexao.DESCONECTADO } },
     })
 
     if (!conn) return { alertaEnviado: false, diasRestantes: null }
 
     const agora = new Date()
-    const diff = conn.expiresAt.getTime() - agora.getTime()
+    // Calcular dias restantes baseado no REFRESH TOKEN (30 dias), não no access token (6h)
+    const referencia = conn.refreshTokenExpiresAt ?? conn.expiresAt
+    const diff = referencia.getTime() - agora.getTime()
     const diasRestantes = Math.ceil(diff / (1000 * 60 * 60 * 24))
     const baseUrl = env.NEXT_PUBLIC_APP_URL
 

@@ -70,8 +70,11 @@ describe('BlingIntegrationService', () => {
         id: '1',
         status: StatusConexao.CONECTADO,
         expiresAt: new Date(Date.now() + 10 * 60 * 1000), // expira em 10 minutos
+        refreshTokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         accessToken: 'encrypted:my-access-token',
         refreshToken: 'encrypted:my-refresh-token',
+        isRefreshing: false,
+        refreshingAt: null,
       })
 
       const token = await service.getValidToken()
@@ -83,8 +86,11 @@ describe('BlingIntegrationService', () => {
         id: '1',
         status: StatusConexao.CONECTADO,
         expiresAt: new Date(Date.now() + 3 * 60 * 1000), // expira em 3 minutos (< 5 min margem)
+        refreshTokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         accessToken: 'encrypted:old-access',
         refreshToken: 'encrypted:refresh-token',
+        isRefreshing: false,
+        refreshingAt: null,
       })
 
       const newTokenResponse = {
@@ -116,8 +122,11 @@ describe('BlingIntegrationService', () => {
         id: '1',
         status: StatusConexao.CONECTADO,
         expiresAt: new Date(Date.now() + 1 * 60 * 1000), // dentro da margem
+        refreshTokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         accessToken: 'encrypted:old-access',
         refreshToken: 'encrypted:refresh-token',
+        isRefreshing: false,
+        refreshingAt: null,
       })
 
       global.fetch = vi.fn().mockResolvedValue({
@@ -145,8 +154,11 @@ describe('BlingIntegrationService', () => {
         id: '1',
         status: StatusConexao.CONECTADO,
         expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        refreshTokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         accessToken: 'encrypted:token',
         refreshToken: 'encrypted:refresh',
+        isRefreshing: false,
+        refreshingAt: null,
       })
     })
 
@@ -208,8 +220,11 @@ describe('BlingIntegrationService', () => {
         id: '1',
         status: StatusConexao.CONECTADO,
         expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        refreshTokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         accessToken: 'encrypted:token',
         refreshToken: 'encrypted:refresh',
+        isRefreshing: false,
+        refreshingAt: null,
       })
 
       global.fetch = vi.fn().mockResolvedValue({
@@ -239,29 +254,33 @@ describe('BlingIntegrationService', () => {
     it('retorna connected: false quando não há conexão', async () => {
       mockPrisma.blingConnection.findFirst.mockResolvedValue(null)
       const result = await service.checkConnection()
-      expect(result).toEqual({ connected: false, expiresAt: null })
+      expect(result).toEqual({ connected: false, expiresAt: null, refreshTokenExpiresAt: null })
     })
 
     it('retorna connected: true quando CONECTADO', async () => {
       const expiresAt = new Date(Date.now() + 3600 * 1000)
+      const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       mockPrisma.blingConnection.findFirst.mockResolvedValue({
         id: '1',
         status: StatusConexao.CONECTADO,
         expiresAt,
+        refreshTokenExpiresAt,
       })
       const result = await service.checkConnection()
-      expect(result).toEqual({ connected: true, expiresAt })
+      expect(result).toEqual({ connected: true, expiresAt, refreshTokenExpiresAt })
     })
 
     it('retorna connected: false quando EXPIRADO', async () => {
       const expiresAt = new Date(Date.now() - 1000)
+      const refreshTokenExpiresAt = new Date(Date.now() - 1000)
       mockPrisma.blingConnection.findFirst.mockResolvedValue({
         id: '1',
         status: StatusConexao.EXPIRADO,
         expiresAt,
+        refreshTokenExpiresAt,
       })
       const result = await service.checkConnection()
-      expect(result).toEqual({ connected: false, expiresAt })
+      expect(result).toEqual({ connected: false, expiresAt, refreshTokenExpiresAt })
     })
   })
 })

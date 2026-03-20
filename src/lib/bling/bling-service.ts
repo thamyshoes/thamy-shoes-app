@@ -89,6 +89,8 @@ export class BlingApiError extends Error {
 
 const BLING_BASE_URL = 'https://www.bling.com.br/Api/v3'
 const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000 // 5 minutos
+const REFRESH_TOKEN_TTL_DAYS = 30
+const REFRESH_LOCK_TIMEOUT_MS = 30 * 1000 // 30s — se lock mais velho que isso, considerar stale
 
 // ── Service ───────────────────────────────────────────────────────────────────
 
@@ -114,6 +116,7 @@ class BlingIntegrationService {
 
   /**
    * Obtém access token válido. Executa refresh automático se necessário.
+   * Inclui mutex via banco para evitar race condition com token rotation.
    */
   async getValidToken(): Promise<string> {
     const connection = await prisma.blingConnection.findFirst()
@@ -122,11 +125,40 @@ class BlingIntegrationService {
       throw new Error(MESSAGES.ERROR.TOKEN_EXPIRED)
     }
 
+    // Se refresh_token expirou (30 dias), reconexão manual é obrigatória
+    if (
+      connection.refreshTokenExpiresAt &&
+      connection.refreshTokenExpiresAt.getTime() < Date.now()
+    ) {
+      await prisma.blingConnection.update({
+        where: { id: connection.id },
+        data: { status: StatusConexao.EXPIRADO },
+      })
+      throw new Error(MESSAGES.ERROR.TOKEN_EXPIRED)
+    }
+
     // Retornar token se ainda válido com margem de segurança
     const timeUntilExpiry = connection.expiresAt.getTime() - Date.now()
     if (timeUntilExpiry >= TOKEN_REFRESH_MARGIN_MS) {
       return decrypt(connection.accessToken)
     }
+
+    // Verificar se outro processo já está fazendo refresh (mutex)
+    if (connection.isRefreshing && connection.refreshingAt) {
+      const lockAge = Date.now() - connection.refreshingAt.getTime()
+      if (lockAge < REFRESH_LOCK_TIMEOUT_MS) {
+        // Aguardar e re-tentar (outro processo está fazendo refresh)
+        await this._sleep(2000)
+        return this.getValidToken()
+      }
+      // Lock stale — prosseguir com refresh
+    }
+
+    // Adquirir lock
+    await prisma.blingConnection.update({
+      where: { id: connection.id },
+      data: { isRefreshing: true, refreshingAt: new Date() },
+    })
 
     // Token expirado ou prestes a expirar: refresh
     try {
@@ -161,7 +193,11 @@ class BlingIntegrationService {
         expires_in: number
       }
 
-      const expiresAt = new Date(Date.now() + data.expires_in * 1000)
+      const now = Date.now()
+      const expiresAt = new Date(now + data.expires_in * 1000)
+      const refreshTokenExpiresAt = new Date(
+        now + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
+      )
 
       await prisma.blingConnection.update({
         where: { id: connection.id },
@@ -169,16 +205,23 @@ class BlingIntegrationService {
           accessToken: encrypt(data.access_token),
           refreshToken: encrypt(data.refresh_token),
           expiresAt,
+          refreshTokenExpiresAt,
           status: StatusConexao.CONECTADO,
+          isRefreshing: false,
+          refreshingAt: null,
         },
       })
 
       return data.access_token
     } catch {
-      // Refresh falhou: marcar como EXPIRADO
+      // Liberar lock e marcar como EXPIRADO
       await prisma.blingConnection.update({
         where: { id: connection.id },
-        data: { status: StatusConexao.EXPIRADO },
+        data: {
+          status: StatusConexao.EXPIRADO,
+          isRefreshing: false,
+          refreshingAt: null,
+        },
       })
       throw new Error(MESSAGES.ERROR.TOKEN_EXPIRED)
     }
@@ -356,14 +399,19 @@ class BlingIntegrationService {
     return { data: response.data, hasMore: response.data.length === limite }
   }
 
-  async checkConnection(): Promise<{ connected: boolean; expiresAt: Date | null }> {
+  async checkConnection(): Promise<{
+    connected: boolean
+    expiresAt: Date | null
+    refreshTokenExpiresAt: Date | null
+  }> {
     const connection = await prisma.blingConnection.findFirst()
     if (!connection || connection.status === StatusConexao.DESCONECTADO) {
-      return { connected: false, expiresAt: null }
+      return { connected: false, expiresAt: null, refreshTokenExpiresAt: null }
     }
     return {
       connected: connection.status === StatusConexao.CONECTADO,
       expiresAt: connection.expiresAt,
+      refreshTokenExpiresAt: connection.refreshTokenExpiresAt,
     }
   }
 }

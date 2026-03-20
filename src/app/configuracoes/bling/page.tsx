@@ -17,15 +17,15 @@ import { StatusConexao } from '@/types'
 // ── Cartão: Conectado ──────────────────────────────────────────────────────────
 
 function ConnectedCard({
-  expiresAt,
   connectedAt,
+  refreshTokenExpiresAt,
   onDisconnect,
 }: {
-  expiresAt: Date | null
   connectedAt: Date | null
+  refreshTokenExpiresAt: Date | null
   onDisconnect: () => void
 }) {
-  const expiry = expiresAt ? formatDateTime(expiresAt) : '—'
+  const refreshExpiry = refreshTokenExpiresAt ? formatDateTime(refreshTokenExpiresAt) : '—'
 
   return (
     <div className="rounded-lg border border-success/30 bg-success/10 p-6 space-y-4">
@@ -39,8 +39,13 @@ function ConnectedCard({
         </p>
       )}
       <p className="text-sm text-secondary">
-        Token expira em: <span className="font-medium">{expiry}</span>
+        Renovação automática ativa. Próxima reconexão manual apenas se inativo por 30 dias.
       </p>
+      {refreshTokenExpiresAt && (
+        <p className="text-xs text-secondary/70">
+          Validade da sessão: {refreshExpiry}
+        </p>
+      )}
       <Button variant="ghost" onClick={onDisconnect}>
         Desconectar
       </Button>
@@ -148,7 +153,7 @@ function BlingCallbackHandler() {
 
 export default function BlingConfigPage() {
   const { user, loading: authLoading } = useAuth()
-  const { status, expiresAt, connectedAt, configOk, loading, refetch } = useBlingStatus()
+  const { status, connectedAt, refreshTokenExpiresAt, configOk, loading, refetch } = useBlingStatus()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmLoading, setConfirmLoading] = useState(false)
 
@@ -184,8 +189,8 @@ export default function BlingConfigPage() {
           <MissingConfigCard />
         ) : status === StatusConexao.CONECTADO ? (
           <ConnectedCard
-            expiresAt={expiresAt}
             connectedAt={connectedAt}
+            refreshTokenExpiresAt={refreshTokenExpiresAt}
             onDisconnect={() => setConfirmOpen(true)}
           />
         ) : status === StatusConexao.EXPIRADO ? (

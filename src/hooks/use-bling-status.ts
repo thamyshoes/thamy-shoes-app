@@ -9,6 +9,7 @@ interface BlingStatusResponse {
   status: StatusConexao
   expiresAt: string | null
   connectedAt: string | null
+  refreshTokenExpiresAt: string | null
   configOk?: boolean
 }
 
@@ -16,6 +17,7 @@ interface UseBlingStatusReturn {
   status: StatusConexao
   expiresAt: Date | null
   connectedAt: Date | null
+  refreshTokenExpiresAt: Date | null
   configOk: boolean
   loading: boolean
   error: string | null
@@ -26,6 +28,7 @@ export function useBlingStatus(): UseBlingStatusReturn {
   const [status, setStatus] = useState<StatusConexao>(StatusConexao.DESCONECTADO)
   const [expiresAt, setExpiresAt] = useState<Date | null>(null)
   const [connectedAt, setConnectedAt] = useState<Date | null>(null)
+  const [refreshTokenExpiresAt, setRefreshTokenExpiresAt] = useState<Date | null>(null)
   const [configOk, setConfigOk] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -38,6 +41,9 @@ export function useBlingStatus(): UseBlingStatusReturn {
       setStatus(res.status)
       setExpiresAt(res.expiresAt ? new Date(res.expiresAt) : null)
       setConnectedAt(res.connectedAt ? new Date(res.connectedAt) : null)
+      setRefreshTokenExpiresAt(
+        res.refreshTokenExpiresAt ? new Date(res.refreshTokenExpiresAt) : null,
+      )
       setConfigOk(res.configOk ?? true)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao consultar status do Bling'
@@ -45,6 +51,7 @@ export function useBlingStatus(): UseBlingStatusReturn {
       setStatus(StatusConexao.DESCONECTADO)
       setExpiresAt(null)
       setConnectedAt(null)
+      setRefreshTokenExpiresAt(null)
       setConfigOk(true)
     } finally {
       setLoading(false)
@@ -55,5 +62,14 @@ export function useBlingStatus(): UseBlingStatusReturn {
     void fetchData()
   }, [fetchData])
 
-  return { status, expiresAt, connectedAt, configOk, loading, error, refetch: fetchData }
+  return {
+    status,
+    expiresAt,
+    connectedAt,
+    refreshTokenExpiresAt,
+    configOk,
+    loading,
+    error,
+    refetch: fetchData,
+  }
 }

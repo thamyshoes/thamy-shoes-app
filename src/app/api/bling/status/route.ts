@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { env } from '@/lib/env'
 import { StatusConexao } from '@/types'
+import { blingService } from '@/lib/bling/bling-service'
 
 export async function GET(_req: NextRequest) {
   const configOk = Boolean(
@@ -15,31 +16,64 @@ export async function GET(_req: NextRequest) {
       status: StatusConexao.DESCONECTADO,
       expiresAt: null,
       connectedAt: null,
+      refreshTokenExpiresAt: null,
       configOk,
     })
   }
 
-  // Auto-mark as expired if token is past its expiry date
+  // Se refresh_token expirou (30 dias), reconexão manual é obrigatória
   if (
-    connection.status === StatusConexao.CONECTADO &&
-    connection.expiresAt < new Date()
+    connection.refreshTokenExpiresAt &&
+    connection.refreshTokenExpiresAt < new Date()
   ) {
-    await prisma.blingConnection.update({
-      where: { id: connection.id },
-      data: { status: StatusConexao.EXPIRADO },
-    })
+    if (connection.status !== StatusConexao.EXPIRADO) {
+      await prisma.blingConnection.update({
+        where: { id: connection.id },
+        data: { status: StatusConexao.EXPIRADO },
+      })
+    }
     return NextResponse.json({
       status: StatusConexao.EXPIRADO,
       expiresAt: connection.expiresAt,
       connectedAt: connection.connectedAt,
+      refreshTokenExpiresAt: connection.refreshTokenExpiresAt,
       configOk,
     })
+  }
+
+  // Se access_token expirou mas refresh_token ainda é válido, tentar refresh
+  if (
+    connection.status !== StatusConexao.DESCONECTADO &&
+    connection.expiresAt < new Date()
+  ) {
+    try {
+      await blingService.getValidToken()
+      // Refresh bem-sucedido — recarregar conexão atualizada
+      const updated = await prisma.blingConnection.findFirst()
+      return NextResponse.json({
+        status: updated?.status ?? StatusConexao.CONECTADO,
+        expiresAt: updated?.expiresAt ?? connection.expiresAt,
+        connectedAt: updated?.connectedAt ?? connection.connectedAt,
+        refreshTokenExpiresAt: updated?.refreshTokenExpiresAt ?? connection.refreshTokenExpiresAt,
+        configOk,
+      })
+    } catch {
+      // Refresh falhou — marcar como expirado
+      return NextResponse.json({
+        status: StatusConexao.EXPIRADO,
+        expiresAt: connection.expiresAt,
+        connectedAt: connection.connectedAt,
+        refreshTokenExpiresAt: connection.refreshTokenExpiresAt,
+        configOk,
+      })
+    }
   }
 
   return NextResponse.json({
     status: connection.status,
     expiresAt: connection.expiresAt,
     connectedAt: connection.connectedAt,
+    refreshTokenExpiresAt: connection.refreshTokenExpiresAt,
     configOk,
   })
 }

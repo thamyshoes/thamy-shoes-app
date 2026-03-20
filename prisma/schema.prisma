@@ -82,15 +82,18 @@ model User {
 }
 
 model BlingConnection {
-  id                 String        @id @default(uuid())
-  accessToken        String        @map("access_token")
-  refreshToken       String        @map("refresh_token")
-  expiresAt          DateTime      @map("expires_at")
-  connectedAt        DateTime      @map("connected_at")
-  status             StatusConexao
-  lastSyncProdutosAt DateTime?     @map("last_sync_produtos_at")
-  createdAt          DateTime      @default(now()) @map("created_at")
-  updatedAt          DateTime      @updatedAt @map("updated_at")
+  id                      String        @id @default(uuid())
+  accessToken             String        @map("access_token")
+  refreshToken            String        @map("refresh_token")
+  expiresAt               DateTime      @map("expires_at")
+  refreshTokenExpiresAt   DateTime?     @map("refresh_token_expires_at")
+  connectedAt             DateTime      @map("connected_at")
+  status                  StatusConexao
+  isRefreshing            Boolean       @default(false) @map("is_refreshing")
+  refreshingAt            DateTime?     @map("refreshing_at")
+  lastSyncProdutosAt      DateTime?     @map("last_sync_produtos_at")
+  createdAt               DateTime      @default(now()) @map("created_at")
+  updatedAt               DateTime      @updatedAt @map("updated_at")
 
   @@map("bling_connections")
 }
