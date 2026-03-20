@@ -253,7 +253,7 @@ export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
                 </span>
                 <div className="flex items-center gap-2">
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     onClick={() => setPaginaAtual((p) => Math.max(1, p - 1))}
                     disabled={paginaAtual === 1 || isLoading}
@@ -261,7 +261,7 @@ export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
                     Anterior
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     onClick={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
                     disabled={paginaAtual === totalPaginas || isLoading}
