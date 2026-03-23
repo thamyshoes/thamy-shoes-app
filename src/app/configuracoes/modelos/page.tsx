@@ -52,25 +52,6 @@ interface ListResponse {
   totalPages: number
 }
 
-interface PreviewLinha {
-  codigo: string
-  modelo: string
-  cor: string
-  tamanho: string
-  descricao: string
-  valida: boolean
-  erro?: string
-}
-
-interface ImportResult {
-  modelosCriados: number
-  modelosExistentes: number
-  variantesCriadas: number
-  linhasProcessadas: number
-  linhasIgnoradas: number
-  erros: string[]
-}
-
 function toModeloRow(m: ModeloApi): ModeloRow {
   return {
     id:               m.id,
@@ -130,11 +111,6 @@ function ModelosContent() {
   const [variantesOpen, setVariantesOpen] = useState(false)
   const [variantesModelo, setVariantesModelo] = useState<ModeloApi | null>(null)
 
-  // Modal importação em lote
-  const [importModalOpen, setImportModalOpen] = useState(false)
-  const [csvTexto, setCsvTexto] = useState('')
-  const [preview, setPreview] = useState<PreviewLinha[]>([])
-  const [importing, setImporting] = useState(false)
 
   // Sync imagens do Bling
   const [syncing, setSyncing] = useState(false)
@@ -211,90 +187,6 @@ function ModelosContent() {
 
   // ── Bulk import ─────────────────────────────────────────────────────────────
 
-  function gerarPreview(csv: string): PreviewLinha[] {
-    const linhas = csv.split('\n').map((l) => l.trim()).filter(Boolean)
-    if (linhas.length === 0) return []
-
-    // Strip BOM UTF-8 se presente
-    linhas[0] = linhas[0]!.replace(/^\uFEFF/, '')
-    const isBling = linhas[0]!.includes('\t') && /^(ID|id)\t/i.test(linhas[0]!)
-    const startIdx = isBling ? 1 : 0
-
-    return linhas.slice(startIdx).map((linha, i) => {
-      if (isBling) {
-        const cols = linha.split('\t')
-        const codigo = cols[1]?.trim() ?? ''
-        const descricao = cols[2]?.trim() ?? ''
-
-        if (!codigo) {
-          return { codigo: '', modelo: '', cor: '', tamanho: '', descricao, valida: false, erro: `Linha ${startIdx + i + 1}: código vazio` }
-        }
-
-        // Preview simplificado: extrair referência do código pelo sufixo
-        // O parsing real acontece no backend via parseSku
-        return { codigo, modelo: '(via SKU)', cor: '', tamanho: '', descricao, valida: true }
-      }
-
-      // Formato manual (backward compat)
-      const sep = linha.includes(';') ? ';' : ','
-      const partes = linha.split(sep).map((p) => p.trim())
-      const cod = partes[0] ?? ''
-      const nome = partes[1] ?? ''
-      if (!cod || !nome) {
-        return { codigo: cod, modelo: '', cor: '', tamanho: '', descricao: nome, valida: false, erro: `Linha ${i + 1}: código e nome obrigatórios` }
-      }
-      return { codigo: cod, modelo: cod, cor: '', tamanho: '', descricao: nome, valida: true }
-    })
-  }
-
-  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = (evt) => {
-      const text = evt.target?.result
-      if (typeof text === 'string') {
-        setCsvTexto(text)
-        setPreview([])
-      }
-    }
-    reader.readAsText(file, 'UTF-8')
-    // Limpar o input para permitir re-upload do mesmo arquivo
-    e.target.value = ''
-  }
-
-  async function importar() {
-    if (!csvTexto.trim()) { toast.error('Selecione ou cole os dados antes de importar'); return }
-    setImporting(true)
-    try {
-      const result = await apiClient.post<ImportResult>(
-        `${API_ROUTES.MODELOS}/bulk-import`,
-        { dados: csvTexto },
-      )
-      const partes: string[] = []
-      if (result.modelosCriados > 0) partes.push(`${result.modelosCriados} modelo(s) criado(s)`)
-      if (result.modelosExistentes > 0) partes.push(`${result.modelosExistentes} já existente(s)`)
-      if (result.variantesCriadas > 0) partes.push(`${result.variantesCriadas} variante(s) criada(s)`)
-      if (result.linhasIgnoradas > 0) partes.push(`${result.linhasIgnoradas} ignorada(s)`)
-      if (result.erros.length > 0) partes.push(`${result.erros.length} erro(s)`)
-      const msg = partes.length > 0 ? partes.join(', ') : 'Nenhum dado processado'
-
-      if (result.erros.length > 0) {
-        toast.error(`Importado com erros: ${msg}`)
-      } else {
-        toast.success(`Importação concluída: ${msg}`)
-      }
-      setImportModalOpen(false)
-      setCsvTexto('')
-      setPreview([])
-      await fetchModelos()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao importar')
-    } finally {
-      setImporting(false)
-    }
-  }
 
   function cancelSync() {
     syncAbortRef.current?.abort()
@@ -451,11 +343,11 @@ function ModelosContent() {
               <Button variant="secondary" onClick={() => void syncBling(30)}>
                 Bling (30 dias)
               </Button>
+              <Button variant="secondary" onClick={() => void syncBling()}>
+                Bling (tudo)
+              </Button>
             </>
           )}
-          <Button variant="secondary" onClick={() => { setCsvTexto(''); setPreview([]); setImportModalOpen(true) }}>
-            Importar Lote
-          </Button>
           <Button onClick={() => { setModalMode('create'); setModalModelo(null); setModalOpen(true) }}>
             Novo Modelo
           </Button>
@@ -511,97 +403,6 @@ function ModelosContent() {
         />
       )}
 
-      {/* Modal importação em lote */}
-      <Modal
-        open={importModalOpen}
-        onClose={() => setImportModalOpen(false)}
-        title="Importar Modelos em Lote"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-secondary">
-            Importe o CSV exportado pelo Bling. Apenas as colunas <strong>Código</strong> e <strong>Descrição</strong> serão usadas.<br />
-            O SKU será parseado para extrair referência, cor e tamanho. Campos de ficha ficam em branco.<br />
-            <span className="text-xs text-secondary/70">O arquivo CSV não é armazenado — é processado e descartado.</span>
-          </p>
-
-          {/* Upload de arquivo */}
-          <div className="flex items-center gap-3">
-            <label
-              htmlFor="csv-upload"
-              className="cursor-pointer rounded-md border border-border bg-muted px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted/80 transition-colors"
-            >
-              Selecionar arquivo CSV
-            </label>
-            <input
-              id="csv-upload"
-              type="file"
-              accept=".csv,.txt,.tsv"
-              onChange={handleFileUpload}
-              className="hidden"
-              aria-label="Upload de arquivo CSV"
-            />
-            {csvTexto && (
-              <span className="text-xs text-secondary">
-                {csvTexto.split('\n').filter((l) => l.trim()).length} linhas carregadas
-              </span>
-            )}
-          </div>
-
-          {/* Textarea para colar (alternativa) */}
-          <details className="text-sm">
-            <summary className="cursor-pointer text-secondary hover:text-foreground">Ou cole o conteúdo manualmente</summary>
-            <textarea
-              className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              rows={6}
-              placeholder="Cole o conteúdo do CSV exportado do Bling aqui..."
-              value={csvTexto}
-              onChange={(e) => { setCsvTexto(e.target.value); setPreview([]) }}
-              aria-label="Dados dos modelos"
-            />
-          </details>
-
-          {csvTexto.trim() && (
-            <Button variant="secondary" onClick={() => setPreview(gerarPreview(csvTexto))}>
-              Pré-visualizar
-            </Button>
-          )}
-
-          {preview.length > 0 && (
-            <div className="max-h-48 overflow-y-auto rounded border border-border">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-muted">
-                  <tr>
-                    <th className="px-2 py-1 text-left">Código SKU</th>
-                    <th className="px-2 py-1 text-left">Descrição</th>
-                    <th className="px-2 py-1 text-left">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.map((p, i) => (
-                    <tr key={i} className={!p.valida ? 'bg-destructive/5' : ''}>
-                      <td className="px-2 py-1 font-mono">{p.codigo || '—'}</td>
-                      <td className="px-2 py-1 text-secondary truncate max-w-[200px]">{p.descricao || '—'}</td>
-                      <td className={`px-2 py-1 ${p.valida ? 'text-success' : 'text-destructive'}`}>
-                        {p.valida ? 'OK' : p.erro}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="px-2 py-1 text-xs text-secondary border-t border-border">
-                {preview.filter((p) => p.valida).length} válidas, {preview.filter((p) => !p.valida).length} ignoradas
-              </p>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setImportModalOpen(false)}>Cancelar</Button>
-            <Button onClick={importar} disabled={importing || !csvTexto.trim()}>
-              {importing ? 'Importando…' : 'Importar'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Confirm excluir */}
       <ConfirmDialog
