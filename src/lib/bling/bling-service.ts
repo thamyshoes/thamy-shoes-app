@@ -399,6 +399,35 @@ class BlingIntegrationService {
     return { data: response.data, hasMore: response.data.length === limite }
   }
 
+  /**
+   * Busca produtos no Bling cujo código contenha o termo informado.
+   * Pagina automaticamente até 5 páginas (500 produtos) para cobrir todas as variações.
+   */
+  async searchProdutosByCodigo(codigoPrefix: string): Promise<BlingProduto[]> {
+    const todos: BlingProduto[] = []
+    const MAX_PAGES = 5
+
+    for (let pagina = 1; pagina <= MAX_PAGES; pagina++) {
+      const params = new URLSearchParams({
+        pagina: String(pagina),
+        limite: '100',
+        situacao: 'A',
+        codigo: codigoPrefix,
+      })
+
+      const path = `/produtos?${params.toString()}`
+      console.log(`[bling-search] GET ${path}`)
+
+      const response = await this.blingRequest<{ data: BlingProduto[] }>('GET', path)
+      todos.push(...response.data)
+
+      if (response.data.length < 100) break
+    }
+
+    console.log(`[bling-search] Total encontrado para '${codigoPrefix}': ${todos.length}`)
+    return todos
+  }
+
   async checkConnection(): Promise<{
     connected: boolean
     expiresAt: Date | null

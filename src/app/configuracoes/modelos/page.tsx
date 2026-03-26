@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import { TabelaModelos, type ModeloRow } from '@/components/modelos/tabela-modelos'
 import { ModalEdicaoModelo, type GradeOption } from '@/components/modelos/modal-edicao-modelo'
 import { ModalVariantes, type VarianteRow } from '@/components/variantes/modal-variantes'
+import { ModalImportarModelo } from '@/components/modelos/modal-importar-modelo'
 
 // ── Tipos da API ───────────────────────────────────────────────────────────────
 
@@ -110,6 +111,9 @@ function ModelosContent() {
   // Modal variantes
   const [variantesOpen, setVariantesOpen] = useState(false)
   const [variantesModelo, setVariantesModelo] = useState<ModeloApi | null>(null)
+
+  // Modal importar modelo do Bling
+  const [importarOpen, setImportarOpen] = useState(false)
 
 
   // Sync imagens do Bling
@@ -355,6 +359,9 @@ function ModelosContent() {
               </Button>
             </>
           )}
+          <Button variant="secondary" onClick={() => setImportarOpen(true)}>
+            Importar Modelo
+          </Button>
           <Button onClick={() => { setModalMode('create'); setModalModelo(null); setModalOpen(true) }}>
             Novo Modelo
           </Button>
@@ -420,6 +427,13 @@ function ModelosContent() {
         onConfirm={excluir}
         onClose={() => setConfirmExcluir(null)}
         loading={deleting}
+      />
+
+      {/* Modal importar modelo do Bling */}
+      <ModalImportarModelo
+        open={importarOpen}
+        onClose={() => setImportarOpen(false)}
+        onImported={() => void fetchModelos()}
       />
     </div>
   )
