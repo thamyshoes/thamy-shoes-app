@@ -3,10 +3,10 @@ import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
 
 // GET /api/configuracoes/modelos/cleanup
-// Identifica modelos garbled: códigos que parecem ser versões "deslocadas" de outro modelo.
-// Ex: '80540' é garbled porque '8054' é o modelo real (80540 = 8054 + '0' deslocado do SKU).
-// Heurística: para cada modelo numérico, verificar se removendo 1-2 chars do final
-// resulta em outro modelo existente na tabela.
+// Identifica modelos garbled criados pelo sync a partir de SKUs não-padrão.
+// Garbled = código que é "pai existente + dígitos extras", COM nome auto-gerado "Modelo XXXXX"
+// e SEM itens de pedido vinculados.
+// Ex: '80510' (nome "Modelo 80510") é garbled porque '8051' existe e o nome é auto-gerado.
 export async function GET(request: NextRequest) {
   const guard = requireAdmin(request)
   if (guard) return guard
@@ -30,54 +30,38 @@ export async function GET(request: NextRequest) {
     codigo: string
     nome: string
     motivo: string
-    modeloCorreto: string | null
+    modeloCorreto: string
     variantesCount: number
     itensVinculados: number
     createdAt: Date
   }[] = []
 
   for (const m of modelos) {
-    // Só verificar códigos com 4+ chars (modelos reais podem ter 3-4 chars)
     if (m.codigo.length < 4) continue
+    // Só considerar suspeito se NÃO tem itens de pedido vinculados
+    if (m._count.itens > 0) continue
 
-    let motivo: string | null = null
-    let modeloCorreto: string | null = null
-
-    // Heurística 1: código numérico onde remover 1 char do final gera outro modelo existente
-    // Ex: '80540' → '8054' existe? Se sim, '80540' é provavelmente garbled.
+    // Verificar se removendo 1 char do final gera outro modelo existente
     const semUltimo = m.codigo.slice(0, -1)
     if (semUltimo.length >= 3 && codigosExistentes.has(semUltimo)) {
-      motivo = `código '${m.codigo}' parece ser versão deslocada de '${semUltimo}' (que existe na tabela)`
-      modeloCorreto = semUltimo
-    }
+      // Filtro adicional: nome auto-gerado ("Modelo XXXXX") OU modelo sem variantes
+      const nomeAutoGerado = m.nome === `Modelo ${m.codigo}`
+      const semVariantesEDados = m._count.variantesCor === 0
 
-    // Heurística 2: código numérico longo (8+ chars, puramente numérico) sem itens vinculados
-    // Modelos reais raramente têm 8+ dígitos. Códigos como '30700062' são garbled.
-    if (!motivo && m.codigo.length >= 8 && /^\d+$/.test(m.codigo) && m._count.itens === 0) {
-      motivo = `código numérico muito longo (${m.codigo.length} chars) sem itens vinculados — possível SKU parseado incorretamente`
-    }
-
-    // Heurística 3: código onde remover 2 chars do final gera outro modelo existente
-    // Ex: '305010' → '3050' existe? Captura deslocamentos maiores.
-    if (!motivo && m.codigo.length >= 5) {
-      const semDois = m.codigo.slice(0, -2)
-      if (semDois.length >= 3 && codigosExistentes.has(semDois)) {
-        motivo = `código '${m.codigo}' parece ser versão deslocada de '${semDois}' (que existe na tabela)`
-        modeloCorreto = semDois
+      if (nomeAutoGerado || semVariantesEDados) {
+        suspeitos.push({
+          id: m.id,
+          codigo: m.codigo,
+          nome: m.nome,
+          motivo: nomeAutoGerado
+            ? `nome auto-gerado "Modelo ${m.codigo}" + pai '${semUltimo}' existe`
+            : `sem variantes/itens + pai '${semUltimo}' existe`,
+          modeloCorreto: semUltimo,
+          variantesCount: m._count.variantesCor,
+          itensVinculados: m._count.itens,
+          createdAt: m.createdAt,
+        })
       }
-    }
-
-    if (motivo) {
-      suspeitos.push({
-        id: m.id,
-        codigo: m.codigo,
-        nome: m.nome,
-        motivo,
-        modeloCorreto,
-        variantesCount: m._count.variantesCor,
-        itensVinculados: m._count.itens,
-        createdAt: m.createdAt,
-      })
     }
   }
 
