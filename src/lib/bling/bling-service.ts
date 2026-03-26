@@ -400,7 +400,8 @@ class BlingIntegrationService {
   }
 
   /**
-   * Busca produtos no Bling cujo código contenha o termo informado.
+   * Busca produtos no Bling cujo código comece com o termo informado.
+   * Usa `criterio` (busca textual ampla) porque `codigo` faz match exato no Bling v3.
    * Pagina automaticamente até 5 páginas (500 produtos) para cobrir todas as variações.
    */
   async searchProdutosByCodigo(codigoPrefix: string): Promise<BlingProduto[]> {
@@ -412,7 +413,7 @@ class BlingIntegrationService {
         pagina: String(pagina),
         limite: '100',
         situacao: 'A',
-        codigo: codigoPrefix,
+        criterio: codigoPrefix,
       })
 
       const path = `/produtos?${params.toString()}`
@@ -424,8 +425,10 @@ class BlingIntegrationService {
       if (response.data.length < 100) break
     }
 
-    console.log(`[bling-search] Total encontrado para '${codigoPrefix}': ${todos.length}`)
-    return todos
+    // Filtrar client-side: só produtos cujo código começa com o prefixo
+    const filtrados = todos.filter((p) => p.codigo.startsWith(codigoPrefix))
+    console.log(`[bling-search] '${codigoPrefix}': ${todos.length} retornados pelo Bling, ${filtrados.length} com código matching`)
+    return filtrados
   }
 
   async checkConnection(): Promise<{
