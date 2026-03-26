@@ -80,9 +80,18 @@ function parseSkuSufixo(sku: string, digitos: DigitosSegmento[]): SkuParseResult
 
   mapa['modelo'] = remaining
 
-  const modelo = mapa['modelo'] || null
-  const cor = mapa['cor'] || null
+  // Validar que tamanho e cor são puramente numéricos.
+  // SKUs não-padrão (ex: 805400131b, 307000624bm02) contêm letras que
+  // deslocam a extração e geram códigos de modelo incorretos (ex: 80540 em vez de 8054).
+  // - tamanho com letra: 805400131b → tam='1b' ❌
+  // - cor com letra: 307000624bm02 → cor='4bm' ❌
   const tamanho = mapa['tamanho'] || null
+  const cor = mapa['cor'] || null
+  if ((tamanho && !/^\d+$/.test(tamanho)) || (cor && !/^\d+$/.test(cor))) {
+    return { modelo: null, cor: null, tamanho: null, status: StatusItem.PENDENTE }
+  }
+
+  const modelo = mapa['modelo'] || null
   const resolvido = !!modelo && !!cor && !!tamanho
 
   return { modelo, cor, tamanho, status: resolvido ? StatusItem.RESOLVIDO : StatusItem.PENDENTE }

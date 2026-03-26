@@ -221,6 +221,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       try {
         const parsed = await parseSku(produto.codigo)
 
+        // Log SKUs não-padrão que foram rejeitados pelo parser (contêm letras no tamanho)
+        if (parsed.status === 'PENDENTE' && produto.codigo.length >= 5) {
+          console.log(`[bling-sync] SKU não-padrão ignorado: ${produto.codigo}`)
+        }
+
         if (parsed.modelo && parsed.cor) {
           const chave = `${parsed.modelo}:${parsed.cor}`
           if (processadosNaPagina.has(chave)) continue

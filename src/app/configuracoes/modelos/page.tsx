@@ -343,6 +343,9 @@ function ModelosContent() {
               <Button variant="secondary" onClick={() => void syncBling(30)}>
                 Bling (30 dias)
               </Button>
+              <Button variant="secondary" onClick={() => void syncBling(365)}>
+                Bling (1 ano)
+              </Button>
               <Button variant="secondary" onClick={() => void syncBling()}>
                 Bling (tudo)
               </Button>

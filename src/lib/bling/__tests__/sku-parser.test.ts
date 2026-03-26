@@ -98,6 +98,69 @@ describe('parseSku', () => {
     const r = await parseSku('38-PT-REF001')
     expect(r).toEqual({ modelo: 'REF001', cor: 'PT', tamanho: '38', status: 'RESOLVIDO' })
   })
+
+  // ── SUFIXO mode: validação de tamanho numérico ──────────────────────────
+
+  function makeSufixoRegra() {
+    return {
+      id: '1',
+      modo: 'SUFIXO',
+      separador: '',
+      ordem: ['modelo', 'cor', 'tamanho'],
+      digitosSufixo: [
+        { campo: 'tamanho', digitos: 2 },
+        { campo: 'cor', digitos: 3 },
+      ],
+      ativa: true,
+    }
+  }
+
+  it('SUFIXO: resolve SKU padrão 307000627 → modelo=3070', async () => {
+    mockPrisma.regraSkU.findFirst.mockResolvedValue(makeSufixoRegra())
+    const r = await parseSku('307000627')
+    expect(r).toEqual({ modelo: '3070', cor: '006', tamanho: '27', status: 'RESOLVIDO' })
+  })
+
+  it('SUFIXO: resolve SKU padrão 805400130 → modelo=8054', async () => {
+    mockPrisma.regraSkU.findFirst.mockResolvedValue(makeSufixoRegra())
+    const r = await parseSku('805400130')
+    expect(r).toEqual({ modelo: '8054', cor: '001', tamanho: '30', status: 'RESOLVIDO' })
+  })
+
+  it('SUFIXO: rejeita SKU com letra no tamanho (805400131b) → PENDENTE', async () => {
+    mockPrisma.regraSkU.findFirst.mockResolvedValue(makeSufixoRegra())
+    const r = await parseSku('805400131b')
+    expect(r).toEqual({ modelo: null, cor: null, tamanho: null, status: 'PENDENTE' })
+  })
+
+  it('SUFIXO: rejeita SKU com cor não-numérica (307000624bm02) → PENDENTE', async () => {
+    mockPrisma.regraSkU.findFirst.mockResolvedValue(makeSufixoRegra())
+    // cor extraída = '4bm' (não-numérica) → PENDENTE
+    const r = await parseSku('307000624bm02')
+    expect(r).toEqual({ modelo: null, cor: null, tamanho: null, status: 'PENDENTE' })
+  })
+
+  it('SUFIXO: rejeita SKU com tamanho não-numérico (805413228b) → PENDENTE', async () => {
+    mockPrisma.regraSkU.findFirst.mockResolvedValue(makeSufixoRegra())
+    // tamanho extraído = '8b' (não-numérico) → PENDENTE
+    const r = await parseSku('805413228b')
+    expect(r).toEqual({ modelo: null, cor: null, tamanho: null, status: 'PENDENTE' })
+  })
+
+  it('SUFIXO: rejeita SKU curto (3070, 4 chars) → PENDENTE', async () => {
+    mockPrisma.regraSkU.findFirst.mockResolvedValue(makeSufixoRegra())
+    const r = await parseSku('3070')
+    expect(r).toEqual({ modelo: null, cor: null, tamanho: null, status: 'PENDENTE' })
+  })
+
+  it('SUFIXO: diferencia 3070 de 3070B corretamente', async () => {
+    mockPrisma.regraSkU.findFirst.mockResolvedValue(makeSufixoRegra())
+    const r1 = await parseSku('307000627')
+    const r2 = await parseSku('3070B00627')
+    expect(r1.modelo).toBe('3070')
+    expect(r2.modelo).toBe('3070B')
+    expect(r1.modelo).not.toBe(r2.modelo)
+  })
 })
 
 // ── interpretarItens ──────────────────────────────────────────────────────────
