@@ -154,8 +154,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const lastSync = connection?.lastSyncProdutosAt ?? null
   const DEFAULT_SYNC_DAYS = 5
 
-  let desdeDate: Date
-  if (diasParam > 0) {
+  // dias=-1 → sync total sem filtro de data (busca TODOS os produtos do Bling)
+  const syncTotal = diasParam < 0
+
+  let desdeDate: Date | null = null
+  if (syncTotal) {
+    desdeDate = null // Sem filtro de data
+  } else if (diasParam > 0) {
     // Override explícito do frontend (ex: "Bling 5 dias" ou "Bling 30 dias")
     desdeDate = new Date(Date.now() - diasParam * 24 * 60 * 60 * 1000)
   } else if (lastSync) {
@@ -163,7 +168,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } else {
     desdeDate = new Date(Date.now() - DEFAULT_SYNC_DAYS * 24 * 60 * 60 * 1000)
   }
-  const desde = formatBlingDatetime(desdeDate)
+  const desde = desdeDate ? formatBlingDatetime(desdeDate) : undefined
 
   // Modo info: retorna metadados da sync sem processar
   if (paginaParam === 'info') {
@@ -173,7 +178,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         isFirstSync: !lastSync,
         hasMore,
         estimativa: data.length,
-        desde: formatBlingDatetime(desdeDate),
+        desde: desdeDate ? formatBlingDatetime(desdeDate) : 'todos',
       })
     } catch (err) {
       return NextResponse.json(
