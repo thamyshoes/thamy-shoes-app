@@ -226,11 +226,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       try {
         const parsed = await parseSku(produto.codigo)
 
-        // Log SKUs não-padrão que foram rejeitados pelo parser (contêm letras no tamanho)
-        if (parsed.status === 'PENDENTE' && produto.codigo.length >= 5) {
-          console.log(`[bling-sync] SKU não-padrão ignorado: ${produto.codigo}`)
-        }
-
         if (parsed.modelo && parsed.cor) {
           const chave = `${parsed.modelo}:${parsed.cor}`
           if (processadosNaPagina.has(chave)) continue
@@ -243,8 +238,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           continue
         }
 
+        // Código curto ou não-padrão — buscar variações no detalhe do produto
+        console.log(`[bling-sync] Código '${produto.codigo}' sem parse direto — buscando variações...`)
         const detalhe = await blingService.getProduto(produto.id)
-        if (!detalhe.variacoes?.length) continue
+        if (!detalhe.variacoes?.length) {
+          console.log(`[bling-sync] Código '${produto.codigo}' sem variações — pulado`)
+          continue
+        }
+        console.log(`[bling-sync] Código '${produto.codigo}' → ${detalhe.variacoes.length} variação(ões) encontrada(s)`)
 
         for (const variacao of detalhe.variacoes) {
           if (!variacao.codigo) continue
