@@ -238,14 +238,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           continue
         }
 
-        // Código curto ou não-padrão — buscar variações no detalhe do produto
-        console.log(`[bling-sync] Código '${produto.codigo}' sem parse direto — buscando variações...`)
+        // Código curto (produto-pai) ou SKU não-padrão — buscar variações como fallback
         const detalhe = await blingService.getProduto(produto.id)
-        if (!detalhe.variacoes?.length) {
-          console.log(`[bling-sync] Código '${produto.codigo}' sem variações — pulado`)
-          continue
-        }
-        console.log(`[bling-sync] Código '${produto.codigo}' → ${detalhe.variacoes.length} variação(ões) encontrada(s)`)
+        if (!detalhe.variacoes?.length) continue
 
         for (const variacao of detalhe.variacoes) {
           if (!variacao.codigo) continue
