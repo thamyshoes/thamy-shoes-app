@@ -338,7 +338,7 @@ function ModelosContent() {
                   {syncProgress.produto} — {syncProgress.atual} produtos
                 </span>
               )}
-              <Button variant="destructive" onClick={cancelSync}>
+              <Button data-testid="modelos-sync-cancelar-button" variant="destructive" onClick={cancelSync}>
                 Cancelar
                 <svg className="ml-2 h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -348,21 +348,21 @@ function ModelosContent() {
             </>
           ) : (
             <>
-              <Button variant="secondary" onClick={() => void syncBling(5)}>
+              <Button data-testid="modelos-sync-5dias-button" variant="secondary" onClick={() => void syncBling(5)}>
                 Bling (5 dias)
               </Button>
-              <Button variant="secondary" onClick={() => void syncBling(30)}>
+              <Button data-testid="modelos-sync-30dias-button" variant="secondary" onClick={() => void syncBling(30)}>
                 Bling (30 dias)
               </Button>
-              <Button variant="secondary" onClick={() => void syncBling(-1)}>
+              <Button data-testid="modelos-sync-tudo-button" variant="secondary" onClick={() => void syncBling(-1)}>
                 Bling (tudo)
               </Button>
             </>
           )}
-          <Button variant="secondary" onClick={() => setImportarOpen(true)}>
+          <Button data-testid="modelos-importar-button" variant="secondary" onClick={() => setImportarOpen(true)}>
             Importar Modelo
           </Button>
-          <Button onClick={() => { setModalMode('create'); setModalModelo(null); setModalOpen(true) }}>
+          <Button data-testid="modelos-novo-button" onClick={() => { setModalMode('create'); setModalModelo(null); setModalOpen(true) }}>
             Novo Modelo
           </Button>
         </div>
@@ -370,6 +370,7 @@ function ModelosContent() {
 
       {/* Busca */}
       <input
+        data-testid="modelos-search-input"
         type="search"
         placeholder="Buscar por código, nome, cabedal, sola ou palmilha"
         value={search}

@@ -12,13 +12,18 @@ interface Variante {
   tamanhos: string[]
   totalSkus: number
   nome: string
+  imagemUrl: string | null
   jaCadastrada: boolean
+  fonte?: 'local' | 'bling' | 'ambas'
 }
 
 interface SearchResult {
   modelo: string
   modeloExiste: boolean
   total: number
+  fonte: string
+  blingTruncated?: boolean
+  warnings?: string[]
   variantes: Variante[]
 }
 
@@ -76,7 +81,7 @@ export function ModalImportarModelo({ open, onClose, onImported }: ModalImportar
       setResult(data)
 
       if (data.variantes.length === 0) {
-        setError(`Nenhum produto encontrado no Bling para o modelo "${trimmed}"`)
+        setError(`Nenhum produto encontrado para o modelo "${trimmed}"`)
       } else {
         // Pre-selecionar variantes que ainda não estão cadastradas
         const novas = new Set(
@@ -115,6 +120,11 @@ export function ModalImportarModelo({ open, onClose, onImported }: ModalImportar
 
     setImporting(true)
     try {
+      // Enviar cores com imagemUrl para persistência
+      const coresPayload = result.variantes
+        .filter((v) => selected.has(v.cor))
+        .map((v) => ({ cor: v.cor, imagemUrl: v.imagemUrl }))
+
       const res = await fetch('/api/configuracoes/modelos/importar-modelo', {
         method: 'POST',
         credentials: 'include',
@@ -122,7 +132,7 @@ export function ModalImportarModelo({ open, onClose, onImported }: ModalImportar
         body: JSON.stringify({
           codigo: result.modelo,
           nome: result.variantes[0]?.nome ?? `Modelo ${result.modelo}`,
-          cores: [...selected],
+          cores: coresPayload,
         }),
       })
 
@@ -132,8 +142,11 @@ export function ModalImportarModelo({ open, onClose, onImported }: ModalImportar
       }
 
       const data = await res.json()
+      const partes: string[] = []
+      if (data.variantesCriadas > 0) partes.push(`${data.variantesCriadas} variante(s) criada(s)`)
+      if (data.itensVinculados > 0) partes.push(`${data.itensVinculados} item(ns) vinculado(s)`)
       toast.success(
-        `Modelo ${data.modelo} importado — ${data.variantesCriadas} variante(s) criada(s)`,
+        `Modelo ${data.modelo} importado${partes.length > 0 ? ` — ${partes.join(', ')}` : ''}`,
       )
       handleClose()
       onImported()
@@ -190,6 +203,13 @@ export function ModalImportarModelo({ open, onClose, onImported }: ModalImportar
         </Button>
       </div>
 
+      {/* Warnings */}
+      {result?.warnings?.map((w, i) => (
+        <p key={i} className="mt-2 text-xs text-warning bg-warning/10 rounded px-2 py-1">
+          {w}
+        </p>
+      ))}
+
       {/* Erro */}
       {error && (
         <p className="mt-3 text-sm text-danger">{error}</p>
@@ -205,7 +225,7 @@ export function ModalImportarModelo({ open, onClose, onImported }: ModalImportar
                 <span className="ml-2 text-xs text-secondary">(já cadastrado)</span>
               )}
               <span className="ml-2 text-xs text-secondary">
-                — {result.total} SKU(s) encontrado(s)
+                — {result.total} SKU(s), fonte: {result.fonte}
               </span>
             </h3>
             {selectableCount > 1 && (
@@ -218,6 +238,13 @@ export function ModalImportarModelo({ open, onClose, onImported }: ModalImportar
               </button>
             )}
           </div>
+
+          {result.blingTruncated && (
+            <p className="mb-2 text-xs text-warning bg-warning/10 rounded px-2 py-1">
+              A busca no Bling retornou muitos resultados e pode estar incompleta.
+              Se faltarem variantes, tente usar o sync "Bling (tudo)".
+            </p>
+          )}
 
           <div className="space-y-1 max-h-[40vh] overflow-y-auto">
             {result.variantes.map((v) => (
@@ -238,6 +265,13 @@ export function ModalImportarModelo({ open, onClose, onImported }: ModalImportar
                   onChange={() => !v.jaCadastrada && toggleCor(v.cor)}
                   className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                 />
+                {v.imagemUrl && (
+                  <img
+                    src={v.imagemUrl}
+                    alt={`Cor ${v.corDescricao}`}
+                    className="h-8 w-8 rounded object-cover border border-border"
+                  />
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">
@@ -262,7 +296,7 @@ export function ModalImportarModelo({ open, onClose, onImported }: ModalImportar
       {searching && (
         <div className="mt-4 flex items-center gap-2 text-sm text-secondary">
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          Buscando no Bling...
+          Buscando no banco local e no Bling...
         </div>
       )}
     </Modal>

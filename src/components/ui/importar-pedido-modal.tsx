@@ -58,6 +58,7 @@ function buildColumns(
         const isImporting = importingId === p.idBling
         return (
           <Button
+            data-testid={`modal-importar-pedido-button-${p.numero}`}
             variant="secondary"
             size="sm"
             disabled={p.importado || isImporting}
@@ -287,6 +288,7 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
           !isDesconectado && totalPages > 1 ? (
             <div className="flex items-center justify-between">
               <button
+                data-testid="modal-importar-prev-button"
                 onClick={() => setPagina((p) => Math.max(p - 1, 1))}
                 disabled={pagina === 1 || loading}
                 className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
@@ -301,6 +303,7 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
                 )}
               </span>
               <button
+                data-testid="modal-importar-next-button"
                 onClick={() => setPagina((p) => Math.min(p + 1, totalPages))}
                 disabled={pagina >= totalPages || loading}
                 className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
@@ -326,6 +329,7 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary" />
                 <input
+                  data-testid="modal-importar-busca-numero-input"
                   type="text"
                   placeholder="Ex: 1234"
                   value={numeroBusca}
@@ -336,6 +340,7 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
                 />
               </div>
               <Button
+                data-testid="modal-importar-buscar-button"
                 variant="secondary"
                 size="sm"
                 onClick={() => void handleBuscaManual()}
@@ -359,6 +364,7 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
                   </span>
                 </div>
                 <Button
+                  data-testid="modal-importar-busca-resultado-button"
                   variant="secondary"
                   size="sm"
                   disabled={pedidoBuscado.importado}
@@ -410,6 +416,7 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
                   </label>
                   <select
                     id="dias-select-modal"
+                    data-testid="modal-importar-dias-select"
                     value={dias}
                     onChange={(e) => handleDiasChange(Number(e.target.value))}
                     className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -424,6 +431,7 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
                 <div className="relative flex-1 min-w-[140px]">
                   <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary" />
                   <input
+                    data-testid="modal-importar-busca-input"
                     type="search"
                     placeholder="Buscar nº pedido"
                     value={busca}
@@ -434,6 +442,7 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
                 </div>
 
                 <button
+                  data-testid="modal-importar-ordenacao-button"
                   onClick={() => setOrdenacao((o) => o === 'recente' ? 'antigo' : 'recente')}
                   className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:bg-muted transition-colors"
                   title={ordenacao === 'recente' ? 'Mais recente primeiro' : 'Mais antigo primeiro'}
@@ -481,12 +490,14 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
         footer={
           <div className="flex gap-2 justify-end">
             <Button
+              data-testid="modal-conflito-manter-button"
               variant="ghost"
               onClick={() => { setConflito(null); setPedidoConflito(null) }}
             >
               Manter versão local
             </Button>
             <Button
+              data-testid="modal-conflito-atualizar-button"
               variant="primary"
               loading={confirmandoConflito}
               onClick={() => void handleReimportar()}

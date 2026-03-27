@@ -173,7 +173,7 @@ export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
   return (
     <SidebarLayout user={user}>
       {/* Breadcrumb */}
-      <nav className="mb-4 flex items-center gap-2 text-sm text-secondary">
+      <nav data-testid="consolidado-breadcrumb" className="mb-4 flex items-center gap-2 text-sm text-secondary">
         <Link href={ROUTES.PEDIDOS} className="hover:text-foreground transition-colors">
           Pedidos
         </Link>
@@ -181,7 +181,7 @@ export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
         <span className="font-medium text-foreground">Gerar Consolidado</span>
       </nav>
 
-      <div className="space-y-6">
+      <div data-testid="consolidado-page" className="space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-xl font-semibold text-foreground">Gerar Consolidado</h1>
@@ -190,13 +190,14 @@ export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
 
         {/* ST005: Empty state */}
         {pedidos.length === 0 ? (
-          <div className="py-12 text-center text-muted-foreground">
+          <div data-testid="consolidado-empty-state" className="py-12 text-center text-muted-foreground">
             <p>Nenhum pedido ativo disponível para consolidar.</p>
           </div>
         ) : (
           <>
             {/* ST003: Lista de pedidos como cards com checkbox */}
             <div
+              data-testid="consolidado-pedidos-list"
               className="overflow-hidden rounded-lg border"
               role="group"
               aria-label="Lista de pedidos para consolidar"
@@ -206,6 +207,7 @@ export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
                 return (
                   <div
                     key={pedido.id}
+                    data-testid={`consolidado-pedido-item-${pedido.id}`}
                     className={`flex items-center gap-3 border-b px-4 py-3 last:border-0 transition-colors ${
                       isLoading
                         ? 'pointer-events-none opacity-60'
@@ -214,6 +216,7 @@ export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
                     onClick={() => togglePedido(pedido.id)}
                   >
                     <input
+                      data-testid={`consolidado-pedido-checkbox-${pedido.id}`}
                       id={pedido.id}
                       type="checkbox"
                       checked={selecionado}
@@ -281,6 +284,7 @@ export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
             {/* ST002: Toggle agrupar por faixa de numeração */}
             <div className="flex items-center gap-3 pt-2">
               <button
+                data-testid="consolidado-toggle-faixa-button"
                 id="toggle-faixa"
                 type="button"
                 role="switch"
@@ -308,6 +312,7 @@ export function ConsolidadoPage({ pedidos }: ConsolidadoPageProps) {
 
             {/* ST004: Botão "Gerar consolidado" com validação */}
             <Button
+              data-testid="consolidado-gerar-button"
               onClick={handleGerar}
               disabled={isButtonDisabled}
               loading={isLoading}

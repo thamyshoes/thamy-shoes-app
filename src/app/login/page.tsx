@@ -123,7 +123,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div data-testid="login-page" className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-[420px] rounded-xl bg-card p-8 shadow-md">
         {/* Logo / título */}
         <div className="text-center">
@@ -141,7 +141,7 @@ export default function LoginPage() {
 
         {/* Lockout banner */}
         {isLocked && (
-          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+          <div data-testid="login-lockout-banner" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
             <div className="text-sm text-destructive">
               <p className="font-medium">Muitas tentativas</p>
@@ -156,12 +156,13 @@ export default function LoginPage() {
         )}
 
         {/* Formulário */}
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+        <form data-testid="form-login" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
           <div>
             <label htmlFor="email" className="text-sm font-medium text-foreground">
               Email
             </label>
             <Input
+              data-testid="form-login-email-input"
               id="email"
               type="email"
               autoComplete="email"
@@ -185,6 +186,7 @@ export default function LoginPage() {
             </label>
             <div className="relative">
               <Input
+                data-testid="form-login-password-input"
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
@@ -195,6 +197,7 @@ export default function LoginPage() {
                 {...register('password')}
               />
               <button
+                data-testid="form-login-toggle-password-button"
                 type="button"
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-foreground"
                 onClick={() => setShowPassword((s) => !s)}
@@ -215,6 +218,7 @@ export default function LoginPage() {
             )}
             <div className="flex justify-end">
               <button
+                data-testid="form-login-forgot-password-button"
                 type="button"
                 className="text-xs text-secondary hover:text-foreground"
                 onClick={() => setForgotOpen(true)}
@@ -225,6 +229,7 @@ export default function LoginPage() {
           </div>
 
           <Button
+            data-testid="form-login-submit-button"
             type="submit"
             className="w-full"
             disabled={loading || isLocked}
@@ -236,7 +241,7 @@ export default function LoginPage() {
 
       <Modal open={forgotOpen} onClose={closeForgot} title="Redefinir senha" size="sm">
         {forgotSent ? (
-          <div className="space-y-3 text-sm text-secondary">
+          <div data-testid="modal-forgot-password-success" className="space-y-3 text-sm text-secondary">
             <p>
               Se o email estiver cadastrado, você receberá um link para redefinir a senha.
             </p>
@@ -245,12 +250,13 @@ export default function LoginPage() {
             </Button>
           </div>
         ) : (
-          <form onSubmit={handleForgotSubmit(onForgotPassword)} className="space-y-3">
+          <form data-testid="form-forgot-password" onSubmit={handleForgotSubmit(onForgotPassword)} className="space-y-3">
             <div className="space-y-1">
               <label htmlFor="forgot-email" className="text-sm font-medium text-foreground">
                 Email
               </label>
               <Input
+                data-testid="form-forgot-password-email-input"
                 id="forgot-email"
                 type="email"
                 placeholder="seu@email.com"
@@ -264,7 +270,7 @@ export default function LoginPage() {
                 </p>
               )}
             </div>
-            <Button type="submit" className="w-full" loading={forgotLoading}>
+            <Button data-testid="form-forgot-password-submit-button" type="submit" className="w-full" loading={forgotLoading}>
               Enviar link
             </Button>
           </form>

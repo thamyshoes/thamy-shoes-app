@@ -30,6 +30,7 @@ export function Header({ user, onMenuClick, className }: HeaderProps) {
 
   return (
     <header
+      data-testid="header"
       className={cn(
         'flex h-14 items-center justify-between border-b border-border bg-background px-4 gap-4',
         className,
@@ -37,6 +38,7 @@ export function Header({ user, onMenuClick, className }: HeaderProps) {
     >
       <div className="flex items-center gap-3">
         <button
+          data-testid="header-mobile-menu-button"
           onClick={onMenuClick}
           className="flex items-center justify-center rounded-md p-1.5 text-secondary hover:bg-muted hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hidden"
           aria-label="Abrir menu"
@@ -45,12 +47,13 @@ export function Header({ user, onMenuClick, className }: HeaderProps) {
         </button>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex flex-col items-end">
+      <div data-testid="header-user-section" className="flex items-center gap-4">
+        <div data-testid="header-user-info" className="flex flex-col items-end">
           <span className="text-sm font-medium text-foreground">{user.nome}</span>
           <span className="text-xs text-secondary">{PERFIL_LABEL[user.perfil]}</span>
         </div>
         <button
+          data-testid="header-logout-button"
           onClick={handleLogout}
           className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-secondary hover:bg-muted hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label="Sair"

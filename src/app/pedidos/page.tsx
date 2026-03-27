@@ -64,6 +64,7 @@ function BotaoGerarInline({ pedidoId, onGerado }: { pedidoId: string; onGerado: 
 
   return (
     <Button
+      data-testid={`pedidos-gerar-fichas-button-${pedidoId}`}
       variant="secondary"
       size="sm"
       icon={gerando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ClipboardList className="h-3.5 w-3.5" />}
@@ -159,12 +160,13 @@ export default function PedidosPage() {
 
   return (
     <SidebarLayout user={user}>
-      <div className="space-y-4">
+      <div data-testid="pedidos-page" className="space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-foreground">Pedidos de Compra</h1>
-          <div className="flex gap-2">
+          <div data-testid="pedidos-actions" className="flex gap-2">
             {canConsolidar && (
               <Button
+                data-testid="pedidos-consolidar-button"
                 variant="secondary"
                 size="sm"
                 onClick={() => router.push(ROUTES.PEDIDOS_CONSOLIDAR)}
@@ -174,6 +176,7 @@ export default function PedidosPage() {
             )}
             {canImportar && (
               <Button
+                data-testid="pedidos-importar-button"
                 variant="primary"
                 size="sm"
                 onClick={() => setShowImportar(true)}
@@ -187,6 +190,7 @@ export default function PedidosPage() {
         <FilterBar>
           <label className="text-sm text-secondary">Status:</label>
           <select
+            data-testid="pedidos-filter-status-select"
             className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             value={status ?? ''}
             onChange={(e) => {
@@ -203,6 +207,7 @@ export default function PedidosPage() {
 
           <label className="text-sm text-secondary">Fornecedor:</label>
           <input
+            data-testid="pedidos-filter-fornecedor-input"
             type="text"
             className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="Buscar fornecedor"
@@ -215,6 +220,7 @@ export default function PedidosPage() {
 
           <label className="text-sm text-secondary">De:</label>
           <input
+            data-testid="pedidos-filter-data-inicio-input"
             type="text"
             className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="dd/mm/aaaa"
@@ -229,6 +235,7 @@ export default function PedidosPage() {
 
           <label className="text-sm text-secondary">Até:</label>
           <input
+            data-testid="pedidos-filter-data-fim-input"
             type="text"
             className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="dd/mm/aaaa"
@@ -243,6 +250,7 @@ export default function PedidosPage() {
         </FilterBar>
 
         <DataTable
+          data-testid="pedidos-table"
           data={pedidos as PedidoRow[]}
           columns={columns}
           loading={loading}

@@ -80,9 +80,9 @@ export function TabelaModelos({
   onPageChange,
 }: TabelaModelosProps) {
   return (
-    <div className="rounded-lg border border-border bg-background">
+    <div data-testid="modelos-table-container" className="rounded-lg border border-border bg-background">
       <div className="overflow-x-auto">
-        <table className="w-full table-fixed text-[13px]" aria-label="Tabela de modelos" aria-busy={loading}>
+        <table data-testid="modelos-table" className="w-full table-fixed text-[13px]" aria-label="Tabela de modelos" aria-busy={loading}>
           <colgroup>
             {/* Base: Código + Nome */}
             <col className="w-[90px]" />
@@ -193,6 +193,7 @@ export function TabelaModelos({
               modelos.map((m) => (
                 <tr
                   key={m.id}
+                  data-testid={`modelos-row-${m.id}`}
                   className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors"
                 >
                   {/* BASE */}
@@ -227,6 +228,7 @@ export function TabelaModelos({
                   </td>
                   <td className="px-3 py-3">
                     <button
+                      data-testid={`modelos-variantes-button-${m.id}`}
                       onClick={() => onVerVariantes(m)}
                       className="text-primary underline hover:text-primary/80 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       aria-label={`Ver variantes de ${m.nome}`}
@@ -237,6 +239,7 @@ export function TabelaModelos({
                   <td className="px-3 py-3">
                     <div className="flex items-center justify-end gap-1">
                       <button
+                        data-testid={`modelos-editar-button-${m.id}`}
                         onClick={() => onEdit(m)}
                         className="rounded p-1 text-secondary hover:bg-muted hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         aria-label={`Editar modelo ${m.codigo}`}
@@ -245,6 +248,7 @@ export function TabelaModelos({
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
+                        data-testid={`modelos-excluir-button-${m.id}`}
                         onClick={() => onDelete(m)}
                         className="rounded p-1 text-secondary hover:bg-destructive/10 hover:text-destructive transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         aria-label={`Excluir modelo ${m.codigo}`}
@@ -264,6 +268,7 @@ export function TabelaModelos({
       {totalPages > 1 && (
         <div className="flex items-center justify-between border-t border-border px-4 py-3">
           <Button
+            data-testid="modelos-table-prev-button"
             variant="secondary"
             size="sm"
             disabled={page <= 1}
@@ -276,6 +281,7 @@ export function TabelaModelos({
             Página {page} de {totalPages}
           </span>
           <Button
+            data-testid="modelos-table-next-button"
             variant="secondary"
             size="sm"
             disabled={page >= totalPages}

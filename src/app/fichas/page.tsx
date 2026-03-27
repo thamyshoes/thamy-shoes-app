@@ -98,6 +98,7 @@ function SetorActions({ ficha }: { ficha: FichaRow | undefined }) {
   return (
     <div className="flex items-center gap-1">
       <Button
+        data-testid={`fichas-visualizar-button-${ficha.id}`}
         variant="secondary"
         size="sm"
         icon={<Eye className="h-3.5 w-3.5" />}
@@ -106,6 +107,7 @@ function SetorActions({ ficha }: { ficha: FichaRow | undefined }) {
         Visualizar
       </Button>
       <Button
+        data-testid={`fichas-baixar-button-${ficha.id}`}
         variant="ghost"
         size="sm"
         icon={
@@ -185,9 +187,9 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setores: 
   }
 
   return (
-    <div className="space-y-6">
+    <div data-testid="fichas-page" className="space-y-6">
       {/* Header */}
-      <div>
+      <div data-testid="fichas-header">
         <h1 className="text-xl font-semibold text-foreground">Central de Fichas</h1>
         {!loading && (
           <p className="mt-1 text-sm text-secondary" aria-live="polite">
@@ -197,12 +199,13 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setores: 
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-wrap items-end gap-3">
+      <div data-testid="fichas-filters" className="flex flex-wrap items-end gap-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-secondary" htmlFor="filtro-pedido">
             Pedido
           </label>
           <input
+            data-testid="fichas-filter-pedido-input"
             id="filtro-pedido"
             type="text"
             className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -219,6 +222,7 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setores: 
             Data
           </label>
           <input
+            data-testid="fichas-filter-data-input"
             id="filtro-data"
             type="text"
             className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -230,16 +234,16 @@ function FichasContent({ user }: { user: { id: string; perfil: string; setores: 
           />
         </div>
 
-        <Button onClick={aplicarFiltros}>Filtrar</Button>
-        <Button variant="ghost" onClick={limparFiltros} aria-label="Limpar filtros">
+        <Button data-testid="fichas-filter-aplicar-button" onClick={aplicarFiltros}>Filtrar</Button>
+        <Button data-testid="fichas-filter-limpar-button" variant="ghost" onClick={limparFiltros} aria-label="Limpar filtros">
           ✕
         </Button>
       </div>
 
       {/* Tabela */}
-      <div className="rounded-lg border border-border bg-background">
+      <div data-testid="fichas-table-container" className="rounded-lg border border-border bg-background">
         <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-[13px]" aria-label="Fichas de produção" aria-busy={loading}>
+          <table data-testid="fichas-table" className="w-full table-fixed text-[13px]" aria-label="Fichas de produção" aria-busy={loading}>
             <colgroup>
               <col className="w-[100px]" />
               <col className="w-[90px]" />

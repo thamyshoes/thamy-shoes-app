@@ -85,7 +85,7 @@ function gradeRowToCard(
  * Agrupa cards por cor do componente relevante ao setor.
  * SOLA: agrupa por modelo + corSola (mesma sola, soma quantidades)
  * PALMILHA: agrupa por modelo + corPalmilha
- * FACHETA: agrupa por modelo + corFacheta
+ * FACHETA: agrupa por modelo + corFacheta + corSola
  * CABEDAL: sem agrupamento (cada cor de cabedal é uma ficha distinta)
  */
 function mergeCardsPorSetor(setor: Setor, cards: ConsolidadoCardData[]): ConsolidadoCardData[] {
@@ -127,10 +127,13 @@ function mergeCardsPorSetor(setor: Setor, cards: ConsolidadoCardData[]): Consoli
     const refComp      = getRefComponente(card)
     const corComp      = getCorComponente(card)
     const materialComp = getMaterialComponente(card)
+    // FACHETA: cor da sola também diferencia agrupamento
+    const corSolaComp  = setor === Setor.FACHETA ? (card.item.variante.corSola ?? '') : ''
     // Se ref ou cor do componente estiver ausente, não mergear — usar SKU como chave única
     // Para PALMILHA e FACHETA, o material também integra a chave de agrupamento
+    // Para FACHETA, a cor da sola também integra a chave
     const key = refComp && corComp
-      ? `${refComp}||${corComp}||${materialComp ?? ''}||${card.pedido.numero}`
+      ? `${refComp}||${corComp}||${materialComp ?? ''}||${corSolaComp}||${card.pedido.numero}`
       : `__nomatch__${card.item.sku}||${card.pedido.numero}`
 
     const existing = grupos.get(key)

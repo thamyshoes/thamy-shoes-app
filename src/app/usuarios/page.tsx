@@ -134,10 +134,10 @@ function UserModal({ editing, open, onClose, onSuccess, selfId }: UserModalProps
       onClose={onClose}
       title={isEdit ? 'Editar Usuário' : 'Novo Usuário'}
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form data-testid="form-usuario" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-1">
           <label htmlFor="user-nome" className="text-sm font-medium text-foreground">Nome</label>
-          <Input id="user-nome" placeholder="Nome completo" {...register('nome')} />
+          <Input data-testid="form-usuario-nome-input" id="user-nome" placeholder="Nome completo" {...register('nome')} />
           {errors.nome && (
             <p className="text-xs text-destructive">{errors.nome.message}</p>
           )}
@@ -145,7 +145,7 @@ function UserModal({ editing, open, onClose, onSuccess, selfId }: UserModalProps
 
         <div className="space-y-1">
           <label htmlFor="user-email" className="text-sm font-medium text-foreground">Email</label>
-          <Input id="user-email" type="email" placeholder="email@empresa.com" {...register('email')} />
+          <Input data-testid="form-usuario-email-input" id="user-email" type="email" placeholder="email@empresa.com" {...register('email')} />
           {errors.email && (
             <p className="text-xs text-destructive">{errors.email.message}</p>
           )}
@@ -155,7 +155,7 @@ function UserModal({ editing, open, onClose, onSuccess, selfId }: UserModalProps
           <label htmlFor="user-password" className="text-sm font-medium text-foreground">
             {isEdit ? 'Nova Senha (opcional)' : 'Senha'}
           </label>
-          <Input id="user-password" type="password" placeholder="••••••••" {...register('password')} />
+          <Input data-testid="form-usuario-password-input" id="user-password" type="password" placeholder="••••••••" {...register('password')} />
           {errors.password && (
             <p className="text-xs text-destructive">{errors.password.message}</p>
           )}
@@ -164,6 +164,7 @@ function UserModal({ editing, open, onClose, onSuccess, selfId }: UserModalProps
         <div className="space-y-1">
           <label htmlFor="user-perfil" className="text-sm font-medium text-foreground">Perfil</label>
           <select
+            data-testid="form-usuario-perfil-select"
             id="user-perfil"
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             {...register('perfil')}
@@ -178,12 +179,13 @@ function UserModal({ editing, open, onClose, onSuccess, selfId }: UserModalProps
         </div>
 
         {showSetor && (
-          <div className="space-y-2">
+          <div data-testid="form-usuario-setores" className="space-y-2">
             <p className="text-sm font-medium text-foreground">Setores</p>
             <div className="flex flex-wrap gap-3">
               {SETORES_OPCOES.map((opt) => (
                 <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
                   <input
+                    data-testid={`form-usuario-setor-${opt.value.toLowerCase()}-checkbox`}
                     type="checkbox"
                     className="h-4 w-4 rounded border-border accent-primary"
                     checked={setoresSelecionados.includes(opt.value)}
@@ -200,10 +202,10 @@ function UserModal({ editing, open, onClose, onSuccess, selfId }: UserModalProps
         )}
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button data-testid="form-usuario-cancelar-button" type="button" variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button data-testid="form-usuario-salvar-button" type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Salvando...' : 'Salvar'}
           </Button>
         </div>
@@ -329,6 +331,7 @@ export default function UsuariosPage() {
       render: (u) => (
         <div className="flex justify-end gap-2">
           <Button
+            data-testid={`usuarios-editar-button-${u.id}`}
             size="sm"
             variant="ghost"
             onClick={(e) => {
@@ -340,6 +343,7 @@ export default function UsuariosPage() {
             Editar
           </Button>
           <Button
+            data-testid={`usuarios-toggle-ativo-button-${u.id}`}
             size="sm"
             variant="ghost"
             disabled={u.id === currentUser?.id}
@@ -360,10 +364,11 @@ export default function UsuariosPage() {
 
   return (
     <SidebarLayout user={currentUser}>
-      <div className="space-y-6">
+      <div data-testid="usuarios-page" className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-foreground">Usuários</h1>
           <Button
+            data-testid="usuarios-novo-button"
             onClick={() => {
               setEditing(null)
               setModalOpen(true)
@@ -375,6 +380,7 @@ export default function UsuariosPage() {
         </div>
 
         <Input
+          data-testid="usuarios-search-input"
           placeholder="Buscar por nome ou email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}

@@ -66,10 +66,11 @@ export function DialogSetores({
       size="sm"
       footer={
         <div className="flex items-center justify-end gap-2">
-          <Button variant="ghost" onClick={handleClose} disabled={loading}>
+          <Button data-testid="dialog-setores-cancelar-button" variant="ghost" onClick={handleClose} disabled={loading}>
             Cancelar
           </Button>
           <Button
+            data-testid="dialog-setores-confirmar-button"
             variant="primary"
             onClick={handleConfirm}
             disabled={nenhum || loading}
@@ -81,7 +82,7 @@ export function DialogSetores({
         </div>
       }
     >
-      <div className="space-y-3">
+      <div data-testid="dialog-setores" className="space-y-3">
         {setores.map(({ value, label }) => {
           const checked = selecionados.has(value)
           return (
@@ -92,6 +93,7 @@ export function DialogSetores({
             >
               <input
                 id={`setor-${value}`}
+                data-testid={`dialog-setores-${value.toLowerCase()}-checkbox`}
                 type="checkbox"
                 checked={checked}
                 onChange={() => toggle(value)}

@@ -266,7 +266,7 @@ function FichaCard({ ficha }: { ficha: FichaProducao }) {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-background p-4">
+    <div data-testid={`pedido-ficha-card-${ficha.id}`} className="rounded-lg border border-border bg-background p-4">
       <div className="mb-3">
         <p className="text-sm font-semibold capitalize text-foreground">
           {ficha.setor.charAt(0) + ficha.setor.slice(1).toLowerCase()}
@@ -276,6 +276,7 @@ function FichaCard({ ficha }: { ficha: FichaProducao }) {
       </div>
       <div className="flex gap-2">
         <Button
+          data-testid={`pedido-ficha-visualizar-button-${ficha.id}`}
           variant="secondary"
           size="sm"
           icon={<Eye className="h-3.5 w-3.5" />}
@@ -284,6 +285,7 @@ function FichaCard({ ficha }: { ficha: FichaProducao }) {
           Visualizar
         </Button>
         <Button
+          data-testid={`pedido-ficha-baixar-button-${ficha.id}`}
           variant="ghost"
           size="sm"
           icon={
@@ -405,9 +407,9 @@ function handleItemSaved() {
       )}
 
       {!loading && !error && pedido && (
-        <div className="space-y-6">
+        <div data-testid="pedido-detalhe-page" className="space-y-6">
           {/* Info Card */}
-          <div className="rounded-lg border border-border bg-background p-5">
+          <div data-testid="pedido-info-card" className="rounded-lg border border-border bg-background p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
                 <div>
@@ -443,6 +445,7 @@ function handleItemSaved() {
               {isAdmin && (
                 <div className="flex shrink-0 gap-2">
                   <Button
+                    data-testid="pedido-reimportar-button"
                     variant="secondary"
                     size="sm"
                     onClick={() => setShowReimportConfirm(true)}
@@ -451,6 +454,7 @@ function handleItemSaved() {
                     Reimportar
                   </Button>
                   <Button
+                    data-testid="pedido-excluir-button"
                     variant="destructive"
                     size="sm"
                     onClick={() => setShowDeleteConfirm(true)}
@@ -504,7 +508,7 @@ function handleItemSaved() {
           )}
 
           {/* Itens */}
-          <section>
+          <section data-testid="pedido-itens-section">
             <h2 className="mb-3 text-base font-semibold text-foreground">
               Itens ({pedido.totalItens})
             </h2>
@@ -517,7 +521,7 @@ function handleItemSaved() {
 
           {/* Fichas geradas */}
           {pedido.fichas.length > 0 && (
-            <section>
+            <section data-testid="pedido-fichas-section">
               <h2 className="mb-3 text-base font-semibold text-foreground">
                 Fichas Geradas ({pedido.fichas.length})
               </h2>

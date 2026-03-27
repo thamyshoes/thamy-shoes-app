@@ -93,7 +93,7 @@ export function DataTable<T extends { id?: string }>({
   const totalPages = pagination ? Math.ceil(pagination.total / pagination.pageSize) : 1
 
   return (
-    <div className={cn('overflow-hidden rounded-lg border border-border', className)}>
+    <div data-testid="data-table" className={cn('overflow-hidden rounded-lg border border-border', className)}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-surface">
@@ -101,6 +101,7 @@ export function DataTable<T extends { id?: string }>({
               {columns.map((col) => (
                 <th
                   key={col.key}
+                  data-testid={`data-table-th-${col.key}`}
                   className={cn(
                     'px-4 py-3 font-semibold text-secondary',
                     alignClass[col.align ?? 'left'],
@@ -118,6 +119,7 @@ export function DataTable<T extends { id?: string }>({
             {sortedData.map((item, rowIdx) => (
               <tr
                 key={(item as Record<string, unknown>).id as string ?? rowIdx}
+                data-testid={`data-table-row-${(item as Record<string, unknown>).id as string ?? rowIdx}`}
                 onClick={() => onRowClick?.(item)}
                 className={cn(
                   'border-t border-border transition-colors',
@@ -152,6 +154,7 @@ export function DataTable<T extends { id?: string }>({
           </span>
           <div className="flex gap-2">
             <button
+              data-testid="data-table-prev-button"
               onClick={() => onPageChange(pagination.page - 1)}
               disabled={pagination.page <= 1}
               className="rounded px-3 py-1 text-xs text-secondary hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -159,6 +162,7 @@ export function DataTable<T extends { id?: string }>({
               Anterior
             </button>
             <button
+              data-testid="data-table-next-button"
               onClick={() => onPageChange(pagination.page + 1)}
               disabled={pagination.page >= totalPages}
               className="rounded px-3 py-1 text-xs text-secondary hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

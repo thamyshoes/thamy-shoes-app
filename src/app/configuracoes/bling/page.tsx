@@ -46,7 +46,7 @@ function ConnectedCard({
           Validade da sessão: {refreshExpiry}
         </p>
       )}
-      <Button variant="ghost" onClick={onDisconnect}>
+      <Button data-testid="bling-desconectar-button" variant="ghost" onClick={onDisconnect}>
         Desconectar
       </Button>
     </div>
@@ -65,7 +65,7 @@ function ExpiredCard() {
       <p className="text-sm text-secondary">
         A conexão com o Bling expirou. Reconecte para continuar importando pedidos.
       </p>
-      <Button variant="primary" onClick={() => { window.location.href = '/api/bling/connect' }}>
+      <Button data-testid="bling-reconectar-button" variant="primary" onClick={() => { window.location.href = '/api/bling/connect' }}>
         Reconectar
       </Button>
     </div>
@@ -84,7 +84,7 @@ function DisconnectedCard() {
       <p className="text-sm text-secondary">
         Conecte sua conta Bling para importar pedidos automaticamente.
       </p>
-      <Button variant="primary" onClick={() => { window.location.href = '/api/bling/connect' }}>
+      <Button data-testid="bling-conectar-button" variant="primary" onClick={() => { window.location.href = '/api/bling/connect' }}>
         Conectar Bling
       </Button>
     </div>

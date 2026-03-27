@@ -11,56 +11,63 @@ import { Perfil } from '@/types'
 interface NavChild {
   label: string
   href: string
+  slug: string
 }
 
 interface NavItem {
   label: string
   href?: string
+  slug: string
   icon: React.ReactNode
   perfis: Perfil[]
   children?: NavChild[]
 }
 
 const SKU_CHILDREN: NavChild[] = [
-  { label: 'Modelos',   href: ROUTES.CONFIG_MODELOS },
-  { label: 'Cores',     href: ROUTES.CONFIG_CORES },
-  { label: 'Numeração', href: ROUTES.CONFIG_GRADES },
+  { label: 'Modelos',   href: ROUTES.CONFIG_MODELOS, slug: 'sku-modelos' },
+  { label: 'Cores',     href: ROUTES.CONFIG_CORES,   slug: 'sku-cores' },
+  { label: 'Numeração', href: ROUTES.CONFIG_GRADES,  slug: 'sku-numeracao' },
 ]
 
 const MATERIA_PRIMA_CHILDREN: NavChild[] = [
-  { label: 'Cabedal',   href: ROUTES.CONFIG_MATERIA_PRIMA_CABEDAL },
-  { label: 'Sola',      href: ROUTES.CONFIG_MATERIA_PRIMA_SOLA },
-  { label: 'Palmilha',  href: ROUTES.CONFIG_MATERIA_PRIMA_PALMILHA },
-  { label: 'Facheta',   href: ROUTES.CONFIG_MATERIA_PRIMA_FACHETA },
+  { label: 'Cabedal',   href: ROUTES.CONFIG_MATERIA_PRIMA_CABEDAL,  slug: 'materia-prima-cabedal' },
+  { label: 'Sola',      href: ROUTES.CONFIG_MATERIA_PRIMA_SOLA,     slug: 'materia-prima-sola' },
+  { label: 'Palmilha',  href: ROUTES.CONFIG_MATERIA_PRIMA_PALMILHA, slug: 'materia-prima-palmilha' },
+  { label: 'Facheta',   href: ROUTES.CONFIG_MATERIA_PRIMA_FACHETA,  slug: 'materia-prima-facheta' },
 ]
 
 const NAV_ITEMS: NavItem[] = [
   {
     label: 'Importar Pedidos',
     href: ROUTES.PEDIDOS,
+    slug: 'importar-pedidos',
     icon: <Package className="h-4 w-4" />,
     perfis: [Perfil.ADMIN, Perfil.PCP],
   },
   {
     label: 'Gerar Ficha',
     href: ROUTES.PEDIDOS_CONSOLIDAR,
+    slug: 'gerar-ficha',
     icon: <Layers className="h-4 w-4" />,
     perfis: [Perfil.ADMIN, Perfil.PCP],
   },
   {
     label: 'Fichas Geradas',
     href: ROUTES.FICHAS,
+    slug: 'fichas-geradas',
     icon: <FileText className="h-4 w-4" />,
     perfis: [Perfil.ADMIN, Perfil.PCP, Perfil.PRODUCAO],
   },
   {
     label: 'Gestão de SKU',
+    slug: 'gestao-sku',
     icon: <Tag className="h-4 w-4" />,
     perfis: [Perfil.ADMIN],
     children: SKU_CHILDREN,
   },
   {
     label: 'Matéria Prima',
+    slug: 'materia-prima',
     icon: <Boxes className="h-4 w-4" />,
     perfis: [Perfil.ADMIN],
     children: MATERIA_PRIMA_CHILDREN,
@@ -73,18 +80,21 @@ const NAV_ITEMS: NavItem[] = [
     //   /configuracoes/sku           — regras de parser de SKU
     label: 'Configurações',
     href: ROUTES.CONFIGURACOES,
+    slug: 'configuracoes',
     icon: <Settings className="h-4 w-4" />,
     perfis: [Perfil.ADMIN],
   },
   {
     label: 'Configurações',
     href: '/configuracoes/senha',
+    slug: 'configuracoes-senha',
     icon: <Settings className="h-4 w-4" />,
     perfis: [Perfil.PCP, Perfil.PRODUCAO],
   },
   {
     label: 'Gestão de Usuários',
     href: ROUTES.USUARIOS,
+    slug: 'gestao-usuarios',
     icon: <Users className="h-4 w-4" />,
     perfis: [Perfil.ADMIN],
   },
@@ -116,8 +126,8 @@ export function Sidebar({ perfil, onNavigate }: SidebarProps) {
   }
 
   return (
-    <aside className="flex h-full w-56 flex-col border-r border-border bg-surface">
-      <div className="flex h-14 items-center border-b border-border px-4">
+    <aside data-testid="sidebar" className="flex h-full w-56 flex-col border-r border-border bg-surface">
+      <div data-testid="sidebar-logo" className="flex h-14 items-center border-b border-border px-4">
         <Link href={ROUTES.PEDIDOS} className="flex items-center gap-2">
           <Image
             src="/logo.png"
@@ -131,7 +141,7 @@ export function Sidebar({ perfil, onNavigate }: SidebarProps) {
           <span className="text-sm font-bold text-primary">Thamy Shoes</span>
         </Link>
       </div>
-      <nav className="flex-1 overflow-y-auto py-2">
+      <nav data-testid="sidebar-nav" className="flex-1 overflow-y-auto py-2">
         <ul className="space-y-0.5 px-2">
           {visibleItems.map((item) => {
             const groupActive = isItemActive(item)
@@ -141,6 +151,7 @@ export function Sidebar({ perfil, onNavigate }: SidebarProps) {
                 <li key={item.label}>
                   {/* Group header — não clicável */}
                   <div
+                    data-testid={`sidebar-nav-group-${item.slug}`}
                     className={cn(
                       'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm',
                       groupActive ? 'font-semibold text-primary' : 'text-secondary',
@@ -156,6 +167,7 @@ export function Sidebar({ perfil, onNavigate }: SidebarProps) {
                       return (
                         <li key={child.href}>
                           <Link
+                            data-testid={`sidebar-nav-item-${child.slug}`}
                             href={child.href}
                             onClick={onNavigate}
                             className={cn(
@@ -178,6 +190,7 @@ export function Sidebar({ perfil, onNavigate }: SidebarProps) {
             return (
               <li key={item.href}>
                 <Link
+                  data-testid={`sidebar-nav-item-${item.slug}`}
                   href={item.href!}
                   onClick={onNavigate}
                   className={cn(

@@ -17,15 +17,15 @@ export function SidebarLayout({ user, children }: SidebarLayoutProps) {
   const closeDrawer = useCallback(() => setDrawerOpen(false), [])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div data-testid="app-shell" className="flex h-screen overflow-hidden bg-background">
       {/* Desktop sidebar */}
-      <div className="hidden md:flex">
+      <div data-testid="sidebar-desktop" className="hidden md:flex">
         <Sidebar perfil={user.perfil} />
       </div>
 
       {/* Mobile drawer overlay */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div data-testid="sidebar-mobile-drawer" className="fixed inset-0 z-40 md:hidden">
           <div
             className="absolute inset-0 bg-black/50"
             onClick={closeDrawer}
@@ -39,7 +39,7 @@ export function SidebarLayout({ user, children }: SidebarLayoutProps) {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header user={user} onMenuClick={openDrawer} />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main data-testid="main-content" className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   )

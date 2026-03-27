@@ -57,6 +57,7 @@ export function BotaoGerarFichas({ pedidoId, temFacheta, onGerado }: BotaoGerarF
   return (
     <div className="flex items-center gap-2">
       <Button
+        data-testid="pedido-gerar-fichas-button"
         variant="primary"
         onClick={() => setDialogOpen(true)}
         disabled={disabled || loading}
