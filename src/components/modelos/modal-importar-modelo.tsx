@@ -242,7 +242,7 @@ export function ModalImportarModelo({ open, onClose, onImported }: ModalImportar
           {result.blingTruncated && (
             <p className="mb-2 text-xs text-warning bg-warning/10 rounded px-2 py-1">
               A busca no Bling retornou muitos resultados e pode estar incompleta.
-              Se faltarem variantes, tente usar o sync "Bling (tudo)".
+              Se faltarem variantes, tente usar o sync &quot;Bling (tudo)&quot;.
             </p>
           )}
 
