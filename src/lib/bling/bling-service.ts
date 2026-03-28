@@ -403,8 +403,11 @@ class BlingIntegrationService {
    * Busca produtos no Bling cujo código comece com o termo informado.
    * Usa `criterio` (busca textual ampla) porque `codigo` faz match exato no Bling v3.
    * Pagina automaticamente até 5 páginas (500 produtos) para cobrir todas as variações.
+   *
+   * @param situacao Filtro de situação: 'A' (ativo, padrão), 'I' (inativo), ou null (todos).
+   *   Use null ao importar modelos para incluir variações inativas visíveis no Bling.
    */
-  async searchProdutosByCodigo(codigoPrefix: string): Promise<BlingProduto[]> {
+  async searchProdutosByCodigo(codigoPrefix: string, situacao: 'A' | 'I' | null = 'A'): Promise<BlingProduto[]> {
     const todos: BlingProduto[] = []
     const MAX_PAGES = 5
 
@@ -412,9 +415,9 @@ class BlingIntegrationService {
       const params = new URLSearchParams({
         pagina: String(pagina),
         limite: '100',
-        situacao: 'A',
         criterio: codigoPrefix,
       })
+      if (situacao !== null) params.set('situacao', situacao)
 
       const path = `/produtos?${params.toString()}`
       console.log(`[bling-search] GET ${path}`)

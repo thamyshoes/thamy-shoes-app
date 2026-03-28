@@ -165,8 +165,14 @@ export async function GET(request: NextRequest) {
     // ── FASE 2: Buscar no Bling (sempre, para complementar) ──
     let blingTruncated = false
     try {
-      const produtos = await blingService.searchProdutosByCodigo(codigo)
+      // null = sem filtro de situação: inclui variações inativas visíveis no Bling
+      const produtos = await blingService.searchProdutosByCodigo(codigo, null)
       if (produtos.length >= 500) blingTruncated = true
+
+      // Produto-pai tem código exatamente igual ao modelo (ex: "8054")
+      // Seu nome é o nome real do produto — usado em todas as variações
+      const produtoPaiDireto = produtos.find((p) => p.codigo === codigo)
+      const nomeProdutoPai = produtoPaiDireto?.nome ?? `Modelo ${codigo}`
 
       // IDs de produtos-pai cujo SKU direto não parseou — candidatos ao fallback variacoes
       const produtosPaiFallback: { id: number; nome: string }[] = []
@@ -175,9 +181,9 @@ export async function GET(request: NextRequest) {
         const parsed = await parseSku(p.codigo)
 
         if (parsed.modelo && parsed.cor && parsed.tamanho && parsed.modelo === codigo) {
-          // SKU direto parseou com sucesso — acumular
+          // SKU direto parseou com sucesso — usa nome do produto-pai (não da variação)
           fonteBling = true
-          acumularBling(mergedMap, parsed.cor, parsed.tamanho, p.codigo, p.nome, p.imagemThumbnail ?? null, codigo)
+          acumularBling(mergedMap, parsed.cor, parsed.tamanho, p.codigo, nomeProdutoPai, p.imagemThumbnail ?? null, codigo)
         } else {
           // SKU não parseou ou modelo não bate — pode ser produto-pai
           // Produto-pai no Bling geralmente tem código curto (ex: "1056") enquanto
@@ -199,7 +205,8 @@ export async function GET(request: NextRequest) {
 
             fonteBling = true
             const imgUrl = variacao.imagens?.[0]?.link ?? null
-            acumularBling(mergedMap, parsedVar.cor, parsedVar.tamanho, variacao.codigo, variacao.nome, imgUrl, codigo)
+            // Usa pai.nome (nome do produto-pai) em vez de variacao.nome (descriptor da variação)
+            acumularBling(mergedMap, parsedVar.cor, parsedVar.tamanho, variacao.codigo, pai.nome, imgUrl, codigo)
           }
         } catch (varErr) {
           console.warn(`[importar-modelo] Falha ao buscar variações do produto ${pai.id}:`, varErr)
