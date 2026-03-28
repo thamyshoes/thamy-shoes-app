@@ -400,12 +400,29 @@ class BlingIntegrationService {
   }
 
   /**
+   * Busca produto-pai pelo código EXATO, sem filtro de situação.
+   * Usa o parâmetro `codigo` (match exato no Bling v3) para encontrar o produto-pai
+   * mesmo que esteja inativo. Retorna null se não encontrado.
+   */
+  async findProdutoPaiPorCodigo(codigo: string): Promise<BlingProduto | null> {
+    try {
+      const params = new URLSearchParams({ pagina: '1', limite: '10', codigo })
+      const path = `/produtos?${params.toString()}`
+      console.log(`[bling-pai] GET ${path}`)
+      const response = await this.blingRequest<{ data: BlingProduto[] }>('GET', path)
+      const match = response.data.find((p) => p.codigo === codigo)
+      console.log(`[bling-pai] '${codigo}': ${response.data.length} retornados, produto-pai ${match ? 'encontrado (id=' + match.id + ')' : 'não encontrado'}`)
+      return match ?? null
+    } catch (err) {
+      console.warn(`[bling-pai] Falha ao buscar produto-pai '${codigo}':`, err)
+      return null
+    }
+  }
+
+  /**
    * Busca produtos no Bling cujo código comece com o termo informado.
    * Usa `criterio` (busca textual ampla) porque `codigo` faz match exato no Bling v3.
    * Pagina automaticamente até 5 páginas (500 produtos) para cobrir todas as variações.
-   *
-   * @param situacao Filtro de situação: 'A' (ativo, padrão), 'I' (inativo), ou null (todos).
-   *   Use null ao importar modelos para incluir variações inativas visíveis no Bling.
    */
   async searchProdutosByCodigo(codigoPrefix: string, situacao: 'A' | 'I' | null = 'A'): Promise<BlingProduto[]> {
     const todos: BlingProduto[] = []

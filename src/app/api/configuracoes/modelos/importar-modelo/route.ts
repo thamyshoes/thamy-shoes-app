@@ -165,14 +165,17 @@ export async function GET(request: NextRequest) {
     // ── FASE 2: Buscar no Bling (sempre, para complementar) ──
     let blingTruncated = false
     try {
-      // null = sem filtro de situação: inclui variações inativas visíveis no Bling
-      const produtos = await blingService.searchProdutosByCodigo(codigo, null)
+      // situacao 'A' (padrão): evita explosão de resultados do criterio textual.
+      // Produtos inativos são cobertos via findProdutoPaiPorCodigo + getProduto abaixo.
+      const produtos = await blingService.searchProdutosByCodigo(codigo)
       if (produtos.length >= 500) blingTruncated = true
 
-      // Produto-pai tem código exatamente igual ao modelo (ex: "8054")
-      // Seu nome é o nome real do produto — usado em todas as variações
-      const produtoPaiDireto = produtos.find((p) => p.codigo === codigo)
-      const nomeProdutoPai = produtoPaiDireto?.nome ?? `Modelo ${codigo}`
+      // Produto-pai tem código exatamente igual ao modelo (ex: "8054").
+      // Pode estar inativo — nesse caso não aparece na busca criterio com situacao='A'.
+      // Buscamos por código exato (sem filtro de situação) para garantir nome e variacoes.
+      const produtoPaiNaBusca = produtos.find((p) => p.codigo === codigo)
+      const produtoPai = produtoPaiNaBusca ?? await blingService.findProdutoPaiPorCodigo(codigo)
+      const nomeProdutoPai = produtoPai?.nome ?? `Modelo ${codigo}`
 
       // IDs de produtos-pai cujo SKU direto não parseou — candidatos ao fallback variacoes
       const produtosPaiFallback: { id: number; nome: string }[] = []
@@ -189,6 +192,15 @@ export async function GET(request: NextRequest) {
           // Produto-pai no Bling geralmente tem código curto (ex: "1056") enquanto
           // as variações têm SKU completo (ex: "105601229")
           produtosPaiFallback.push({ id: p.id, nome: p.nome })
+        }
+      }
+
+      // Garantir que o produto-pai (mesmo inativo) esteja na lista de fallback.
+      // Assim getProduto(id) busca suas variacoes incluindo as inativas.
+      if (produtoPai) {
+        const jaIncluso = produtosPaiFallback.some((p) => p.id === produtoPai.id)
+        if (!jaIncluso) {
+          produtosPaiFallback.push({ id: produtoPai.id, nome: produtoPai.nome })
         }
       }
 
