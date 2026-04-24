@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP as requireAdmin } from '@/lib/api-guard'
 import { invalidarCacheRegra } from '@/lib/bling/sku-parser'
 
 export async function PATCH(

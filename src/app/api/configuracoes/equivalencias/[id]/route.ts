@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { EscopoEquivalencia } from '@prisma/client'
-import { requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP as requireAdmin } from '@/lib/api-guard'
 
 const updateSchema = z.object({
   escopo: z.nativeEnum(EscopoEquivalencia).optional(),

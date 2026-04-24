@@ -6,6 +6,7 @@ const mockGetPublicUrl = vi.fn()
 
 vi.mock('@/lib/api-guard', () => ({
   requireAdmin: vi.fn(),
+  requireAdminOrPCP: vi.fn(),
 }))
 
 vi.mock('@/lib/services/storage-service', () => ({

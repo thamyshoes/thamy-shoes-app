@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP as requireAdmin } from '@/lib/api-guard'
 import { invalidarCacheRegra } from '@/lib/bling/sku-parser'
 
 const digitosSegmentoSchema = z.object({

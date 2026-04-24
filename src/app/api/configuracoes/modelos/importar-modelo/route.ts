@@ -3,11 +3,18 @@ import { z } from 'zod'
 import { blingService } from '@/lib/bling/bling-service'
 import { parseSku } from '@/lib/bling/sku-parser'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP } from '@/lib/api-guard'
 import { StorageService } from '@/lib/services/storage-service'
 import { StatusItem } from '@/types'
 
-export const maxDuration = 30
+export const maxDuration = 60
+
+// Transaction tuning para imports grandes (ex: ref 9050 com 10 cores).
+// Default do Prisma e 5_000ms; com Supabase (pooler + latencia de rede) loops
+// sequenciais estouram o prazo e subsequent calls batem em
+// "Transaction not found. Transaction ID is invalid, refers to an old closed transaction".
+const TX_TIMEOUT_MS = 30_000
+const TX_MAX_WAIT_MS = 10_000
 
 // ── Tipos internos ──────────────────────────────────────────────────────────
 
@@ -102,7 +109,7 @@ function acumularBling(
 // 2. Busca no Bling via API (SKU direto + fallback variacoes do produto-pai)
 // Depois faz merge por cor para não perder variantes que existem só em uma fonte.
 export async function GET(request: NextRequest) {
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   const codigo = request.nextUrl.searchParams.get('codigo')?.trim()
@@ -294,7 +301,7 @@ const importSchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   let body: unknown
@@ -321,83 +328,124 @@ export async function POST(request: NextRequest) {
   const corCodigos = coresNormalizadas.map((c) => c.cor)
 
   try {
-    // Pré-processar imagens: download para Supabase (fora da transaction para não segurar lock)
+    // Pré-processar imagens: download para Supabase (fora da transaction para não segurar lock).
+    // Paralelizado para reduzir tempo total antes da transaction abrir.
     const imagensProcessadas = new Map<string, string | null>()
-    for (const { cor, imagemUrl } of coresNormalizadas) {
-      if (imagemUrl) {
-        const publicUrl = await downloadToSupabase(imagemUrl, codigo, cor)
-        imagensProcessadas.set(cor, publicUrl)
+    await Promise.all(
+      coresNormalizadas.map(async ({ cor, imagemUrl }) => {
+        if (!imagemUrl) return
+        try {
+          const publicUrl = await downloadToSupabase(imagemUrl, codigo, cor)
+          imagensProcessadas.set(cor, publicUrl)
+        } catch (imgErr) {
+          console.warn(`[importar-modelo] Falha ao baixar imagem da cor ${cor}:`, imgErr)
+          imagensProcessadas.set(cor, null)
+        }
+      }),
+    )
+
+    // Snapshot do estado antes da transaction para decidir create vs update
+    // sem precisar fazer findUnique dentro do tx (reduz roundtrips).
+    const modeloPre = await prisma.modelo.findUnique({
+      where: { codigo },
+      select: { id: true },
+    })
+
+    const variantesExistentesPre = modeloPre
+      ? await prisma.modeloVarianteCor.findMany({
+          where: { modeloId: modeloPre.id, corCodigo: { in: corCodigos } },
+          select: { corCodigo: true, imagemUrl: true },
+        })
+      : []
+    const variantesMap = new Map(
+      variantesExistentesPre.map((v) => [v.corCodigo, v.imagemUrl] as const),
+    )
+
+    const mapeamentosExistentesPre = await prisma.mapeamentoCor.findMany({
+      where: { codigo: { in: corCodigos } },
+      select: { codigo: true },
+    })
+    const mapeamentosJaCriados = new Set(mapeamentosExistentesPre.map((m) => m.codigo))
+
+    // Classificar cores em "criar" vs "atualizar imagem"
+    const novasVariantes: { corCodigo: string; imagemUrl: string | null }[] = []
+    const atualizarImagem: { corCodigo: string; imagemUrl: string }[] = []
+
+    for (const { cor: corCodigo, imagemUrl: imagemOriginal } of coresNormalizadas) {
+      const imagemFinal = imagensProcessadas.get(corCodigo) ?? imagemOriginal
+      if (!variantesMap.has(corCodigo)) {
+        novasVariantes.push({ corCodigo, imagemUrl: imagemFinal ?? null })
+      } else if (imagemFinal && !variantesMap.get(corCodigo)) {
+        atualizarImagem.push({ corCodigo, imagemUrl: imagemFinal })
       }
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const modelo = await tx.modelo.upsert({
-        where: { codigo },
-        update: {},
-        create: { codigo, nome },
-        select: { id: true, codigo: true },
-      })
+    const novosMapeamentos = corCodigos
+      .filter((c) => !mapeamentosJaCriados.has(c))
+      .map((c) => ({ codigo: c, descricao: c }))
 
-      let variantesCriadas = 0
-      let imagensSalvas = 0
-      for (const { cor: corCodigo, imagemUrl: imagemOriginal } of coresNormalizadas) {
-        // Usar URL do Supabase se disponível, senão a original do Bling
-        const imagemFinal = imagensProcessadas.get(corCodigo) ?? imagemOriginal
-
-        const existente = await tx.modeloVarianteCor.findUnique({
-          where: { modeloId_corCodigo: { modeloId: modelo.id, corCodigo } },
+    // Transaction curta: operacoes em lote (createMany/updateMany) em vez de loops sequenciais.
+    // Isso evita "Transaction not found" em imports grandes (ex: ref 9050).
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const modelo = await tx.modelo.upsert({
+          where: { codigo },
+          update: {},
+          create: { codigo, nome },
+          select: { id: true, codigo: true },
         })
-        if (!existente) {
-          await tx.modeloVarianteCor.create({
-            data: {
+
+        // 1) Criar variantes novas em lote (skipDuplicates defende race-conditions).
+        let variantesCriadas = 0
+        let imagensSalvas = 0
+        if (novasVariantes.length > 0) {
+          const created = await tx.modeloVarianteCor.createMany({
+            data: novasVariantes.map((v) => ({
               modeloId: modelo.id,
-              corCodigo,
-              ...(imagemFinal ? { imagemUrl: imagemFinal } : {}),
-            },
+              corCodigo: v.corCodigo,
+              ...(v.imagemUrl ? { imagemUrl: v.imagemUrl } : {}),
+            })),
+            skipDuplicates: true,
           })
-          variantesCriadas++
-          if (imagemFinal) imagensSalvas++
-        } else if (imagemFinal && !existente.imagemUrl) {
+          variantesCriadas = created.count
+          imagensSalvas += novasVariantes.filter((v) => v.imagemUrl).length
+        }
+
+        // 2) Atualizar imagens das variantes existentes (uma query por variante,
+        // mas so para as que realmente precisam — tipicamente lista curta).
+        for (const { corCodigo, imagemUrl } of atualizarImagem) {
           await tx.modeloVarianteCor.update({
             where: { modeloId_corCodigo: { modeloId: modelo.id, corCodigo } },
-            data: { imagemUrl: imagemFinal },
+            data: { imagemUrl },
           })
           imagensSalvas++
         }
-      }
 
-      // Auto-criar MapeamentoCor para cores sem mapeamento
-      const coresExistentes = await tx.mapeamentoCor.findMany({
-        where: { codigo: { in: corCodigos } },
-        select: { codigo: true },
-      })
-      const coresJaMapeadas = new Set(coresExistentes.map((c) => c.codigo))
-
-      for (const corCod of corCodigos) {
-        if (!coresJaMapeadas.has(corCod)) {
-          await tx.mapeamentoCor.upsert({
-            where: { codigo: corCod },
-            update: {},
-            create: { codigo: corCod, descricao: corCod },
+        // 3) Criar mapeamentos faltantes em lote.
+        if (novosMapeamentos.length > 0) {
+          await tx.mapeamentoCor.createMany({
+            data: novosMapeamentos,
+            skipDuplicates: true,
           })
         }
-      }
 
-      // Auto-vincular itens de pedido existentes que têm este modelo
-      const vinculados = await tx.itemPedido.updateMany({
-        where: { modelo: codigo, modeloId: null },
-        data: { modeloId: modelo.id },
-      })
+        // 4) Auto-vincular itens de pedido existentes que têm este modelo.
+        const vinculados = await tx.itemPedido.updateMany({
+          where: { modelo: codigo, modeloId: null },
+          data: { modeloId: modelo.id },
+        })
 
-      return {
-        modelo: modelo.codigo,
-        modeloId: modelo.id,
-        variantesCriadas,
-        totalCores: corCodigos.length,
-        itensVinculados: vinculados.count,
-        imagensSalvas,
-      }
-    })
+        return {
+          modelo: modelo.codigo,
+          modeloId: modelo.id,
+          variantesCriadas,
+          totalCores: corCodigos.length,
+          itensVinculados: vinculados.count,
+          imagensSalvas,
+        }
+      },
+      { timeout: TX_TIMEOUT_MS, maxWait: TX_MAX_WAIT_MS },
+    )
 
     return NextResponse.json(result, { status: 201 })
   } catch (err) {

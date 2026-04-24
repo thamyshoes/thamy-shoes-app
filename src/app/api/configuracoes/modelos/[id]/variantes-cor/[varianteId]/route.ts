@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP as requireAdmin } from '@/lib/api-guard'
 
 const updateSchema = z.object({
   corCodigo: z.string().min(1).optional(),

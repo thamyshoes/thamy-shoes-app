@@ -27,6 +27,7 @@ const SKU_CHILDREN: NavChild[] = [
   { label: 'Modelos',   href: ROUTES.CONFIG_MODELOS, slug: 'sku-modelos' },
   { label: 'Cores',     href: ROUTES.CONFIG_CORES,   slug: 'sku-cores' },
   { label: 'Numeração', href: ROUTES.CONFIG_GRADES,  slug: 'sku-numeracao' },
+  { label: 'Regras',    href: ROUTES.CONFIG_SKU,     slug: 'sku-regras' },
 ]
 
 const MATERIA_PRIMA_CHILDREN: NavChild[] = [
@@ -62,7 +63,7 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Gestão de SKU',
     slug: 'gestao-sku',
     icon: <Tag className="h-4 w-4" />,
-    perfis: [Perfil.ADMIN],
+    perfis: [Perfil.ADMIN, Perfil.PCP],
     children: SKU_CHILDREN,
   },
   {

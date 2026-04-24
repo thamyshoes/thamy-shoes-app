@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP as requireAdmin } from '@/lib/api-guard'
 import { parseSku } from '@/lib/bling/sku-parser'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────

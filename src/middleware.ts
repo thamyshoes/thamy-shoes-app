@@ -28,7 +28,42 @@ function isPublicRoute(pathname: string): boolean {
 
 // ── Proteção por perfil ────────────────────────────────────────────────────────
 
+// Rotas de gestao de SKU — acessiveis a ADMIN e PCP.
+// Inclui modelos, cores, numeracao (grades), regras-sku, equivalencias,
+// referencias e variantes (paginas e APIs).
+const SKU_MANAGEMENT_PREFIXES = [
+  '/configuracoes/modelos',
+  '/configuracoes/cores',
+  '/configuracoes/grades',
+  '/configuracoes/sku',
+  '/configuracoes/equivalencias',
+  '/configuracoes/referencias',
+  '/api/configuracoes/modelos',
+  '/api/configuracoes/cores',
+  '/api/configuracoes/grades',
+  '/api/configuracoes/regras-sku',
+  '/api/configuracoes/equivalencias',
+  '/api/configuracoes/referencias',
+  '/api/variantes',
+]
+
+// Sub-paths destrutivos ou de alta superficie que permanecem ADMIN-only
+// mesmo estando sob um SKU_MANAGEMENT_PREFIX.
+const SKU_MANAGEMENT_ADMIN_ONLY = [
+  '/api/configuracoes/modelos/cleanup',
+  '/api/configuracoes/modelos/variantes/sync-bling',
+  '/api/variantes/signed-url',
+]
+
+function isSkuManagement(pathname: string): boolean {
+  if (SKU_MANAGEMENT_ADMIN_ONLY.some((p) => pathname.startsWith(p))) return false
+  return SKU_MANAGEMENT_PREFIXES.some((p) => pathname.startsWith(p))
+}
+
 function requiresAdmin(pathname: string): boolean {
+  // SKU management tem precedencia: PCP tambem pode acessar.
+  if (isSkuManagement(pathname)) return false
+
   return (
     pathname.startsWith('/pedidos/importar') ||
     (pathname.startsWith('/configuracoes') && !pathname.startsWith('/configuracoes/senha')) ||
@@ -44,6 +79,8 @@ function requiresAdmin(pathname: string): boolean {
 }
 
 function requiresAdminOrPCP(pathname: string): boolean {
+  if (isSkuManagement(pathname)) return true
+
   return (
     pathname.startsWith('/pedidos') ||
     pathname.startsWith('/api/pedidos') ||
