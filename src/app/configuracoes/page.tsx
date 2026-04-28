@@ -2,8 +2,9 @@
 
 import { SidebarLayout } from '@/components/layout/sidebar-layout'
 import { useAuth } from '@/hooks/use-auth'
+import { useBlingStatus } from '@/hooks/use-bling-status'
 import { ROUTES } from '@/lib/constants'
-import { Perfil } from '@/types'
+import { Perfil, StatusConexao } from '@/types'
 import Link from 'next/link'
 
 interface ConfigCard {
@@ -45,8 +46,54 @@ const CARDS: ConfigCard[] = [
   },
 ]
 
+// PCP herda a conexao Bling estabelecida pelo ADMIN: ve o status real em modo
+// leitura, sem controles de connect/disconnect.
+function BlingReadOnlyCard() {
+  const { status, loading, configOk } = useBlingStatus()
+
+  let label = 'Carregando...'
+  let dotClass = 'bg-secondary/40'
+  if (!loading) {
+    if (!configOk) {
+      label = 'Configuração incompleta'
+      dotClass = 'bg-warning'
+    } else if (status === StatusConexao.CONECTADO) {
+      label = 'Conectado'
+      dotClass = 'bg-success'
+    } else if (status === StatusConexao.EXPIRADO) {
+      label = 'Token expirado'
+      dotClass = 'bg-warning'
+    } else {
+      label = 'Desconectado'
+      dotClass = 'bg-secondary/40'
+    }
+  }
+
+  return (
+    <div
+      data-testid="bling-readonly-card"
+      className="flex flex-col gap-2 rounded-lg border border-border bg-card p-5 opacity-90"
+      aria-label="Conexão Bling — gerenciada pelo administrador"
+    >
+      <div className="flex items-center gap-3">
+        <span className="text-2xl" aria-hidden="true">🔗</span>
+        <span className="text-sm font-semibold text-foreground">Conexão Bling</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} aria-hidden="true" />
+        <span className="text-sm text-foreground">{label}</span>
+      </div>
+      <p className="text-xs text-secondary leading-relaxed">
+        Conexão gerenciada pelo administrador. Você usa a mesma integração para
+        importar pedidos e sincronizar produtos.
+      </p>
+    </div>
+  )
+}
+
 function ConfiguracoesContent({ perfil }: { perfil: Perfil }) {
   const cards = CARDS.filter((c) => c.perfis.includes(perfil))
+  const showBlingReadOnly = perfil === Perfil.PCP
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -72,6 +119,7 @@ function ConfiguracoesContent({ perfil }: { perfil: Perfil }) {
             <p className="text-sm text-secondary leading-relaxed">{card.description}</p>
           </Link>
         ))}
+        {showBlingReadOnly && <BlingReadOnlyCard />}
       </div>
     </div>
   )

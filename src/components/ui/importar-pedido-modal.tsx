@@ -6,10 +6,11 @@ import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type Column } from '@/components/ui/data-table'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/hooks/use-auth'
 import { useBlingStatus } from '@/hooks/use-bling-status'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { API_ROUTES, MESSAGES, ROUTES } from '@/lib/constants'
-import { StatusConexao } from '@/types'
+import { Perfil, StatusConexao } from '@/types'
 
 interface PedidoBling {
   id: string
@@ -76,6 +77,7 @@ function buildColumns(
 }
 
 export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: Props) {
+  const { user } = useAuth()
   const { status: blingStatus, loading: blingLoading } = useBlingStatus()
 
   const [dias, setDias] = useState(7)
@@ -383,7 +385,9 @@ export function ImportarPedidoModal({ open, onClose, onImportado, onNavegar }: P
                 <div>
                   <p className="text-sm font-medium text-foreground">Bling desconectado</p>
                   <p className="mt-0.5 text-xs text-secondary">
-                    Conecte o Bling nas configurações para importar pedidos.
+                    {user?.perfil === Perfil.ADMIN
+                      ? 'Conecte o Bling nas configurações para importar pedidos.'
+                      : 'Solicite ao administrador para reconectar o Bling antes de importar pedidos.'}
                   </p>
                 </div>
               </div>

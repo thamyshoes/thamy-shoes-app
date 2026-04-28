@@ -136,7 +136,7 @@ test.describe('Configurações', () => {
     await expect(sucesso).toBeVisible({ timeout: 5_000 })
   })
 
-  test('5. PCP em /configuracoes — vê apenas card "Alterar Senha"', async ({ page }) => {
+  test('5. PCP em /configuracoes — vê "Alterar Senha" + status read-only do Bling', async ({ page }) => {
     // Logout ADMIN e login como PCP
     const logoutBtn = page.getByRole('button', { name: /sair|logout/i })
     if (await logoutBtn.isVisible()) {
@@ -152,11 +152,17 @@ test.describe('Configurações', () => {
     // PCP permanece em /configuracoes (sem redirect)
     expect(page.url()).toContain('/configuracoes')
 
-    // Card de senha visível; cards admin ocultos
+    // Card de senha visivel; card Bling visivel em modo leitura;
+    // cards admin de configuracao ocultos.
     await expect(page.getByText(/alterar senha/i).first()).toBeVisible()
-    await expect(page.getByText(/conexão bling/i)).toHaveCount(0)
+    await expect(page.getByTestId('bling-readonly-card')).toBeVisible()
+    await expect(page.getByText(/gerenciada pelo administrador/i)).toBeVisible()
     await expect(page.getByText(/regras de sku/i)).toHaveCount(0)
     await expect(page.getByText(/campos extras por setor/i)).toHaveCount(0)
+
+    // O card de Bling e read-only — nao existe link clicavel para /configuracoes/bling
+    const blingCard = page.getByTestId('bling-readonly-card')
+    await expect(blingCard.locator('a')).toHaveCount(0)
 
     // URLs admin diretas continuam bloqueadas
     await page.goto('/configuracoes/bling')

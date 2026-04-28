@@ -32,8 +32,10 @@ function isPublicRoute(pathname: string): boolean {
 // - Gestao de Usuarios
 // - Sub-areas administrativas de /configuracoes (Bling, Campos Extras e Regras
 //   de SKU como configuracao geral). PCP entra em /configuracoes mas ve apenas
-//   o card "Alterar Senha" — os cards admin sao filtrados na pagina e as URLs
-//   diretas sao bloqueadas aqui.
+//   "Alterar Senha" + status read-only do Bling — os cards admin sao filtrados
+//   na pagina e as URLs diretas sao bloqueadas aqui.
+// PCP usa a conexao Bling estabelecida pelo ADMIN: pode ler /api/bling/status
+// (read-only) e chamar pedidos/produtos, mas nao connect/disconnect.
 function requiresAdmin(pathname: string): boolean {
   if (
     pathname.startsWith('/usuarios') ||
@@ -45,8 +47,7 @@ function requiresAdmin(pathname: string): boolean {
   if (pathname.startsWith('/api/configuracoes/campos-extras')) return true
   if (
     pathname.startsWith('/api/bling/connect') ||
-    pathname.startsWith('/api/bling/disconnect') ||
-    pathname.startsWith('/api/bling/status')
+    pathname.startsWith('/api/bling/disconnect')
   ) return true
 
   return false

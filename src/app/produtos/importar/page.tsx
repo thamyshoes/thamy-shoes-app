@@ -11,7 +11,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useBlingStatus } from '@/hooks/use-bling-status'
 import { formatDateTime } from '@/lib/format'
 import { API_ROUTES, MESSAGES, ROUTES } from '@/lib/constants'
-import { StatusConexao } from '@/types'
+import { Perfil, StatusConexao } from '@/types'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -229,17 +229,24 @@ export default function ImportarProdutosPage() {
             <WifiOff className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
             <div className="flex-1">
               <p className="text-sm font-medium text-foreground">Bling desconectado</p>
-              <p className="mt-0.5 text-xs text-secondary">
-                Conecte o Bling nas{' '}
-                <button
-                  type="button"
-                  onClick={() => router.push(ROUTES.CONFIG_BLING)}
-                  className="underline hover:text-foreground transition-colors"
-                >
-                  configurações
-                </button>{' '}
-                para acessar o catálogo de produtos.
-              </p>
+              {user.perfil === Perfil.ADMIN ? (
+                <p className="mt-0.5 text-xs text-secondary">
+                  Conecte o Bling nas{' '}
+                  <button
+                    type="button"
+                    onClick={() => router.push(ROUTES.CONFIG_BLING)}
+                    className="underline hover:text-foreground transition-colors"
+                  >
+                    configurações
+                  </button>{' '}
+                  para acessar o catálogo de produtos.
+                </p>
+              ) : (
+                <p className="mt-0.5 text-xs text-secondary">
+                  Solicite ao administrador para reconectar o Bling antes de
+                  acessar o catálogo de produtos.
+                </p>
+              )}
             </div>
           </div>
         )}
