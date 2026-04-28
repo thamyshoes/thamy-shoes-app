@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP } from '@/lib/api-guard'
 import { StorageService, StorageServiceError } from '@/lib/services/storage-service'
 import { SignedUrlRequestSchema } from '@/lib/schemas/fichas-v2'
 
@@ -7,7 +7,7 @@ import { SignedUrlRequestSchema } from '@/lib/schemas/fichas-v2'
 // Gera signed URL para upload direto de imagem de variante pelo browser.
 // Apenas ADMIN pode gerar signed URLs (uploads são autenticados).
 export async function POST(request: NextRequest) {
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   let body: unknown

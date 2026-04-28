@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdminOrPCP as requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP } from '@/lib/api-guard'
 import { parseSku } from '@/lib/bling/sku-parser'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ function extrairCorDescricao(descricao: string): string | null {
 // Body: { dados: string } (conteúdo do CSV como texto)
 // O CSV NÃO é armazenado — processado em memória e descartado.
 export async function POST(request: NextRequest) {
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   let body: unknown

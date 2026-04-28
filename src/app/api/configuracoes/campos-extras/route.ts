@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { Setor, TipoCampo } from '@prisma/client'
-import { requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP } from '@/lib/api-guard'
 
 const createSchema = z.object({
   setor: z.nativeEnum(Setor),
@@ -17,7 +17,7 @@ const setorQuerySchema = z.object({
 })
 
 export async function GET(request: NextRequest) {
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   const setor = request.nextUrl.searchParams.get('setor')
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   let body: unknown

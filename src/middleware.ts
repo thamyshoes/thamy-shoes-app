@@ -28,64 +28,33 @@ function isPublicRoute(pathname: string): boolean {
 
 // ── Proteção por perfil ────────────────────────────────────────────────────────
 
-// Rotas de gestao de SKU — acessiveis a ADMIN e PCP.
-// Inclui modelos, cores, numeracao (grades), regras-sku, equivalencias,
-// referencias e variantes (paginas e APIs).
-const SKU_MANAGEMENT_PREFIXES = [
-  '/configuracoes/modelos',
-  '/configuracoes/cores',
-  '/configuracoes/grades',
-  '/configuracoes/sku',
-  '/configuracoes/equivalencias',
-  '/configuracoes/referencias',
-  '/api/configuracoes/modelos',
-  '/api/configuracoes/cores',
-  '/api/configuracoes/grades',
-  '/api/configuracoes/regras-sku',
-  '/api/configuracoes/equivalencias',
-  '/api/configuracoes/referencias',
-  '/api/variantes',
-]
-
-// Sub-paths destrutivos ou de alta superficie que permanecem ADMIN-only
-// mesmo estando sob um SKU_MANAGEMENT_PREFIX.
-const SKU_MANAGEMENT_ADMIN_ONLY = [
-  '/api/configuracoes/modelos/cleanup',
-  '/api/configuracoes/modelos/variantes/sync-bling',
-  '/api/variantes/signed-url',
-]
-
-function isSkuManagement(pathname: string): boolean {
-  if (SKU_MANAGEMENT_ADMIN_ONLY.some((p) => pathname.startsWith(p))) return false
-  return SKU_MANAGEMENT_PREFIXES.some((p) => pathname.startsWith(p))
-}
-
+// Apenas a area de Gestao de Usuarios permanece restrita a ADMIN.
+// PCP tem acesso a todo o restante (pedidos, fichas, gestao de SKU,
+// configuracoes gerais, materia prima, mapeamento, integracoes Bling).
 function requiresAdmin(pathname: string): boolean {
-  // SKU management tem precedencia: PCP tambem pode acessar.
-  if (isSkuManagement(pathname)) return false
-
   return (
-    pathname.startsWith('/pedidos/importar') ||
-    (pathname.startsWith('/configuracoes') && !pathname.startsWith('/configuracoes/senha')) ||
-    pathname.startsWith('/mapeamento-sku') ||
     pathname.startsWith('/usuarios') ||
-    pathname.startsWith('/api/usuarios') ||
-    pathname.startsWith('/api/configuracoes') ||
-    pathname.startsWith('/api/bling/connect') ||
-    pathname.startsWith('/api/bling/disconnect') ||
-    pathname.startsWith('/api/bling/produtos') ||
-    pathname.startsWith('/api/bling/callback')
+    pathname.startsWith('/api/usuarios')
   )
 }
 
 function requiresAdminOrPCP(pathname: string): boolean {
-  if (isSkuManagement(pathname)) return true
+  // /configuracoes/senha e acessivel a qualquer usuario autenticado
+  // (inclusive PRODUCAO) — nao deve ser bloqueado aqui.
+  if (pathname.startsWith('/configuracoes/senha')) return false
 
   return (
     pathname.startsWith('/pedidos') ||
+    pathname.startsWith('/configuracoes') ||
+    pathname.startsWith('/mapeamento-sku') ||
     pathname.startsWith('/api/pedidos') ||
+    pathname.startsWith('/api/configuracoes') ||
+    pathname.startsWith('/api/variantes') ||
     pathname.startsWith('/api/bling/status') ||
     pathname.startsWith('/api/bling/pedidos') ||
+    pathname.startsWith('/api/bling/connect') ||
+    pathname.startsWith('/api/bling/disconnect') ||
+    pathname.startsWith('/api/bling/produtos') ||
     pathname.startsWith('/api/fichas/gerar') ||
     pathname.startsWith('/api/fichas/consolidar') ||
     pathname.startsWith('/api/consolidar')

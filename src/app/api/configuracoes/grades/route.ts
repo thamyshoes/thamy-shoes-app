@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { requireAdminOrPCP as requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP } from '@/lib/api-guard'
 
 const createSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
@@ -13,7 +13,7 @@ const createSchema = z.object({
 })
 
 export async function GET(request: NextRequest) {
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   const grades = await prisma.gradeNumeracao.findMany({
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   let body: unknown

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP } from '@/lib/api-guard'
 
 // GET /api/configuracoes/modelos/cleanup
 // Identifica modelos garbled criados pelo sync a partir de SKUs não-padrão.
@@ -8,7 +8,7 @@ import { requireAdmin } from '@/lib/api-guard'
 // e SEM itens de pedido vinculados.
 // Ex: '80510' (nome "Modelo 80510") é garbled porque '8051' existe e o nome é auto-gerado.
 export async function GET(request: NextRequest) {
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   const modelos = await prisma.modelo.findMany({
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 // Remove modelos confirmados como garbled. Body: { ids: string[] }
 // Modelos com itens de pedido vinculados NÃO são removidos (proteção).
 export async function DELETE(request: NextRequest) {
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   let body: unknown

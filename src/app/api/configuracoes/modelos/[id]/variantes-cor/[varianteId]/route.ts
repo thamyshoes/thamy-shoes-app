@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { requireAdminOrPCP as requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP } from '@/lib/api-guard'
 
 const updateSchema = z.object({
   corCodigo: z.string().min(1).optional(),
@@ -19,7 +19,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; varianteId: string }> },
 ) {
   const { varianteId } = await params
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   let body: unknown
@@ -51,7 +51,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; varianteId: string }> },
 ) {
   const { varianteId } = await params
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   try {

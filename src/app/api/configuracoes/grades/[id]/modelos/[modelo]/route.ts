@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdminOrPCP as requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP } from '@/lib/api-guard'
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; modelo: string }> },
 ) {
   const { id, modelo } = await params
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   const modeloDecoded = decodeURIComponent(modelo)

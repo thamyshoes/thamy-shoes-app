@@ -70,7 +70,7 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Matéria Prima',
     slug: 'materia-prima',
     icon: <Boxes className="h-4 w-4" />,
-    perfis: [Perfil.ADMIN],
+    perfis: [Perfil.ADMIN, Perfil.PCP],
     children: MATERIA_PRIMA_CHILDREN,
   },
   {
@@ -83,14 +83,14 @@ const NAV_ITEMS: NavItem[] = [
     href: ROUTES.CONFIGURACOES,
     slug: 'configuracoes',
     icon: <Settings className="h-4 w-4" />,
-    perfis: [Perfil.ADMIN],
+    perfis: [Perfil.ADMIN, Perfil.PCP],
   },
   {
     label: 'Configurações',
     href: '/configuracoes/senha',
     slug: 'configuracoes-senha',
     icon: <Settings className="h-4 w-4" />,
-    perfis: [Perfil.PCP, Perfil.PRODUCAO],
+    perfis: [Perfil.PRODUCAO],
   },
   {
     label: 'Gestão de Usuários',

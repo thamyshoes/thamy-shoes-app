@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP } from '@/lib/api-guard'
 import { CategoriaMaterial } from '@prisma/client'
 
 const createSchema = z.object({
@@ -11,7 +11,7 @@ const createSchema = z.object({
 
 // GET /api/configuracoes/materiais?categoria=CABEDAL
 export async function GET(request: NextRequest) {
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   const categoria = request.nextUrl.searchParams.get('categoria') as CategoriaMaterial | null
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/configuracoes/materiais
 export async function POST(request: NextRequest) {
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   let body: unknown

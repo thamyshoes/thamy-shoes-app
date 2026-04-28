@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdminOrPCP as requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP } from '@/lib/api-guard'
 import { VarianteBatchSchema } from '@/lib/schemas/fichas-v2'
 
 // PUT /api/variantes/batch
 // Salva variantes de um modelo em lote: upsert (create/update) + delete em transação.
 export async function PUT(request: NextRequest) {
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   let body: unknown

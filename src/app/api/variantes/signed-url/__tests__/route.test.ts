@@ -5,7 +5,6 @@ const mockGenerateSignedUrl = vi.fn()
 const mockGetPublicUrl = vi.fn()
 
 vi.mock('@/lib/api-guard', () => ({
-  requireAdmin: vi.fn(),
   requireAdminOrPCP: vi.fn(),
 }))
 
@@ -18,7 +17,7 @@ vi.mock('@/lib/services/storage-service', () => ({
 }))
 
 import { POST } from '../route'
-import { requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP } from '@/lib/api-guard'
 import { StorageServiceError } from '@/lib/services/storage-service'
 
 function buildRequest(body: unknown): NextRequest {
@@ -32,22 +31,22 @@ function buildRequest(body: unknown): NextRequest {
 describe('POST /api/variantes/signed-url', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(requireAdmin).mockReturnValue(null)
+    vi.mocked(requireAdminOrPCP).mockReturnValue(null)
   })
 
-  it('retorna 403 quando usuário não é admin', async () => {
+  it('retorna 403 quando usuário não é admin nem PCP', async () => {
     const forbidden = NextResponse.json(
-      { error: 'Acesso restrito a administradores' },
+      { error: 'Acesso restrito a administradores e PCP' },
       { status: 403 },
     )
-    vi.mocked(requireAdmin).mockReturnValue(forbidden)
+    vi.mocked(requireAdminOrPCP).mockReturnValue(forbidden)
 
     const req = buildRequest({ fileName: 'foto.jpg', contentType: 'image/jpeg' })
     const res = await POST(req)
 
     expect(res.status).toBe(403)
     const json = await res.json()
-    expect(json.error).toBe('Acesso restrito a administradores')
+    expect(json.error).toBe('Acesso restrito a administradores e PCP')
   })
 
   it('retorna 400 quando body é inválido (fileName ausente)', async () => {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { blingService } from '@/lib/bling/bling-service'
 import { parseSku } from '@/lib/bling/sku-parser'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/api-guard'
+import { requireAdminOrPCP } from '@/lib/api-guard'
 import { StorageService } from '@/lib/services/storage-service'
 
 export interface SyncBlingPageResult {
@@ -140,7 +140,7 @@ function formatBlingDatetime(d: Date): string {
 // pagina=N   → processa página N
 // pagina=done → marca sync como concluída (atualiza lastSyncProdutosAt)
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const guard = requireAdmin(request)
+  const guard = requireAdminOrPCP(request)
   if (guard) return guard
 
   const paginaParam = request.nextUrl.searchParams.get('pagina') ?? '1'
