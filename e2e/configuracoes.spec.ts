@@ -136,7 +136,7 @@ test.describe('Configurações', () => {
     await expect(sucesso).toBeVisible({ timeout: 5_000 })
   })
 
-  test('5. PCP não acessa /configuracoes — redireciona ou exibe 403', async ({ page }) => {
+  test('5. PCP em /configuracoes — vê apenas card "Alterar Senha"', async ({ page }) => {
     // Logout ADMIN e login como PCP
     const logoutBtn = page.getByRole('button', { name: /sair|logout/i })
     if (await logoutBtn.isVisible()) {
@@ -146,16 +146,22 @@ test.describe('Configurações', () => {
 
     await loginAs(page, 'PCP')
 
-    // PCP tenta acessar configurações
     await page.goto('/configuracoes')
     await page.waitForLoadState('networkidle')
 
-    // Deve ser redirecionado ou ver página de acesso negado
-    const isRedirected =
-      !page.url().includes('/configuracoes') ||
-      (await page.locator('text=/acesso negado|sem permissão|403|proibido/i').first().isVisible({ timeout: 3_000 }).catch(() => false))
+    // PCP permanece em /configuracoes (sem redirect)
+    expect(page.url()).toContain('/configuracoes')
 
-    expect(isRedirected).toBe(true)
+    // Card de senha visível; cards admin ocultos
+    await expect(page.getByText(/alterar senha/i).first()).toBeVisible()
+    await expect(page.getByText(/conexão bling/i)).toHaveCount(0)
+    await expect(page.getByText(/regras de sku/i)).toHaveCount(0)
+    await expect(page.getByText(/campos extras por setor/i)).toHaveCount(0)
+
+    // URLs admin diretas continuam bloqueadas
+    await page.goto('/configuracoes/bling')
+    await page.waitForLoadState('networkidle')
+    expect(page.url()).not.toContain('/configuracoes/bling')
   })
 
   test('6. PRODUCAO não acessa /configuracoes — redireciona ou exibe 403', async ({ page }) => {
