@@ -94,6 +94,27 @@ export async function POST(req: NextRequest) {
           })
         : []
 
+    // FIX P2: Resolver descrições de cores por componente via MapeamentoCor.
+    // O fluxo V2 não resolvia corPalmilhaDesc/corSolaDesc/corCabedalDesc/corFachetaDesc,
+    // fazendo o template cair no fallback corPrincipal (cor do produto, não do componente).
+    const codigosComponentes = new Set<string>()
+    for (const v of variantesCorReal) {
+      if (v.corCabedal) codigosComponentes.add(v.corCabedal)
+      if (v.corSola) codigosComponentes.add(v.corSola)
+      if (v.corPalmilha) codigosComponentes.add(v.corPalmilha)
+      if (v.corFacheta) codigosComponentes.add(v.corFacheta)
+    }
+    const mapeamentosComponentes =
+      codigosComponentes.size > 0
+        ? await prisma.mapeamentoCor.findMany({
+            where: { codigo: { in: [...codigosComponentes] } },
+            select: { codigo: true, descricao: true },
+          })
+        : []
+    const corDescMap = new Map(mapeamentosComponentes.map((m) => [m.codigo, m.descricao]))
+    const descCor = (codigo: string | null | undefined): string | null =>
+      codigo ? (corDescMap.get(codigo) ?? codigo) : null
+
     const modeloMap = new Map(modelos.map((m) => [m.codigo, m]))
     const modeloIdToCodigoMap = new Map(modelos.map((m) => [m.id, m.codigo]))
     const varianteMap = new Map(
@@ -187,12 +208,17 @@ export async function POST(req: NextRequest) {
             materialFacheta:  modeloData?.materialFacheta,
           },
           variante: {
-            corPrincipal: g.corDescricao,
-            corCabedal:   varianteData?.corCabedal,
-            corSola:      varianteData?.corSola,
-            corPalmilha:  varianteData?.corPalmilha,
-            corFacheta:   varianteData?.corFacheta,
-            imagemBase64: imagensBase64.get(varKey) ?? null,
+            corPrincipal:    g.corDescricao,
+            corCabedal:      varianteData?.corCabedal,
+            corSola:         varianteData?.corSola,
+            corPalmilha:     varianteData?.corPalmilha,
+            corFacheta:      varianteData?.corFacheta,
+            // FIX P2: populando descrições individuais por componente via MapeamentoCor
+            corCabedalDesc:  descCor(varianteData?.corCabedal),
+            corSolaDesc:     descCor(varianteData?.corSola),
+            corPalmilhaDesc: descCor(varianteData?.corPalmilha),
+            corFachetaDesc:  descCor(varianteData?.corFacheta),
+            imagemBase64:    imagensBase64.get(varKey) ?? null,
           },
           quantidades: Object.fromEntries(g.quantidades),
         },
@@ -201,24 +227,39 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // ST005: Gerar 1 PDF por setor com react-pdf (wrap automático entre páginas)
+    // FIX P1: Auto-detectar FACHETA quando algum card tem Modelo.facheta preenchido.
+    // O frontend sempre enviava apenas CABEDAL/SOLA/PALMILHA; FACHETA nunca era gerada.
+    const temFacheta = consolidadoCards.some((c) => !!c.item.modelo.facheta)
+    const setoresSet = new Set<Setor>(setores as Setor[])
+    if (temFacheta) setoresSet.add(Setor.FACHETA)
+    const setoresFinais = [...setoresSet]
+
+    // ST005: Gerar 1 PDF por setor com react-pdf.
+    // Renderização SEQUENCIAL — yoga-layout (WASM) é instável com Promise.all.
     const { renderConsolidadoPdf } = await import('@/lib/pdf/render-consolidado')
-    const totalCards = consolidadoCards.length
 
-    const resultados = await Promise.all(
-      setores.map(async (setorStr) => {
-        const setor = setorStr as Setor
-        const pdfBuffer = await renderConsolidadoPdf(setor, consolidadoCards)
+    const resultados = []
+    for (const setorStr of setoresFinais) {
+      const setor = setorStr as Setor
 
-        // ST007: Response com metadados de chunks
-        return {
-          setor: setorStr,
-          pdfBase64: pdfBuffer.toString('base64'),
-          totalCards,
-          chunks: Math.ceil(totalCards / 20),
-        }
-      }),
-    )
+      // Calcular cards relevantes para este setor (FACHETA filtra por modelo.facheta)
+      const cardsDoSetor =
+        setor === Setor.FACHETA
+          ? consolidadoCards.filter((c) => !!c.item.modelo.facheta)
+          : consolidadoCards
+
+      // Omitir setor sem cards para evitar PDF vazio
+      if (cardsDoSetor.length === 0) continue
+
+      const pdfBuffer = await renderConsolidadoPdf(setor, cardsDoSetor)
+
+      resultados.push({
+        setor: setorStr,
+        pdfBase64: pdfBuffer.toString('base64'),
+        totalCards: cardsDoSetor.length,
+        chunks: Math.ceil(cardsDoSetor.length / 20),
+      })
+    }
 
     return NextResponse.json(resultados)
   } catch (err) {
