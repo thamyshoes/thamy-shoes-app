@@ -87,7 +87,7 @@ export class BlingApiError extends Error {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const BLING_BASE_URL = 'https://www.bling.com.br/Api/v3'
+const BLING_BASE_URL = 'https://api.bling.com.br/Api/v3'
 const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000 // 5 minutos
 const REFRESH_TOKEN_TTL_DAYS = 30
 const REFRESH_LOCK_TIMEOUT_MS = 30 * 1000 // 30s — se lock mais velho que isso, considerar stale
