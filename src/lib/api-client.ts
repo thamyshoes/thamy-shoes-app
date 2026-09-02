@@ -25,11 +25,24 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   })
 
   if (response.status === 401) {
-    toast.error(MESSAGES.ERROR.UNAUTHORIZED)
-    if (typeof window !== 'undefined') {
-      window.location.href = ROUTES.LOGIN
+    const body = await response.json().catch(() => ({}))
+    const message = (body as { error?: string }).error ?? MESSAGES.ERROR.UNAUTHORIZED
+
+    // Na propria tela de login o 401 e a resposta esperada de credencial errada.
+    // Redirecionar para /login aqui recarrega a pagina, descarta o toast e limpa
+    // o formulario, entao o usuario nunca le o motivo da falha. Nesse caso apenas
+    // propagamos o erro e quem chamou (o form) mostra a mensagem da API.
+    const naTelaDeLogin =
+      typeof window !== 'undefined' && window.location.pathname.startsWith(ROUTES.LOGIN)
+
+    if (!naTelaDeLogin) {
+      toast.error(MESSAGES.ERROR.UNAUTHORIZED)
+      if (typeof window !== 'undefined') {
+        window.location.href = ROUTES.LOGIN
+      }
     }
-    throw new ApiError(MESSAGES.ERROR.UNAUTHORIZED, 401)
+
+    throw new ApiError(message, 401)
   }
 
   if (response.status === 403) {
