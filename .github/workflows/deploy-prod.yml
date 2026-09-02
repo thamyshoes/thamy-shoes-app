@@ -1,56 +1,106 @@
-name: Deploy Produção
+name: Deploy Produção (manual)
+
+# ATENÇÃO: este workflow NÃO é o caminho normal de deploy.
+#
+# A integração Git da Vercel já publica produção em todo push na main
+# (projeto thamy-shoes-app, productionBranch: main). Este workflow existe
+# apenas para o caso manual de republicar a main atual sem precisar de um
+# commit vazio: redeploy após mudar env var no painel, ou reconstrução
+# assistida depois de um incidente.
+#
+# Duas coisas que a versão anterior deste arquivo tentava fazer e que foram
+# removidas de propósito:
+#
+# 1. Passar env de runtime para o step de deploy. Não tem efeito nenhum:
+#    `vercel deploy` não injeta o env do runner no runtime da função. As 17
+#    variáveis de runtime moram no projeto Vercel (targets development /
+#    preview / production) e é o `vercel pull` que as traz para o build.
+#    Nada de credencial de runtime precisa existir nos secrets do GitHub.
+#
+# 2. Rodar `prisma migrate deploy` contra produção. O _prisma_migrations de
+#    produção tem 1 das 8 migrations registradas e o schema real divergiu de
+#    prisma/migrations/ (confira com `prisma migrate diff --from-migrations
+#    prisma/migrations --to-schema-datamodel prisma/schema.prisma`). Nesse
+#    estado o `migrate deploy` falha na primeira migration ("relation already
+#    exists") e grava uma entrada failed que TRAVA todo deploy de migration
+#    futuro até alguém resolver na mão. Enquanto esse histórico não for
+#    saneado, mudança de schema em produção é operação manual e deliberada.
 
 on:
   workflow_dispatch:
+    inputs:
+      confirmar:
+        description: 'Digite PRODUCAO para confirmar o deploy'
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
 
 jobs:
   deploy-prod:
     name: Deploy para Produção
     runs-on: ubuntu-latest
-    environment: production
+    environment: Production
+
+    env:
+      # Identificadores do projeto, não segredos — quem dá acesso é o token.
+      # Ficam como secrets só para o workflow sobreviver a rename/transfer
+      # do projeto sem edição de código.
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v4
+      # O input entra por variável de ambiente, não interpolado no script:
+      # `${{ }}` direto dentro de `run` é vetor de script injection.
+      - name: Confirmar intenção
+        env:
+          CONFIRMAR: ${{ inputs.confirmar }}
+        run: |
+          if [ "$CONFIRMAR" != "PRODUCAO" ]; then
+            echo "::error::Deploy abortado. Digite exatamente PRODUCAO para confirmar."
+            exit 1
+          fi
+          echo "Confirmado. Publicando ${GITHUB_SHA:0:7} em produção."
 
-      - uses: actions/setup-node@v4
+      - name: Checar secrets obrigatórios
+        run: |
+          faltando=""
+          [ -n "$VERCEL_TOKEN" ]      || faltando="$faltando VERCEL_TOKEN"
+          [ -n "$VERCEL_ORG_ID" ]     || faltando="$faltando VERCEL_ORG_ID"
+          [ -n "$VERCEL_PROJECT_ID" ] || faltando="$faltando VERCEL_PROJECT_ID"
+          if [ -n "$faltando" ]; then
+            echo "::error::Secrets ausentes no repositório:$faltando"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
-          cache: 'npm'
+          # Espelha o nodeVersion do projeto Vercel (24.x).
+          node-version: '24'
 
-      - name: Instalar dependências
-        run: npm ci
+      # Sem `npm ci`: o próprio `vercel build` roda o install, replicando o
+      # build da plataforma em vez de aproximá-lo.
+      - name: Instalar Vercel CLI
+        run: npm i -g vercel@latest
 
-      - name: Gerar Prisma Client
-        run: npx prisma generate
-        env:
-          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      - name: Puxar configuração de produção
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      - name: Executar migrations
-        run: npx prisma migrate deploy
-        env:
-          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      - name: Build de produção
+        run: vercel build --prod --token="$VERCEL_TOKEN"
 
-      - name: Deploy para Vercel (Produção)
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-          working-directory: ./
-        env:
-          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
-          JWT_SECRET: ${{ secrets.PRODUCTION_JWT_SECRET }}
-          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
-          NOTIFICATION_EMAIL_TO: ${{ vars.NOTIFICATION_EMAIL_TO }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          BLING_CLIENT_ID: ${{ secrets.BLING_CLIENT_ID }}
-          BLING_CLIENT_SECRET: ${{ secrets.BLING_CLIENT_SECRET }}
-          BLING_REDIRECT_URI: ${{ secrets.PRODUCTION_BLING_REDIRECT_URI }}
-          NEXT_PUBLIC_APP_URL: ${{ vars.PRODUCTION_URL }}
+      - name: Publicar em produção
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          echo "Deploy de produção: $url"
+          {
+            echo "### Deploy de produção"
+            echo ""
+            echo "- commit: \`${GITHUB_SHA:0:7}\`"
+            echo "- url: $url"
+          } >> "$GITHUB_STEP_SUMMARY"
