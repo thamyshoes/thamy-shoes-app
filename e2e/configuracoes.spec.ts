@@ -18,7 +18,7 @@ test.describe('Configurações', () => {
       /bling/i,
       /sku/i,
       /cor/i,
-      /grade/i,
+      /grade|numera/i,
       /campo/i,
     ]
 
@@ -42,7 +42,10 @@ test.describe('Configurações', () => {
     await page.waitForLoadState('networkidle')
 
     // Deve listar regras existentes (incluindo a da seed E2E)
-    const listaOuEmpty = page.locator('table, [data-testid="regras-list"], text=/nenhuma regra/i').first()
+    const listaOuEmpty = page
+      .locator('table, [data-testid="regras-list"]')
+      .or(page.getByText(/nenhuma regra/i))
+      .first()
     await expect(listaOuEmpty).toBeVisible()
 
     // Cria nova regra
@@ -65,10 +68,11 @@ test.describe('Configurações', () => {
     const btnSalvar = form.getByRole('button', { name: /salvar|criar|confirmar/i })
     await btnSalvar.click()
 
-    // Feedback de sucesso
+    // O toast de sucesso do sonner dura ~4s e desaparece antes do networkidle
+    // terminar, entao a evidencia duravel de que a regra foi criada e a propria
+    // linha na listagem.
     await page.waitForLoadState('networkidle')
-    const sucesso = page.locator('text=/salvo|criado|success/i').first()
-    await expect(sucesso).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('Regra E2E Nova').first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('3. CRUD cor — criar mapeamento manual', async ({ page }) => {
@@ -83,7 +87,7 @@ test.describe('Configurações', () => {
     await expect(page.locator('text=Preto').first()).toBeVisible()
 
     // Cria novo mapeamento
-    const btnNovo = page.getByRole('button', { name: /novo|adicionar|criar/i })
+    const btnNovo = page.getByRole('button', { name: /nov[oa]|adicionar|criar/i })
     await expect(btnNovo).toBeVisible()
     await btnNovo.click()
 
@@ -93,22 +97,30 @@ test.describe('Configurações', () => {
     const inputCodigo = form.getByLabel(/código|codigo/i).or(form.locator('input[name="codigo"]'))
     await inputCodigo.fill('RX')
 
-    const inputNome = form.getByLabel(/nome/i).or(form.locator('input[name="nome"]'))
-    await inputNome.fill('Roxo E2E')
+    // O formulario de cores tem Codigo, Descricao e Cor (hex) — nao existe campo
+    // "Nome". Ver src/app/configuracoes/cores/page.tsx.
+    const inputDescricao = form
+      .getByLabel(/descri/i)
+      .or(form.locator('input[name="descricao"]'))
+      .first()
+    await inputDescricao.fill('Roxo E2E')
 
     const btnSalvar = form.getByRole('button', { name: /salvar|criar|confirmar/i })
     await btnSalvar.click()
 
+    // Evidencia duravel: a cor aparece na listagem (o toast e transiente).
     await page.waitForLoadState('networkidle')
-    const sucesso = page.locator('text=/salvo|criado|success/i').first()
-    await expect(sucesso).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('Roxo E2E').first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('4. CRUD grade — criar grade de numeração', async ({ page }) => {
     await page.goto('/configuracoes/grades')
     await page.waitForLoadState('networkidle')
 
-    const lista = page.locator('table, [data-testid="grades-list"]').first()
+    const lista = page
+      .locator('table, [data-testid="grades-list"]')
+      .or(page.getByText(/nenhuma grade/i))
+      .first()
     await expect(lista).toBeVisible()
 
     // Cria nova grade
@@ -122,18 +134,19 @@ test.describe('Configurações', () => {
     const inputNome = form.getByLabel(/nome/i).or(form.locator('input[name="nome"]'))
     await inputNome.fill('Grade Adulto E2E')
 
-    // Preenche tamanhos se houver campo
-    const inputTamanhos = form.getByLabel(/tamanho|numeração/i).or(form.locator('input[name="tamanhos"]'))
-    if (await inputTamanhos.isVisible()) {
-      await inputTamanhos.fill('36,37,38,39,40')
-    }
+    // O formulario tem DOIS campos de tamanho (#grade-min "Tamanho Minimo" e
+    // #grade-max "Tamanho Maximo"), entao /tamanho/i casaria os dois e violaria o
+    // strict mode. Enderecamos cada um pelo id; os defaults ja sao validos, mas
+    // fixamos a faixa para o teste nao depender deles.
+    await form.locator('#grade-min').fill('36')
+    await form.locator('#grade-max').fill('40')
 
     const btnSalvar = form.getByRole('button', { name: /salvar|criar|confirmar/i })
     await btnSalvar.click()
 
+    // Evidencia duravel: a grade aparece na listagem (o toast e transiente).
     await page.waitForLoadState('networkidle')
-    const sucesso = page.locator('text=/salvo|criado|success/i').first()
-    await expect(sucesso).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('Grade Adulto E2E').first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('5. PCP em /configuracoes — vê "Alterar Senha" + status read-only do Bling', async ({ page }) => {

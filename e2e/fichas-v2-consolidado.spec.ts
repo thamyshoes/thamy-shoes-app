@@ -144,6 +144,17 @@ test.describe('Fichas V2 — Consolidado de Pedidos', () => {
       return
     }
 
+    // A pagina faz POST /api/consolidar e baixa os PDFs via blob + <a download>,
+    // mostrando o resultado num toast do sonner que dura ~4s. Esperar o toast
+    // depois de um networkidle de 30s e uma corrida perdida: registramos a
+    // resposta ANTES do clique e assertamos nela, que e o sinal duravel.
+    const respPromise = page
+      .waitForResponse(
+        (r) => r.url().includes('/api/consolidar') && r.request().method() === 'POST',
+        { timeout: 60_000 },
+      )
+      .catch(() => null)
+
     await btnGerar.click()
 
     // Pode aparecer dialog de confirmação
@@ -157,25 +168,9 @@ test.describe('Fichas V2 — Consolidado de Pedidos', () => {
       }
     }
 
-    // Aguarda processamento (PDF de consolidado pode demorar mais)
-    await page.waitForLoadState('networkidle', { timeout: 30_000 })
-
-    // Verifica resultado: toast de sucesso, download iniciado, ou setor exibido
-    const toastSucesso = page
-      .locator('[data-sonner-toast], [role="status"], [aria-live]')
-      .filter({ hasText: /consolidad|sucesso|gerado/i })
-      .first()
-
-    const downloadLink = page
-      .getByRole('link', { name: /baixar|download|pdf/i })
-      .or(page.locator('a[download]'))
-      .first()
-
-    const resultadoVisivel =
-      (await toastSucesso.isVisible({ timeout: 15_000 }).catch(() => false)) ||
-      (await downloadLink.isVisible({ timeout: 5_000 }).catch(() => false))
-
-    expect(resultadoVisivel).toBe(true)
+    const resp = await respPromise
+    expect(resp, 'POST /api/consolidar nao foi disparado').not.toBeNull()
+    expect(resp!.status(), await resp!.text().catch(() => '')).toBe(200)
   })
 
   test('6. Central de Fichas exibe fichas geradas para PRODUCAO (setor Cabedal)', async ({ page }) => {
@@ -200,7 +195,8 @@ test.describe('Fichas V2 — Consolidado de Pedidos', () => {
 
     // Listagem ou empty state deve aparecer
     const lista = page
-      .locator('[role="list"], [role="listitem"], text=/nenhuma ficha/i')
+      .locator('[role="list"], [role="listitem"], table')
+      .or(page.getByText(/nenhuma ficha/i))
       .first()
     await expect(lista).toBeVisible({ timeout: 5_000 })
   })

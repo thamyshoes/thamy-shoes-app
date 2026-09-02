@@ -124,6 +124,35 @@ async function main() {
 
   console.log(`  ✓ Mapeamentos de cor: ${cores.map((c) => c.codigo).join(', ')}`)
 
+  // ── Modelos + variantes de cor ────────────────────────────────────────────
+  // /api/modelos/verificar-variantes casa ItemPedido.modelo contra Modelo.codigo
+  // e exige uma ModeloVarianteCor para o par (modelo, cor). Sem esse cadastro o
+  // botao "Gerar fichas" do detalhe do pedido nasce disabled (todosComVariante
+  // false) e a geracao de fichas fica inalcancavel na UI.
+
+  const modelosSeed = [
+    { codigo: 'Bota Feminina', nome: 'Bota Feminina', cores: ['PT'] },
+    { codigo: 'Sandália', nome: 'Sandália', cores: ['BR'] },
+  ]
+
+  for (const m of modelosSeed) {
+    const modelo = await prisma.modelo.upsert({
+      where: { codigo: m.codigo },
+      update: { nome: m.nome, ativo: true },
+      create: { codigo: m.codigo, nome: m.nome, ativo: true },
+    })
+
+    for (const corCodigo of m.cores) {
+      await prisma.modeloVarianteCor.upsert({
+        where: { modeloId_corCodigo: { modeloId: modelo.id, corCodigo } },
+        update: {},
+        create: { modeloId: modelo.id, corCodigo },
+      })
+    }
+  }
+
+  console.log(`  \u2713 Modelos: ${modelosSeed.map((m) => m.codigo).join(', ')}`)
+
   // ── Pedidos com itens ─────────────────────────────────────────────────────
 
   const pedido1 = await prisma.pedidoCompra.upsert({
@@ -144,7 +173,7 @@ async function main() {
             modelo: 'Bota Feminina',
             cor: 'PT',
             tamanho: 38,
-            status: StatusItem.PENDENTE,
+            status: StatusItem.RESOLVIDO,
           },
           {
             descricaoBruta: 'Bota Feminina 39 Preto',
@@ -153,7 +182,7 @@ async function main() {
             modelo: 'Bota Feminina',
             cor: 'PT',
             tamanho: 39,
-            status: StatusItem.PENDENTE,
+            status: StatusItem.RESOLVIDO,
           },
         ],
       },
@@ -178,6 +207,10 @@ async function main() {
             modelo: 'Sandália',
             cor: 'BR',
             tamanho: 36,
+            // E2E-002 fica com item PENDENTE de proposito: o botao "Editar item" no
+            // detalhe do pedido so renderiza para itens PENDENTE (ver
+            // src/app/pedidos/[id]/page.tsx:95), e E2E-001 precisa estar RESOLVIDO
+            // para que a geracao de fichas seja possivel.
             status: StatusItem.PENDENTE,
           },
         ],

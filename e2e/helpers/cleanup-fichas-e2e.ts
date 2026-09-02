@@ -30,7 +30,7 @@ export async function cleanupFichasE2E() {
     })
 
     // Deletar pedidos de teste
-    await prisma.pedido.deleteMany({
+    await prisma.pedidoCompra.deleteMany({
       where: { numero: { startsWith: 'E2EV2-' } },
     })
 

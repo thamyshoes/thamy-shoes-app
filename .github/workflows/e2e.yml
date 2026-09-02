@@ -43,8 +43,15 @@ jobs:
       BLING_CLIENT_SECRET: test-client-secret
       BLING_REDIRECT_URI: http://localhost:3000/api/bling/callback
       ENCRYPTION_KEY: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
+      # Placeholders: nao existe bucket real no runner. A geracao de ficha/PDF faz
+      # upload para o Supabase Storage e falha com "fetch failed" contra estes
+      # valores, entao os cenarios que geram PDF ficam skipped via E2E_NO_STORAGE.
+      # Para habilita-los: provisione um projeto Supabase exclusivo de teste,
+      # cadastre SUPABASE_URL/SUPABASE_SERVICE_KEY como secrets do repositorio e
+      # remova E2E_NO_STORAGE. NUNCA usar as credenciais de producao aqui.
       SUPABASE_URL: https://test-project.supabase.co
       SUPABASE_SERVICE_KEY: test-supabase-service-key
+      E2E_NO_STORAGE: '1'
 
     steps:
       - name: Checkout

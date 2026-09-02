@@ -25,21 +25,23 @@ test.describe('Pedidos', () => {
     expect(textos.join(' ')).toMatch(/pedido|número/i)
   })
 
-  test('2. buscar pedido por número filtra resultados', async ({ page }) => {
+  // A lista de pedidos filtra por status, fornecedor e intervalo de datas. Nao ha
+  // busca por numero de pedido na UI; este teste cobre o filtro que existe.
+  test('2. filtrar pedido por fornecedor filtra resultados', async ({ page }) => {
     await page.goto('/pedidos')
     await page.waitForLoadState('networkidle')
 
-    // Localiza campo de busca
-    const busca = page.getByPlaceholder(/buscar|pesquisar|número/i)
+    const busca = page.getByPlaceholder(/buscar fornecedor/i)
     await expect(busca).toBeVisible()
 
-    await busca.fill('E2E-001')
+    await busca.fill('Cliente Teste E2E 1')
     // Aguarda debounce ou submit
     await page.waitForTimeout(500)
 
-    // Deve mostrar apenas o pedido E2E-001
+    // Deve sobrar apenas o pedido do fornecedor buscado
     const linhas = page.locator('table tbody tr')
     await expect(linhas.first()).toContainText('E2E-001')
+    expect(await linhas.count()).toBe(1)
   })
 
   test('3. detalhe do pedido exibe grade de tamanhos', async ({ page }) => {
@@ -66,13 +68,15 @@ test.describe('Pedidos', () => {
     await page.goto('/pedidos')
     await page.waitForLoadState('networkidle')
 
-    // Navega para detalhe do pedido E2E-001
-    const linkPedido = page.getByRole('link', { name: /E2E-001/i }).first()
-    if (await linkPedido.isVisible()) {
-      await linkPedido.click()
-    } else {
-      await page.locator('table tbody tr').first().click()
-    }
+    // E2E-002 e o pedido cujo item continua PENDENTE — "Editar item" so renderiza
+    // nesse estado (src/app/pedidos/[id]/page.tsx:95). A navegacao vem do
+    // onRowClick do DataTable, que so responde depois da hidratacao.
+    const rowPedido = page.locator('table tbody tr').filter({ hasText: 'E2E-002' }).first()
+    await expect(rowPedido).toBeVisible()
+    await expect(async () => {
+      await rowPedido.click()
+      await page.waitForURL(/\/pedidos\/[0-9a-f-]{36}/, { timeout: 3_000 })
+    }).toPass({ timeout: 20_000 })
     await page.waitForLoadState('networkidle')
 
     // Clica no botão de edição de um item

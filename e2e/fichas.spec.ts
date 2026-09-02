@@ -7,45 +7,54 @@ test.describe('Fichas PDF', () => {
   })
 
   test('1. gerar fichas de um pedido exibe cards de fichas', async ({ page }) => {
+    // A geracao de fichas renderiza o PDF e faz upload para o Supabase Storage.
+    // Sem bucket real o upload falha ("fetch failed") e nenhuma ficha e criada —
+    // nao ha o que assertar. O workflow marca E2E_NO_STORAGE=1 justamente porque
+    // usa SUPABASE_URL placeholder; com um projeto Supabase de teste provisionado
+    // basta remover a flag e este cenario volta a rodar de verdade.
+    test.skip(
+      process.env.E2E_NO_STORAGE === '1',
+      'requer Supabase Storage real (ver .github/workflows/e2e.yml)',
+    )
+
+    // Login + navegacao + geracao de 3 PDFs nao cabe nos 30s default.
+    test.slow()
+
     await page.goto('/pedidos')
     await page.waitForLoadState('networkidle')
 
-    // Navega para detalhe do pedido E2E-001 (status RESOLVIDO)
-    const linkPedido = page.getByRole('link', { name: /E2E-001/i }).first()
-    if (await linkPedido.isVisible()) {
-      await linkPedido.click()
-    } else {
-      await page.locator('table tbody tr').first().click()
-    }
+    // A coluna "Numero" e texto puro, nao link: a navegacao vem do onRowClick do
+    // DataTable, que so responde depois da hidratacao. Sem esperar a URL de
+    // detalhe, o teste segue em /pedidos e /gerar ficha/i casa o botao inline de
+    // cada linha (violacao de strict mode).
+    const rowPedido = page.locator('table tbody tr').filter({ hasText: 'E2E-001' }).first()
+    await expect(rowPedido).toBeVisible()
+    await expect(async () => {
+      await rowPedido.click()
+      await page.waitForURL(/\/pedidos\/[0-9a-f-]{36}/, { timeout: 3_000 })
+    }).toPass({ timeout: 20_000 })
     await page.waitForLoadState('networkidle')
 
     // Clica em "Gerar Fichas"
-    const btnGerar = page.getByRole('button', { name: /gerar ficha/i })
+    const btnGerar = page.getByRole('button', { name: /gerar ficha/i }).first()
     await expect(btnGerar).toBeVisible()
     await btnGerar.click()
 
-    // Confirm dialog pode aparecer
-    const dialog = page.locator('[role="alertdialog"], [role="dialog"]').last()
-    if (await dialog.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      const btnConfirmar = dialog.getByRole('button', { name: /confirmar|gerar|sim/i })
-      if (await btnConfirmar.isVisible()) {
-        await btnConfirmar.click()
-      }
-    }
+    // O clique abre o DialogSetores (CABEDAL/SOLA/PALMILHA ja marcados). Endereçamos
+    // pelo testid: a pagina de detalhe tambem monta o EditItemModal, entao
+    // `[role="dialog"]`.last() pegava o modal errado e o Confirmar nunca era
+    // clicado — o teste chegava ao fim com o dialog ainda aberto.
+    await expect(page.getByTestId('dialog-setores')).toBeVisible({ timeout: 10_000 })
+    await page.getByTestId('dialog-setores-confirmar-button').click()
 
-    // Loading state deve aparecer transitoriamente
-    // (pode ser rápido demais para capturar em CI, mas verificamos o resultado)
-
-    // Cards de fichas devem aparecer
-    await page.waitForLoadState('networkidle')
-    const cardsFichas = page.locator('[data-testid="ficha-card"], .ficha-card').first()
-    const fichaLink = page.getByRole('link', { name: /ficha|download|pdf/i }).first()
-
-    const fichasVisiveis =
-      (await cardsFichas.isVisible({ timeout: 10_000 }).catch(() => false)) ||
-      (await fichaLink.isVisible({ timeout: 1_000 }).catch(() => false))
-
-    expect(fichasVisiveis).toBe(true)
+    // A secao "Fichas Geradas" so e renderizada quando pedido.fichas.length > 0, e
+    // cada card usa data-testid="pedido-ficha-card-{id}" (ver
+    // src/app/pedidos/[id]/page.tsx:268). Nao existe <a> de download — o download
+    // e feito por fetch + blob em botoes.
+    await expect(page.getByTestId('pedido-fichas-section')).toBeVisible({ timeout: 30_000 })
+    await expect(
+      page.locator('[data-testid^="pedido-ficha-card-"]').first(),
+    ).toBeVisible({ timeout: 10_000 })
   })
 
   test('2. download de ficha retorna Content-Type PDF', async ({ page }) => {
@@ -113,12 +122,15 @@ test.describe('Fichas PDF', () => {
     await expect(page).not.toHaveURL('**/erro')
 
     // Deve ter filtros (por setor, por status, ou por pedido)
-    const filtros = page.locator('select, input[type="search"], input[placeholder*="filtrar" i]')
+    const filtros = page.locator(
+      'select, input[type="search"], input[type="date"], input[placeholder*="filtrar" i], input[placeholder*="buscar" i], input[placeholder*="dd/mm" i]',
+    )
     expect(await filtros.count()).toBeGreaterThan(0)
 
     // Verifica que há alguma listagem (cards, tabela, ou mensagem de "sem fichas")
     const listagemOuEmpty = page
-      .locator('table, [data-testid="fichas-list"], text=/sem fichas|nenhuma ficha/i')
+      .locator('table, [data-testid="fichas-list"]')
+      .or(page.getByText(/sem fichas|nenhuma ficha/i))
       .first()
     await expect(listagemOuEmpty).toBeVisible({ timeout: 5_000 })
   })
