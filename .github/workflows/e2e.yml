@@ -31,6 +31,10 @@ jobs:
       DIRECT_URL: ${{ secrets.DATABASE_URL_TEST }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      # Desliga o rate limiter de login (5 req/15min por IP), que de outra
+      # forma devolve 429 a partir do 6o login e derruba os demais testes.
+      # Opt-in exclusivo deste workflow: NUNCA definir em env de deploy.
+      E2E_DISABLE_RATE_LIMIT: '1'
       CRON_SECRET: test-cron-secret
       RESEND_API_KEY: re_test_key
       ADMIN_EMAIL: admin@thamyshoes.com.br

@@ -27,6 +27,15 @@ test.describe('Autenticação', () => {
   })
 
   test('3. brute force bloqueia após 5 tentativas', async ({ page }) => {
+    // O rate limiter de login e por IP (5 req/15min). Com E2E_DISABLE_RATE_LIMIT=1
+    // ele esta desligado para que os outros 39 testes possam logar; nesse modo o
+    // bloqueio nao acontece e este cenario nao e observavel. A logica do limitador
+    // segue coberta por src/lib/__tests__/rate-limit.test.ts.
+    test.skip(
+      process.env.E2E_DISABLE_RATE_LIMIT === '1',
+      'rate limiter desligado nesta execucao (ver src/lib/__tests__/rate-limit.test.ts)',
+    )
+
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
 

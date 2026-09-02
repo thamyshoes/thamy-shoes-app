@@ -26,11 +26,28 @@ type RateLimitResult = {
 // Em desenvolvimento e em deploys single-instance, o comportamento é correto.
 const store = new Map<string, RateLimitEntry>()
 
+// ── Bypass para a suite E2E ───────────────────────────────────────────────────
+// A suite E2E roda 40 testes que logam repetidamente do mesmo IP, o que estoura
+// o limite de 5 req/15min do login e contamina todos os testes seguintes com
+// 429. O bypass e OPT-IN: so age quando E2E_DISABLE_RATE_LIMIT === '1'.
+// Producao nunca define essa variavel — ela existe apenas no env do workflow
+// .github/workflows/e2e.yml. Nao adicionar a nenhum .env de deploy.
+const RATE_LIMIT_DISABLED = process.env.E2E_DISABLE_RATE_LIMIT === '1'
+
 export function rateLimit(
   key: string,
   config: RateLimitConfig,
 ): RateLimitResult {
   const now = Date.now()
+
+  if (RATE_LIMIT_DISABLED) {
+    return {
+      success: true,
+      remaining: config.maxRequests,
+      reset: new Date(now + config.interval),
+    }
+  }
+
   const entry = store.get(key)
 
   if (!entry || now >= entry.resetAt) {
