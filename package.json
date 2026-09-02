@@ -14,13 +14,13 @@
     "test:e2e:report": "playwright show-report",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
-    "seed:test": "ts-node --compiler-options {\"module\":\"CommonJS\"} e2e/helpers/seed.ts",
+    "seed:test": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' e2e/helpers/seed.ts",
     "seed:test-users": "ts-node scripts/seed-test-users.ts",
-    "fix:regra-sku": "ts-node --compiler-options {\"module\":\"CommonJS\"} scripts/fix-regra-sku-sufixo.ts",
+    "fix:regra-sku": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/fix-regra-sku-sufixo.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {
-    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+    "seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

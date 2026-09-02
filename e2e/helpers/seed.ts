@@ -14,7 +14,7 @@
  * ATUALIZADO para schema V2 (model User, PedidoCompra, RegraSkU)
  */
 
-import { PrismaClient, Perfil, StatusConexao, StatusPedido, StatusItem } from '@prisma/client'
+import { PrismaClient, Perfil, Setor, StatusConexao, StatusPedido, StatusItem } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -60,7 +60,7 @@ async function main() {
       nome: 'Produção Teste',
       passwordHash: senhaProducao,
       perfil: Perfil.PRODUCAO,
-      setor: 'CABEDAL',
+      setores: [Setor.CABEDAL],
       ativo: true,
     },
   })

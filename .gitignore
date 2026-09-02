@@ -59,3 +59,7 @@ test-users.json
 # Load test results
 tests/load/results/*.json
 tests/load/results/*.html
+
+# Playwright
+test-results/
+playwright-report/

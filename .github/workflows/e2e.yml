@@ -61,8 +61,11 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Run database migrations
-        run: npx prisma migrate deploy
+      - name: Provision test database schema
+        # db push materializa o schema.prisma direto no Postgres efemero do runner.
+        # Nao usamos `migrate deploy` porque prisma/migrations/ esta defasado em
+        # relacao ao schema.prisma (drift aplicado fora do historico em producao).
+        run: npx prisma db push --skip-generate
 
       - name: Seed test data
         run: npm run seed:test
