@@ -25,7 +25,39 @@ Ao alterar o `prisma/schema.prisma`, criar a migration localmente antes do PR:
 npx prisma migrate dev --name descricao-da-mudanca
 ```
 
-A migration será aplicada automaticamente no pipeline de deploy via `prisma migrate deploy`.
+Nunca usar `prisma db push` contra um banco compartilhado (produção, staging ou o
+banco de dev de outra pessoa). Foi exatamente isso que produziu o drift saneado em
+02/09/2026: o schema de produção andou por fora e o histórico de migrations ficou
+descrevendo um banco que não existia mais, o que tornou `prisma migrate deploy`
+impossível de rodar. O CI agora tem um step (`Checar drift entre prisma/migrations
+e schema.prisma`) que falha no mesmo commit se o histórico e o schema divergirem.
+
+### A migration NÃO é aplicada automaticamente no deploy
+
+O deploy de produção é feito pela integração Git da Vercel (todo push na `main`),
+e ela **não roda migration nenhuma**. O `deploy-prod.yml` também não roda, de
+propósito (ver o comentário no topo do arquivo). Aplicar uma mudança de schema em
+produção é uma operação **manual e deliberada**, feita antes do deploy do código
+que depende dela:
+
+```bash
+# com DATABASE_URL/DIRECT_URL apontando para produção em modo session (porta 5432)
+npx prisma migrate status   # confere o que está pendente
+npx prisma migrate deploy   # aplica
+```
+
+Ordem importa: coluna nova primeiro, código que usa a coluna depois. O caminho
+inverso derruba produção entre o deploy e a migration.
+
+### Baseline de 02/09/2026
+
+`prisma/migrations/` tem uma única migration, `0_init`, gerada a partir do
+`schema.prisma` e marcada como aplicada em produção via `prisma migrate resolve
+--applied 0_init`. As 8 migrations anteriores foram removidas porque nunca
+descreveram o banco real (só 1 das 8 estava registrada no `_prisma_migrations` de
+produção, e com `checksum` `manual_apply`). Continuam recuperáveis no histórico do
+git. Um banco vazio que rode `migrate deploy` hoje chega a um schema idêntico ao de
+produção — isso foi verificado com `migrate diff` nas duas direções.
 
 ## Variáveis de Ambiente
 

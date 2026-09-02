@@ -17,14 +17,17 @@ name: Deploy Produção (manual)
 #    preview / production) e é o `vercel pull` que as traz para o build.
 #    Nada de credencial de runtime precisa existir nos secrets do GitHub.
 #
-# 2. Rodar `prisma migrate deploy` contra produção. O _prisma_migrations de
-#    produção tem 1 das 8 migrations registradas e o schema real divergiu de
-#    prisma/migrations/ (confira com `prisma migrate diff --from-migrations
-#    prisma/migrations --to-schema-datamodel prisma/schema.prisma`). Nesse
-#    estado o `migrate deploy` falha na primeira migration ("relation already
-#    exists") e grava uma entrada failed que TRAVA todo deploy de migration
-#    futuro até alguém resolver na mão. Enquanto esse histórico não for
-#    saneado, mudança de schema em produção é operação manual e deliberada.
+# 2. Rodar `prisma migrate deploy` contra produção. O histórico de migrations foi
+#    saneado em 02/09/2026 (baseline `0_init` + `migrate resolve --applied`), então
+#    hoje `migrate deploy` contra produção é um no-op seguro e não mais a armadilha
+#    que era. Ele continua fora daqui por outro motivo: este workflow é redeploy
+#    manual, não o caminho normal de deploy — quem publica produção é a integração
+#    Git da Vercel, que não roda migration. Aplicar migration por um caminho que
+#    quase nunca é percorrido daria a falsa impressão de que mudança de schema
+#    chega em produção sozinha. Mudança de schema é operação manual e deliberada,
+#    feita ANTES do deploy do código que depende dela (ver CONTRIBUTING.md,
+#    secao "Banco de dados"). O guard contra reincidência do drift vive no
+#    e2e.yml, que roda em todo push.
 
 on:
   workflow_dispatch:

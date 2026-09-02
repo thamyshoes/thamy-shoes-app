@@ -72,11 +72,29 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      - name: Checar drift entre prisma/migrations e schema.prisma
+        # Guard de regressao. O historico de migrations ja divergiu do
+        # schema.prisma uma vez (drift aplicado fora do historico direto em
+        # producao), e o sintoma so apareceu meses depois como `migrate deploy`
+        # impossivel de rodar. Este step falha o CI no mesmo commit que
+        # introduzir a divergencia: `--exit-code` devolve 2 quando o diff nao e
+        # vazio. Conserto do desenvolvedor: `npx prisma migrate dev --name ...`
+        # em vez de `db push` contra um banco compartilhado.
+        run: |
+          # DROP/CREATE DATABASE nao roda dentro de transacao, entao duas chamadas
+          # separadas em vez de dois -c no mesmo psql.
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP DATABASE IF EXISTS shadow'
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE shadow'
+          npx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url "${DATABASE_URL%/*}/shadow" \
+            --exit-code
+
       - name: Provision test database schema
-        # db push materializa o schema.prisma direto no Postgres efemero do runner.
-        # Nao usamos `migrate deploy` porque prisma/migrations/ esta defasado em
-        # relacao ao schema.prisma (drift aplicado fora do historico em producao).
-        run: npx prisma db push --skip-generate
+        # `migrate deploy` e nao `db push`: e o mesmo caminho que uma mudanca de
+        # schema percorre em producao, entao o CI valida o historico de verdade.
+        run: npx prisma migrate deploy
 
       - name: Seed test data
         run: npm run seed:test

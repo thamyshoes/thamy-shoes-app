@@ -69,7 +69,8 @@ model User {
   passwordHash String   @map("password_hash")
   nome         String
   perfil       Perfil
-  setores      Setor[]
+  // @default([]) declara o DEFAULT ARRAY[]::"Setor"[] que producao ja tem.
+  setores      Setor[]  @default([])
   ativo        Boolean  @default(true)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
@@ -82,18 +83,21 @@ model User {
 }
 
 model BlingConnection {
-  id                      String        @id @default(uuid())
-  accessToken             String        @map("access_token")
-  refreshToken            String        @map("refresh_token")
-  expiresAt               DateTime      @map("expires_at")
-  refreshTokenExpiresAt   DateTime?     @map("refresh_token_expires_at")
-  connectedAt             DateTime      @map("connected_at")
-  status                  StatusConexao
-  isRefreshing            Boolean       @default(false) @map("is_refreshing")
-  refreshingAt            DateTime?     @map("refreshing_at")
-  lastSyncProdutosAt      DateTime?     @map("last_sync_produtos_at")
-  createdAt               DateTime      @default(now()) @map("created_at")
-  updatedAt               DateTime      @updatedAt @map("updated_at")
+  id                    String        @id @default(uuid())
+  accessToken           String        @map("access_token")
+  refreshToken          String        @map("refresh_token")
+  expiresAt             DateTime      @map("expires_at")
+  refreshTokenExpiresAt DateTime?     @map("refresh_token_expires_at")
+  connectedAt           DateTime      @map("connected_at")
+  status                StatusConexao
+  isRefreshing          Boolean       @default(false) @map("is_refreshing")
+  refreshingAt          DateTime?     @map("refreshing_at")
+  // Producao gravou esta coluna como timestamptz(6) e nao como o timestamp(3)
+  // default do Prisma. Timestamptz e o tipo correto para instante absoluto,
+  // entao o schema adota a realidade em vez de converter a coluna.
+  lastSyncProdutosAt    DateTime?     @map("last_sync_produtos_at") @db.Timestamptz(6)
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
 
   @@map("bling_connections")
 }
@@ -174,7 +178,9 @@ model Produto {
   imagemUrl String?  @map("imagem_url")
   ativo     Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  // @default(now()) espelha o DEFAULT CURRENT_TIMESTAMP que producao tem nesta
+  // coluna: e a rede de seguranca para INSERT que nao passe por este client.
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   itens ItemPedido[]
 
@@ -224,7 +230,8 @@ model Modelo {
   observacoes      String?
   ativo            Boolean  @default(true)
   createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  // Mesmo DEFAULT CURRENT_TIMESTAMP presente em producao (ver Produto).
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
 
   variantesCor ModeloVarianteCor[]
   itens        ItemPedido[]
@@ -277,7 +284,11 @@ model GradeNumeracao {
 model GradeModelo {
   id        String   @id @default(uuid())
   gradeId   String   @map("grade_id")
-  modelo    String
+  // Um modelo pertence a UMA unica grade. A regra ja era aplicada na mao pelas
+  // rotas de configuracao (deleteMany por modelo antes do create) e producao a
+  // enforca com a UNIQUE CONSTRAINT grades_modelo_modelo_unique, criada
+  // out-of-band. O `map:` preserva esse nome para nao gerar DDL em producao.
+  modelo    String   @unique(map: "grades_modelo_modelo_unique")
   createdAt DateTime @default(now()) @map("created_at")
 
   grade GradeNumeracao @relation(fields: [gradeId], references: [id], onDelete: Cascade)
