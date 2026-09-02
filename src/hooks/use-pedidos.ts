@@ -10,6 +10,8 @@ interface UsePedidosFilters {
   fornecedor?: string
   dataInicio?: string
   dataFim?: string
+  /** Busca por numero do pedido (GET /api/pedidos filtra `numero` com `contains`). */
+  search?: string
   page?: number
 }
 
@@ -40,6 +42,7 @@ export function usePedidos(filters?: UsePedidosFilters): UsePedidosReturn {
   const fornecedor = filters?.fornecedor
   const dataInicio = filters?.dataInicio
   const dataFim = filters?.dataFim
+  const search = filters?.search
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -53,6 +56,7 @@ export function usePedidos(filters?: UsePedidosFilters): UsePedidosReturn {
       if (fornecedor) params.set('fornecedor', fornecedor)
       if (dataInicio) params.set('dataInicio', dataInicio)
       if (dataFim) params.set('dataFim', dataFim)
+      if (search) params.set('search', search)
 
       const res = await apiClient.get<PedidosResponse>(
         `${API_ROUTES.PEDIDOS}?${params}`,
@@ -64,7 +68,7 @@ export function usePedidos(filters?: UsePedidosFilters): UsePedidosReturn {
     } finally {
       setLoading(false)
     }
-  }, [page, status, fornecedor, dataInicio, dataFim])
+  }, [page, status, fornecedor, dataInicio, dataFim, search])
 
   useEffect(() => {
     void fetchData()

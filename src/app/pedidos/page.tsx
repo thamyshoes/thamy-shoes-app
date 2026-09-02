@@ -121,6 +121,7 @@ export default function PedidosPage() {
   const { user, loading: authLoading } = useAuth()
   const [showImportar, setShowImportar] = useState(false)
   const [page, setPage] = useState(1)
+  const [numero, setNumero] = useState('')
   const [status, setStatus] = useState<StatusPedido | undefined>(undefined)
   const [fornecedor, setFornecedor] = useState('')
   const [dataInicio, setDataInicio] = useState('')
@@ -129,7 +130,15 @@ export default function PedidosPage() {
   const dataInicioFilter = isValidDateInput(dataInicio) ? dataInicio : undefined
   const dataFimFilter = isValidDateInput(dataFim) ? dataFim : undefined
 
+  // Com filtro ativo, lista vazia significa "nada casou", nao "nada importado".
+  // Oferecer "Importar primeiro pedido" nesse estado seria mentira.
+  const hasFiltroAtivo = Boolean(
+    numero || fornecedor || status || dataInicioFilter || dataFimFilter,
+  )
+
   const { pedidos, total, loading, error, refetch } = usePedidos({
+    // O parametro da API se chama `search` e filtra por `numero`.
+    search: numero || undefined,
     status,
     fornecedor: fornecedor || undefined,
     dataInicio: dataInicioFilter,
@@ -188,6 +197,23 @@ export default function PedidosPage() {
         </div>
 
         <FilterBar>
+          <label className="text-sm text-secondary" htmlFor="pedidos-filter-numero">
+            Pedido:
+          </label>
+          <input
+            data-testid="pedidos-filter-numero-input"
+            id="pedidos-filter-numero"
+            type="text"
+            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="Buscar nº do pedido"
+            aria-label="Buscar por número do pedido"
+            value={numero}
+            onChange={(e) => {
+              setNumero(e.target.value)
+              setPage(1)
+            }}
+          />
+
           <label className="text-sm text-secondary">Status:</label>
           <select
             data-testid="pedidos-filter-status-select"
@@ -254,9 +280,13 @@ export default function PedidosPage() {
           data={pedidos as PedidoRow[]}
           columns={columns}
           loading={loading}
-          emptyMessage="Nenhum pedido importado"
+          emptyMessage={
+            hasFiltroAtivo
+              ? 'Nenhum pedido encontrado para os filtros aplicados'
+              : 'Nenhum pedido importado'
+          }
           emptyAction={
-            canImportar
+            canImportar && !hasFiltroAtivo
               ? {
                   label: 'Importar primeiro pedido',
                   onClick: () => setShowImportar(true),

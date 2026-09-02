@@ -25,8 +25,6 @@ test.describe('Pedidos', () => {
     expect(textos.join(' ')).toMatch(/pedido|número/i)
   })
 
-  // A lista de pedidos filtra por status, fornecedor e intervalo de datas. Nao ha
-  // busca por numero de pedido na UI; este teste cobre o filtro que existe.
   test('2. filtrar pedido por fornecedor filtra resultados', async ({ page }) => {
     await page.goto('/pedidos')
     await page.waitForLoadState('networkidle')
@@ -44,7 +42,41 @@ test.describe('Pedidos', () => {
     expect(await linhas.count()).toBe(1)
   })
 
-  test('3. detalhe do pedido exibe grade de tamanhos', async ({ page }) => {
+  // GET /api/pedidos aceita `search` e filtra `numero` com `contains` desde sempre,
+  // mas a UI nao expunha o campo: a capacidade existia e ninguem alcancava.
+  test('3. buscar pedido por numero filtra a lista', async ({ page }) => {
+    await page.goto('/pedidos')
+    await page.waitForLoadState('networkidle')
+
+    const busca = page.getByTestId('pedidos-filter-numero-input')
+    await expect(busca).toBeVisible()
+
+    // Numero exato: sobra apenas E2E-001.
+    await busca.fill('E2E-001')
+    const linhas = page.locator('table tbody tr')
+    await expect(async () => {
+      await expect(linhas).toHaveCount(1)
+      await expect(linhas.first()).toContainText('E2E-001')
+    }).toPass({ timeout: 10_000 })
+
+    // Prefixo comum: `contains` traz os dois pedidos da seed.
+    await busca.fill('E2E-00')
+    await expect(async () => {
+      await expect(linhas).toHaveCount(2)
+    }).toPass({ timeout: 10_000 })
+
+    // Numero inexistente: estado vazio de FILTRO, nao de base vazia. A copy
+    // "Nenhum pedido importado" e o atalho "Importar primeiro pedido" mentiriam.
+    await busca.fill('NAO-EXISTE-999')
+    await expect(async () => {
+      await expect(linhas).toHaveCount(0)
+      await expect(page.getByText(/nenhum pedido encontrado para os filtros/i)).toBeVisible()
+    }).toPass({ timeout: 10_000 })
+    await expect(page.getByRole('button', { name: /importar primeiro pedido/i })).not.toBeVisible()
+    await expect(page.getByText(/erro ao carregar pedidos/i)).not.toBeVisible()
+  })
+
+  test('4. detalhe do pedido exibe grade de tamanhos', async ({ page }) => {
     await page.goto('/pedidos')
     await page.waitForLoadState('networkidle')
 
@@ -64,7 +96,7 @@ test.describe('Pedidos', () => {
     await expect(grade).toBeVisible()
   })
 
-  test('4. editar item do pedido abre modal e salva alteração', async ({ page }) => {
+  test('5. editar item do pedido abre modal e salva alteração', async ({ page }) => {
     await page.goto('/pedidos')
     await page.waitForLoadState('networkidle')
 
@@ -97,7 +129,7 @@ test.describe('Pedidos', () => {
     await expect(modal).not.toBeVisible({ timeout: 5_000 })
   })
 
-  test('5. reimportar pedido exibe ConfirmDialog e atualiza dados', async ({ page }) => {
+  test('6. reimportar pedido exibe ConfirmDialog e atualiza dados', async ({ page }) => {
     await page.goto('/pedidos')
     await page.waitForLoadState('networkidle')
 
@@ -132,7 +164,7 @@ test.describe('Pedidos', () => {
     await expect(dialog).not.toBeVisible({ timeout: 5_000 })
   })
 
-  test('6. PRODUCAO não vê botão "Importar Pedidos"', async ({ page }) => {
+  test('7. PRODUCAO não vê botão "Importar Pedidos"', async ({ page }) => {
     // Faz logout e loga como PRODUCAO
     await page.goto('/pedidos')
     // Já logado como ADMIN, mas precisamos como PRODUCAO
